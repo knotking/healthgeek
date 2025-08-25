@@ -1,21 +1,27 @@
+
 rules_version = '2';
+
 service cloud.firestore {
   match /databases/{database}/documents {
 
-    // Users can read and update their own profile.
+    // Profiles: Users can read and write to their own profile.
     match /profiles/{userId} {
-      allow read, update: if request.auth.uid == userId;
-      allow create: if request.auth.uid == userId;
+      allow read, update, delete: if request.auth != null && request.auth.uid == userId;
+      allow create: if request.auth != null;
     }
 
-    // Users can create and read their own food logs.
+    // Food Log: Users can create, read, update, and delete their own food logs.
+    // They can only query logs that belong to them.
     match /food-log/{logId} {
-      allow read, create: if request.auth != null && request.resource.data.userId == request.auth.uid;
+      allow read, update, delete: if request.auth != null && request.auth.uid == resource.data.userId;
+      allow create: if request.auth != null && request.auth.uid == request.resource.data.userId;
     }
 
-    // Users can create and read their own health reports.
+    // Health Reports: Users can create, read, update, and delete their own health reports.
+    // They can only query reports that belong to them.
     match /health-reports/{reportId} {
-        allow read, create: if request.auth != null && request.resource.data.userId == request.auth.uid;
+      allow read, update, delete: if request.auth != null && request.auth.uid == resource.data.userId;
+      allow create: if request.auth != null && request.auth.uid == request.resource.data.userId;
     }
   }
 }
