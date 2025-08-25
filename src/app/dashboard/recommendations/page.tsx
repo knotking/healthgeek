@@ -11,9 +11,9 @@ import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from '@/
 import { useState, useEffect, useCallback, useMemo } from 'react';
 import { useAuthState } from 'react-firebase-hooks/auth';
 import { auth, db } from '@/lib/firebase';
-import { collection, addDoc, query, where, orderBy, getDocs, Timestamp, doc, updateDoc, limit, startAfter, getCountFromServer } from 'firebase/firestore';
+import { collection, addDoc, query, where, orderBy, getDocs, Timestamp, doc, updateDoc, limit, startAfter, getCountFromServer, deleteDoc } from 'firebase/firestore';
 import { useToast } from '@/hooks/use-toast';
-import { BrainCircuit, ChefHat, Dumbbell, History, Loader2, Save, Eye, Star, ChevronLeft, ChevronRight } from 'lucide-react';
+import { BrainCircuit, ChefHat, Dumbbell, History, Loader2, Save, Eye, Star, ChevronLeft, ChevronRight, Trash2, Users } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Switch } from '@/components/ui/switch';
@@ -92,6 +92,7 @@ type RecommendationHistoryItem = {
     data: any;
     isPublic?: boolean;
     rating?: number;
+    userId: string;
 };
 
 // --- Recipe Component ---
@@ -833,16 +834,19 @@ const StarRating = ({ rating, onRate, disabled }: { rating: number, onRate: (rat
     );
 };
 
-const HistorySection = ({ 
-    history, 
+const HistoryTable = ({ 
+    items, 
     loading, 
     onView, 
     onTogglePublic, 
     onRate,
+    onDelete,
     onNextPage,
     onPrevPage,
     hasMore,
-    isFirstPage
+    isFirstPage,
+    isPublicView = false,
+    currentUser,
 }) => {
     const getIcon = (type: string) => {
         switch(type) {
@@ -865,12 +869,16 @@ const HistorySection = ({
     return (
         <Card>
             <CardHeader>
-                <CardTitle className="flex items-center gap-2"><History/> Recommendation History</CardTitle>
-                <CardDescription>Your saved recommendations. Click a row to view the full details.</CardDescription>
+                <CardTitle className="flex items-center gap-2">
+                    {isPublicView ? <><Users/> Community Recommendations</> : <><History/> My History</>}
+                </CardTitle>
+                <CardDescription>
+                    {isPublicView ? "Explore recommendations shared by the community." : "Your saved recommendations. Click a row to view the full details."}
+                </CardDescription>
             </CardHeader>
             <CardContent>
                 {loading ? <div className="flex justify-center"><Loader2 className="h-6 w-6 animate-spin"/></div> :
-                    history.length === 0 ? <p className="text-muted-foreground text-center">No history saved yet.</p> :
+                    items.length === 0 ? <p className="text-muted-foreground text-center">No recommendations found.</p> :
                     <>
                         <div className="border rounded-md">
                             <Table>
@@ -880,12 +888,12 @@ const HistorySection = ({
                                         <TableHead>Title</TableHead>
                                         <TableHead>Date</TableHead>
                                         <TableHead>Rating</TableHead>
-                                        <TableHead>Public</TableHead>
+                                        {!isPublicView && <TableHead>Public</TableHead>}
                                         <TableHead className="text-right">Actions</TableHead>
                                     </TableRow>
                                 </TableHeader>
                                 <TableBody>
-                                    {history.map(item => (
+                                    {items.map(item => (
                                         <TableRow key={item.id}>
                                             <TableCell className="capitalize flex items-center gap-2">
                                                 {getIcon(item.type)} {item.type}
@@ -893,18 +901,29 @@ const HistorySection = ({
                                             <TableCell className="font-medium">{getTitle(item)}</TableCell>
                                             <TableCell>{item.timestamp.toLocaleDateString()}</TableCell>
                                             <TableCell>
-                                                <StarRating rating={item.rating || 0} onRate={(rating) => onRate(item.id, rating)} />
-                                            </TableCell>
-                                            <TableCell>
-                                                <Switch
-                                                    checked={item.isPublic}
-                                                    onCheckedChange={(checked) => onTogglePublic(item.id, checked)}
+                                                <StarRating 
+                                                    rating={item.rating || 0} 
+                                                    onRate={(rating) => onRate && onRate(item.id, rating)} 
+                                                    disabled={isPublicView}
                                                 />
                                             </TableCell>
-                                            <TableCell className="text-right">
+                                            {!isPublicView && (
+                                                <TableCell>
+                                                    <Switch
+                                                        checked={item.isPublic}
+                                                        onCheckedChange={(checked) => onTogglePublic && onTogglePublic(item.id, checked)}
+                                                    />
+                                                </TableCell>
+                                            )}
+                                            <TableCell className="text-right space-x-2">
                                                 <Button size="sm" variant="outline" onClick={() => onView(item)}>
                                                     <Eye className="mr-2 h-4 w-4"/> View
                                                 </Button>
+                                                {!isPublicView && (
+                                                  <Button size="sm" variant="destructive" onClick={() => onDelete && onDelete(item.id)}>
+                                                      <Trash2 className="mr-2 h-4 w-4"/> Delete
+                                                  </Button>
+                                                )}
                                             </TableCell>
                                         </TableRow>
                                     ))}
@@ -931,109 +950,110 @@ const HistorySection = ({
 export default function RecommendationsPage() {
     const [user, authLoading] = useAuthState(auth);
     const { toast } = useToast();
-    const [history, setHistory] = useState<RecommendationHistoryItem[]>([]);
-    const [loadingHistory, setLoadingHistory] = useState(true);
-    const [lastVisible, setLastVisible] = useState<any>(null);
-    const [pageStack, setPageStack] = useState<any[]>([]);
-    const [hasMore, setHasMore] = useState(true);
+    
+    // State for personal history
+    const [myHistory, setMyHistory] = useState<RecommendationHistoryItem[]>([]);
+    const [loadingMyHistory, setLoadingMyHistory] = useState(true);
+    const [myHistoryLastVisible, setMyHistoryLastVisible] = useState<any>(null);
+    const [myHistoryPageStack, setMyHistoryPageStack] = useState<any[]>([]);
+    const [myHistoryHasMore, setMyHistoryHasMore] = useState(true);
+    
+    // State for community recommendations
+    const [communityRecs, setCommunityRecs] = useState<RecommendationHistoryItem[]>([]);
+    const [loadingCommunityRecs, setLoadingCommunityRecs] = useState(true);
+    const [communityLastVisible, setCommunityLastVisible] = useState<any>(null);
+    const [communityPageStack, setCommunityPageStack] = useState<any[]>([]);
+    const [communityHasMore, setCommunityHasMore] = useState(true);
 
-    const [activeTab, setActiveTab] = useState<RecommendationType>('workout');
+    const [activeTab, setActiveTab] = useState<RecommendationType | 'community' | 'history'>('history');
     const [viewData, setViewData] = useState<any>(null);
+    const [viewDataType, setViewDataType] = useState<RecommendationType | null>(null);
     
     const ITEMS_PER_PAGE = 5;
 
-    const fetchHistory = useCallback(async (direction: 'next' | 'prev' = 'next') => {
+    const fetchMyHistory = useCallback(async (direction: 'next' | 'prev' = 'next') => {
         if (!user) return;
-
-        setLoadingHistory(true);
-
-        let newLastVisible = lastVisible;
+        setLoadingMyHistory(true);
+        let newLastVisible = myHistoryLastVisible;
         if (direction === 'prev') {
-            const newStack = [...pageStack];
-            newStack.pop(); // remove current page
-            newLastVisible = newStack.pop() || null; // get previous page start
-            setPageStack(newStack);
+            const newStack = [...myHistoryPageStack];
+            newStack.pop(); 
+            newLastVisible = newStack.pop() || null; 
+            setMyHistoryPageStack(newStack);
         }
-
-        const q = query(
-            collection(db, 'recommendation-history'),
-            where('userId', '==', user.uid),
-            orderBy('timestamp', 'desc'),
-            ...(newLastVisible ? [startAfter(newLastVisible)] : []),
-            limit(ITEMS_PER_PAGE)
-        );
-
+        const q = query(collection(db, 'recommendation-history'), where('userId', '==', user.uid), orderBy('timestamp', 'desc'), ...(newLastVisible ? [startAfter(newLastVisible)] : []), limit(ITEMS_PER_PAGE));
         try {
-            const documentSnapshots = await getDocs(q);
-            
-            const historyItems = documentSnapshots.docs.map(doc => ({
-                id: doc.id,
-                ...doc.data(),
-                timestamp: (doc.data().timestamp as Timestamp).toDate()
-            })) as RecommendationHistoryItem[];
-
-            const lastDoc = documentSnapshots.docs[documentSnapshots.docs.length - 1];
-            setLastVisible(lastDoc);
-            
-            if (direction === 'next') {
-                setPageStack(prev => [...prev, lastVisible]);
-            }
-
-            setHistory(historyItems);
-            setHasMore(historyItems.length === ITEMS_PER_PAGE);
-
-        } catch (e: any) {
-            console.error("Failed to fetch history:", e);
-            toast({ title: "Error fetching history", description: e.message, variant: "destructive"});
-            setHistory([]);
-        } finally {
-            setLoadingHistory(false);
+            const snap = await getDocs(q);
+            const items = snap.docs.map(doc => ({ id: doc.id, ...doc.data(), timestamp: (doc.data().timestamp as Timestamp).toDate() })) as RecommendationHistoryItem[];
+            const lastDoc = snap.docs[snap.docs.length - 1];
+            setMyHistoryLastVisible(lastDoc);
+            if (direction === 'next') setMyHistoryPageStack(prev => [...prev, myHistoryLastVisible]);
+            setMyHistory(items);
+            setMyHistoryHasMore(items.length === ITEMS_PER_PAGE);
+        } catch (e: any) { toast({ title: "Error fetching history", description: e.message, variant: "destructive"}); } 
+        finally { setLoadingMyHistory(false); }
+    }, [user, myHistoryLastVisible, toast, myHistoryPageStack]);
+    
+    const fetchCommunityRecs = useCallback(async (direction: 'next' | 'prev' = 'next') => {
+        setLoadingCommunityRecs(true);
+        let newLastVisible = communityLastVisible;
+        if (direction === 'prev') {
+            const newStack = [...communityPageStack];
+            newStack.pop();
+            newLastVisible = newStack.pop() || null;
+            setCommunityPageStack(newStack);
         }
-    }, [user, lastVisible, toast, pageStack]);
+        const q = query(collection(db, 'recommendation-history'), where('isPublic', '==', true), orderBy('rating', 'desc'), orderBy('timestamp', 'desc'), ...(newLastVisible ? [startAfter(newLastVisible)] : []), limit(ITEMS_PER_PAGE));
+        try {
+            const snap = await getDocs(q);
+            const items = snap.docs.map(doc => ({ id: doc.id, ...doc.data(), timestamp: (doc.data().timestamp as Timestamp).toDate() })) as RecommendationHistoryItem[];
+            const lastDoc = snap.docs[snap.docs.length - 1];
+            setCommunityLastVisible(lastDoc);
+            if (direction === 'next') setCommunityPageStack(prev => [...prev, communityLastVisible]);
+            setCommunityRecs(items);
+            setCommunityHasMore(items.length === ITEMS_PER_PAGE);
+        } catch (e: any) { toast({ title: "Error fetching community data", description: e.message, variant: "destructive"}); }
+        finally { setLoadingCommunityRecs(false); }
+    }, [communityLastVisible, toast, communityPageStack]);
 
 
     useEffect(() => {
         if (!authLoading && user) {
-            fetchHistory();
+            fetchMyHistory();
+            fetchCommunityRecs();
         }
     }, [user, authLoading]);
 
     const handleViewHistoryItem = (item: RecommendationHistoryItem) => {
         setViewData(null); 
         setActiveTab(item.type);
+        setViewDataType(item.type);
         setTimeout(() => {
             setViewData(item.data);
         }, 50); 
     };
 
     const handleTabChange = (val: string) => {
-        const newTab = val as RecommendationType;
+        const newTab = val as RecommendationType | 'community' | 'history';
         setActiveTab(newTab);
         setViewData(null);
+        setViewDataType(null);
     }
     
-  const CurrentCreator = useMemo(() => {
-    if (viewData) return null; // Don't show creator if viewing history item
-    if (activeTab === 'workout') return <WorkoutGeneratorTab onSave={() => fetchHistory()} initialData={null} isVisible={!viewData} />;
-    if (activeTab === 'meditation') return <MeditationGeneratorTab onSave={() => fetchHistory()} initialData={null} isVisible={!viewData} />;
-    if (activeTab === 'recipe') return <RecipeGeneratorTab onSave={() => fetchHistory()} initialData={null} isVisible={!viewData} />;
-    return null;
-  }, [activeTab, viewData, fetchHistory]);
-  
-  const ViewedItem = useMemo(() => {
-      if(!viewData) return null;
-      if(activeTab === 'workout') return <WorkoutGeneratorTab onSave={() => fetchHistory()} initialData={viewData} isVisible={true} />;
-      if(activeTab === 'meditation') return <MeditationGeneratorTab onSave={() => fetchHistory()} initialData={viewData} isVisible={true} />;
-      if(activeTab === 'recipe') return <RecipeGeneratorTab onSave={() => fetchHistory()} initialData={viewData} isVisible={true} />;
+    const ViewedItem = useMemo(() => {
+      if(!viewData || !viewDataType) return null;
+      if(viewDataType === 'workout') return <WorkoutGeneratorTab onSave={() => fetchMyHistory()} initialData={viewData} isVisible={true} />;
+      if(viewDataType === 'meditation') return <MeditationGeneratorTab onSave={() => fetchMyHistory()} initialData={viewData} isVisible={true} />;
+      if(viewDataType === 'recipe') return <RecipeGeneratorTab onSave={() => fetchMyHistory()} initialData={viewData} isVisible={true} />;
       return null;
-  }, [viewData, activeTab, fetchHistory])
+  }, [viewData, viewDataType, fetchMyHistory]);
 
     const handleTogglePublic = async (id: string, isPublic: boolean) => {
         try {
-            const docRef = doc(db, 'recommendation-history', id);
-            await updateDoc(docRef, { isPublic });
-            setHistory(history.map(item => item.id === id ? { ...item, isPublic } : item));
+            await updateDoc(doc(db, 'recommendation-history', id), { isPublic });
+            setMyHistory(myHistory.map(item => item.id === id ? { ...item, isPublic } : item));
             toast({ title: 'Visibility Updated' });
+            fetchCommunityRecs(); // Refresh community list
         } catch (e: any) {
             toast({ title: 'Update Failed', description: e.message, variant: 'destructive' });
         }
@@ -1041,64 +1061,89 @@ export default function RecommendationsPage() {
 
     const handleRate = async (id: string, rating: number) => {
         try {
-            const docRef = doc(db, 'recommendation-history', id);
-            await updateDoc(docRef, { rating });
-            setHistory(history.map(item => item.id === id ? { ...item, rating } : item));
+            await updateDoc(doc(db, 'recommendation-history', id), { rating });
+            setMyHistory(myHistory.map(item => item.id === id ? { ...item, rating } : item));
             toast({ title: 'Rating Submitted' });
         } catch (e: any) {
             toast({ title: 'Update Failed', description: e.message, variant: 'destructive' });
         }
     };
-
-    const handleNextPage = () => {
-        if (hasMore) {
-            fetchHistory('next');
+    
+    const handleDelete = async (id: string) => {
+        if (!window.confirm("Are you sure you want to delete this item? This action cannot be undone.")) return;
+        try {
+            await deleteDoc(doc(db, 'recommendation-history', id));
+            setMyHistory(myHistory.filter(item => item.id !== id));
+            toast({ title: 'Item Deleted' });
+        } catch(e: any) {
+            toast({ title: "Delete failed", description: e.message, variant: 'destructive' });
         }
-    };
+    }
 
-    const handlePrevPage = () => {
-       fetchHistory('prev');
-    };
 
   return (
     <div className="space-y-6">
-        <HistorySection 
-            history={history} 
-            loading={loadingHistory} 
-            onView={handleViewHistoryItem}
-            onTogglePublic={handleTogglePublic}
-            onRate={handleRate}
-            onNextPage={handleNextPage}
-            onPrevPage={handlePrevPage}
-            hasMore={hasMore}
-            isFirstPage={pageStack.length <= 1}
-        />
         <Tabs value={activeTab} onValueChange={handleTabChange} className="w-full">
-        <TabsList className="grid w-full grid-cols-3">
+        <TabsList className="grid w-full grid-cols-5">
+            <TabsTrigger value="history">My History</TabsTrigger>
+            <TabsTrigger value="community">Community</TabsTrigger>
             <TabsTrigger value="workout">Workout</TabsTrigger>
             <TabsTrigger value="meditation">Meditation</TabsTrigger>
             <TabsTrigger value="recipe">Recipe</TabsTrigger>
         </TabsList>
+        <TabsContent value="history" className="mt-4">
+             <HistoryTable 
+                items={myHistory} 
+                loading={loadingMyHistory} 
+                onView={handleViewHistoryItem}
+                onTogglePublic={handleTogglePublic}
+                onRate={handleRate}
+                onDelete={handleDelete}
+                onNextPage={() => fetchMyHistory('next')}
+                onPrevPage={() => fetchMyHistory('prev')}
+                hasMore={myHistoryHasMore}
+                isFirstPage={myHistoryPageStack.length <= 1}
+                currentUser={user}
+            />
+        </TabsContent>
+        <TabsContent value="community" className="mt-4">
+            <HistoryTable 
+                items={communityRecs} 
+                loading={loadingCommunityRecs} 
+                onView={handleViewHistoryItem}
+                onNextPage={() => fetchCommunityRecs('next')}
+                onPrevPage={() => fetchCommunityRecs('prev')}
+                hasMore={communityHasMore}
+                isFirstPage={communityPageStack.length <= 1}
+                isPublicView={true}
+                currentUser={user}
+            />
+        </TabsContent>
         <TabsContent value="workout" forceMount className="mt-4">
-             <div className="max-w-4xl mx-auto space-y-6" key={viewData ? 'workout-view' : 'workout-new'}>
-                {viewData && activeTab === 'workout' ? ViewedItem : CurrentCreator}
-                 {!viewData && activeTab === 'workout' && <WorkoutGeneratorTab onSave={() => fetchHistory()} initialData={null} isVisible={true} />}
+             <div className="max-w-4xl mx-auto space-y-6">
+                {viewData && viewDataType === 'workout' 
+                    ? ViewedItem 
+                    : <WorkoutGeneratorTab onSave={() => fetchMyHistory()} initialData={null} isVisible={activeTab === 'workout' && !viewData} />
+                }
             </div>
         </TabsContent>
         <TabsContent value="meditation" forceMount className="mt-4">
-            <div className="max-w-4xl mx-auto space-y-6" key={viewData ? 'meditation-view' : 'meditation-new'}>
-                {viewData && activeTab === 'meditation' ? ViewedItem : CurrentCreator}
-                {!viewData && activeTab === 'meditation' && <MeditationGeneratorTab onSave={() => fetchHistory()} initialData={null} isVisible={true} />}
+            <div className="max-w-4xl mx-auto space-y-6">
+                 {viewData && viewDataType === 'meditation'
+                    ? ViewedItem 
+                    : <MeditationGeneratorTab onSave={() => fetchMyHistory()} initialData={null} isVisible={activeTab === 'meditation' && !viewData} />
+                 }
             </div>
         </TabsContent>
         <TabsContent value="recipe" forceMount className="mt-4">
-            <div className="max-w-4xl mx-auto space-y-6" key={viewData ? 'recipe-view' : 'recipe-new'}>
-                {viewData && activeTab === 'recipe' ? ViewedItem : CurrentCreator}
-                {!viewData && activeTab === 'recipe' && <RecipeGeneratorTab onSave={() => fetchHistory()} initialData={null} isVisible={true} />}
+            <div className="max-w-4xl mx-auto space-y-6">
+                {viewData && viewDataType === 'recipe'
+                    ? ViewedItem
+                    : <RecipeGeneratorTab onSave={() => fetchMyHistory()} initialData={null} isVisible={activeTab === 'recipe' && !viewData} />
+                }
             </div>
         </TabsContent>
         </Tabs>
     </div>
   );
 }
-

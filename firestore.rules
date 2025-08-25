@@ -1,25 +1,48 @@
+
 rules_version = '2';
 
 service cloud.firestore {
   match /databases/{database}/documents {
+
+    // Helper functions
+    function isSignedIn() {
+      return request.auth != null;
+    }
+
+    function isOwner(userId) {
+      return request.auth.uid == userId;
+    }
+
+    // Profiles: Users can only read/write their own profile.
     match /profiles/{userId} {
-      allow read, write: if request.auth.uid == userId;
-    }
-
-    match /food-log/{logId} {
-      allow read, write: if request.auth.uid == request.resource.data.userId;
-    }
-
-    match /health-reports/{reportId} {
-      allow read, write: if request.auth.uid == request.resource.data.userId;
+      allow read, write: if isSignedIn() && isOwner(userId);
     }
     
-    match /recommendation-history/{recommendationId} {
-      // Allow public read access for documents where isPublic is true
-      allow get, list: if resource.data.isPublic == true;
+    // Food Log: Users can only read/write their own food logs.
+    match /food-log/{logId} {
+      allow read, create: if isSignedIn() && isOwner(request.resource.data.userId);
+      allow update, delete: if isSignedIn() && isOwner(resource.data.userId);
+    }
 
-      // Allow authenticated users full access to their own documents
-      allow read, write: if request.auth.uid == resource.data.userId;
+    // Health Reports: Users can only read/write their own health reports.
+    match /health-reports/{reportId} {
+       allow read, create: if isSignedIn() && isOwner(request.resource.data.userId);
+       allow update, delete: if isSignedIn() && isOwner(resource.data.userId);
+    }
+
+    // Recommendation History
+    match /recommendation-history/{itemId} {
+      // Allow anyone to read a document if it's public.
+      allow get: if resource.data.isPublic == true;
+      
+      // Allow anyone to query for public recommendations.
+      allow list: if request.query.get('where').find(constraint => constraint[0] == 'isPublic' && constraint[2] == true) != null;
+      
+      // Allow signed-in users to create their own items.
+      allow create: if isSignedIn() && isOwner(request.resource.data.userId);
+      
+      // Allow owners to read, update, and delete their own items.
+      allow read, update, delete: if isSignedIn() && isOwner(resource.data.userId);
     }
   }
 }
