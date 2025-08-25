@@ -110,8 +110,7 @@ export default function WorkoutPage() {
         setHistory(historyLogs);
         
       } catch (e:any) {
-        console.error("Failed to fetch user data or history:", e);
-        setHistory([]); // Clear history on error to show empty state
+        setHistory([]);
       } finally {
         setInitialLoading(false);
         setIsFetchingHistory(false);
@@ -449,5 +448,3 @@ export default function WorkoutPage() {
     </div>
   );
 }
-
-    
