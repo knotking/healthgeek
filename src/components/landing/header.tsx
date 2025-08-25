@@ -1,4 +1,6 @@
 import { Logo } from "@/components/logo";
+import { Button } from "@/components/ui/button";
+import Link from "next/link";
 
 export default function Header() {
   return (
@@ -8,10 +10,13 @@ export default function Header() {
           <Logo className="h-6 w-6 mr-2" />
           <span className="font-bold">HealthGeek.ai</span>
         </div>
-        <div className="flex flex-1 items-center justify-end">
-          <div className="text-sm font-medium text-muted-foreground">
-            Launching Soon
-          </div>
+        <div className="flex flex-1 items-center justify-end space-x-2">
+           <Button variant="ghost" asChild>
+            <Link href="/login">Login</Link>
+          </Button>
+          <Button asChild>
+            <Link href="/signup">Sign Up</Link>
+          </Button>
         </div>
       </div>
     </header>

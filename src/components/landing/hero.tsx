@@ -1,5 +1,6 @@
 import { Button } from "@/components/ui/button";
 import Image from "next/image";
+import Link from "next/link";
 
 export default function Hero() {
   return (
@@ -25,7 +26,9 @@ export default function Hero() {
         </p>
 
         <div className="space-y-4 md:space-y-0 md:space-x-4">
-          <Button className="w-full md:w-1/3">Get Started</Button>
+          <Button className="w-full md:w-1/3" asChild>
+            <Link href="/signup">Get Started</Link>
+          </Button>
         </div>
       </div>
 
