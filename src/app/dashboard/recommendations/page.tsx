@@ -849,7 +849,7 @@ export default function RecommendationsPage() {
         } else {
             setLoadingHistory(false);
         }
-    }, [user, toast]);
+    }, [user]);
 
     useEffect(() => {
         if (!authLoading) {
