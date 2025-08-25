@@ -11,7 +11,7 @@ import { useAuthState } from 'react-firebase-hooks/auth';
 import { auth, db } from '@/lib/firebase';
 import { collection, addDoc, query, where, orderBy, getDocs, Timestamp } from 'firebase/firestore';
 import { useToast } from '@/hooks/use-toast';
-import { BrainCircuit, ChefHat, Dumbbell, History, Loader2 as Loader2History } from 'lucide-react';
+import { BrainCircuit, ChefHat, Dumbbell, History, Loader2 as Loader2History, Save } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 
 // Recipe Generator Imports
@@ -23,9 +23,10 @@ import { useAuthState as useAuthStateRecipe } from 'react-firebase-hooks/auth';
 import { auth as authRecipe, db as dbRecipe } from '@/lib/firebase';
 import { doc as docRecipe, getDoc as getDocRecipe } from 'firebase/firestore';
 import { Button as ButtonRecipe } from '@/components/ui/button';
+import { CardFooter as CardFooterRecipe } from '@/components/ui/card';
 import { Badge as BadgeRecipe } from '@/components/ui/badge';
 import { useToast as useToastRecipe } from '@/hooks/use-toast';
-import { Loader2 as Loader2Recipe, CookingPot, FileDown as FileDownRecipe, Utensils, Clock, User, Sparkles as SparklesRecipe, MoveRight as MoveRightRecipe, MoveLeft as MoveLeftRecipe, Save } from 'lucide-react';
+import { Loader2 as Loader2Recipe, CookingPot, FileDown as FileDownRecipe, Utensils, Clock, User, Sparkles as SparklesRecipe, MoveRight as MoveRightRecipe, MoveLeft as MoveLeftRecipe } from 'lucide-react';
 import { generateSingleRecipe, SingleRecipeOutput } from '@/ai/flows/conversational-recipe-generator';
 import { Form as FormRecipe, FormControl as FormControlRecipe, FormField as FormFieldRecipe, FormItem as FormItemRecipe, FormLabel as FormLabelRecipe, FormMessage as FormMessageRecipe } from '@/components/ui/form';
 import { Input as InputRecipe } from '@/components/ui/input';
@@ -34,7 +35,6 @@ import { Select as SelectRecipe, SelectContent as SelectContentRecipe, SelectIte
 import { AnimatePresence as AnimatePresenceRecipe, motion as motionRecipe } from 'framer-motion';
 import jsPDF from 'jspdf';
 import 'jspdf-autotable';
-import { CardFooter as CardFooterRecipe } from '@/components/ui/card';
 
 // Workout Generator Imports
 import { useState as useStateWorkout, useEffect as useEffectWorkout, useCallback as useCallbackWorkout } from 'react';
@@ -45,6 +45,7 @@ import { useAuthState as useAuthStateWorkout } from 'react-firebase-hooks/auth';
 import { auth as authWorkout, db as dbWorkout } from '@/lib/firebase';
 import { doc as docWorkout, getDoc as getDocWorkout, collection as collectionWorkout, query as queryWorkout, orderBy as orderByWorkout, where as whereWorkout, limit as limitWorkout, getDocs as getDocsWorkout } from 'firebase/firestore';
 import { Button as ButtonWorkout } from '@/components/ui/button';
+import { CardFooter as CardFooterWorkout } from '@/components/ui/card';
 import { Badge as BadgeWorkout } from '@/components/ui/badge';
 import { useToast as useToastWorkout } from '@/hooks/use-toast';
 import { Loader2 as Loader2Workout, FileDown as FileDownWorkout, Activity, Shield, MoveRight as MoveRightWorkout, MoveLeft as MoveLeftWorkout, Repeat, Target, Timer as TimerWorkout, HeartPulse } from 'lucide-react';
@@ -55,7 +56,6 @@ import { Slider as SliderWorkout } from '@/components/ui/slider';
 import { Checkbox as CheckboxWorkout } from '@/components/ui/checkbox';
 import { AnimatePresence as AnimatePresenceWorkout, motion as motionWorkout } from 'framer-motion';
 import { Alert as AlertWorkout, AlertDescription as AlertDescriptionWorkout, AlertTitle as AlertTitleWorkout } from '@/components/ui/alert';
-import { CardFooter as CardFooterWorkout } from '@/components/ui/card';
 
 // Meditation Generator Imports
 import { useState as useStateMeditation, useEffect as useEffectMeditation, useCallback as useCallbackMeditation } from 'react';
@@ -66,6 +66,7 @@ import { useAuthState as useAuthStateMeditation } from 'react-firebase-hooks/aut
 import { auth as authMeditation, db as dbMeditation } from '@/lib/firebase';
 import { doc as docMeditation, getDoc as getDocMeditation } from 'firebase/firestore';
 import { Button as ButtonMeditation } from '@/components/ui/button';
+import { CardFooter as CardFooterMeditation } from '@/components/ui/card';
 import { Badge as BadgeMeditation } from '@/components/ui/badge';
 import { useToast as useToastMeditation } from '@/hooks/use-toast';
 import { Loader2 as Loader2Meditation, FileDown as FileDownMeditation, MoveRight as MoveRightMeditation, MoveLeft as MoveLeftMeditation, Sparkles as SparklesMeditation, Timer as TimerMeditation } from 'lucide-react';
@@ -76,7 +77,6 @@ import { Slider as SliderMeditation } from '@/components/ui/slider';
 import { Checkbox as CheckboxMeditation } from '@/components/ui/checkbox';
 import { AnimatePresence as AnimatePresenceMeditation, motion as motionMeditation } from 'framer-motion';
 import { Alert as AlertMeditation, AlertDescription as AlertDescriptionMeditation, AlertTitle as AlertTitleMeditation } from '@/components/ui/alert';
-import { CardFooter as CardFooterMeditation } from '@/components/ui/card';
 
 type RecommendationHistoryItem = {
     id: string;
@@ -747,7 +747,7 @@ function MeditationGeneratorTab({ onSave }: { onSave: () => void }) {
     );
 }
 
-const HistorySection = ({ history, loading, onRefresh }: { history: RecommendationHistoryItem[], loading: boolean, onRefresh: () => void }) => {
+const HistorySection = ({ history, loading }: { history: RecommendationHistoryItem[], loading: boolean }) => {
     
     const renderContent = (item: RecommendationHistoryItem) => {
         switch(item.type) {
@@ -841,24 +841,25 @@ export default function RecommendationsPage() {
                 setHistory(historyItems);
             } catch (e: any) {
                 console.error("Failed to fetch history:", e);
-                toast({ title: 'History Error', description: 'Could not fetch your recommendation history.', variant: 'destructive'});
+                // Fail silently and show an empty history
+                setHistory([]);
             } finally {
                 setLoadingHistory(false);
             }
+        } else {
+            setLoadingHistory(false);
         }
     }, [user, toast]);
 
     useEffect(() => {
-        if (!authLoading && user) {
+        if (!authLoading) {
             fetchHistory();
-        } else if(!authLoading && !user) {
-            setLoadingHistory(false);
         }
     }, [user, authLoading, fetchHistory]);
     
   return (
     <div className="space-y-6">
-        <HistorySection history={history} loading={loadingHistory} onRefresh={fetchHistory} />
+        <HistorySection history={history} loading={loadingHistory} />
         <Tabs defaultValue="workout" className="w-full">
         <TabsList className="grid w-full grid-cols-3">
             <TabsTrigger value="workout">Workout</TabsTrigger>
@@ -884,5 +885,3 @@ export default function RecommendationsPage() {
     </div>
   );
 }
-
-    
