@@ -1,27 +1,32 @@
-
 rules_version = '2';
-
 service cloud.firestore {
   match /databases/{database}/documents {
+    // Helper function to check if the user is the owner of the document
+    function isOwner(userId) {
+      return request.auth.uid == userId;
+    }
 
-    // Profiles: Users can read and write to their own profile.
+    // Profiles can be read and updated by the owner
     match /profiles/{userId} {
-      allow read, update, delete: if request.auth != null && request.auth.uid == userId;
-      allow create: if request.auth != null;
+      allow read, update: if isOwner(userId);
     }
 
-    // Food Log: Users can create, read, update, and delete their own food logs.
-    // They can only query logs that belong to them.
+    // Food logs can be created and read by the owner
     match /food-log/{logId} {
-      allow read, update, delete: if request.auth != null && request.auth.uid == resource.data.userId;
-      allow create: if request.auth != null && request.auth.uid == request.resource.data.userId;
+        allow create: if isOwner(request.resource.data.userId);
+        allow read: if isOwner(resource.data.userId);
     }
 
-    // Health Reports: Users can create, read, update, and delete their own health reports.
-    // They can only query reports that belong to them.
+    // Health reports can be created and read by the owner
     match /health-reports/{reportId} {
-      allow read, update, delete: if request.auth != null && request.auth.uid == resource.data.userId;
-      allow create: if request.auth != null && request.auth.uid == request.resource.data.userId;
+        allow create: if isOwner(request.resource.data.userId);
+        allow read: if isOwner(resource.data.userId);
+    }
+    
+    // Recommendation history can be created and read by the owner
+    match /recommendation-history/{historyId} {
+        allow create: if isOwner(request.resource.data.userId);
+        allow read: if isOwner(resource.data.userId);
     }
   }
 }
