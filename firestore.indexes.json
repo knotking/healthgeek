@@ -1,0 +1,18 @@
+{
+  "indexes": [
+    {
+      "collectionGroup": "recommendation-history",
+      "queryScope": "COLLECTION",
+      "fields": [
+        {
+          "fieldPath": "isPublic",
+          "order": "ASCENDING"
+        },
+        {
+          "fieldPath": "rating",
+          "order": "DESCENDING"
+        }
+      ]
+    }
+  ]
+}
