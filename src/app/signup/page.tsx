@@ -138,7 +138,7 @@ export default function SignupPage() {
       <Card className="w-full max-w-2xl">
         <CardHeader className="text-center">
           <CardTitle>Create Your Account</CardTitle>
-          <CardDescription>Join HealthGeek.ai and start your personalized health journey.</CardDescription>
+          <CardDescription>Join HealthGeek and start your personalized health journey.</CardDescription>
         </CardHeader>
         <CardContent>
           <Form {...form}>

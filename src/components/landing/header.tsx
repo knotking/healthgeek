@@ -8,7 +8,7 @@ export default function Header() {
       <div className="container flex h-14 max-w-screen-2xl items-center">
         <div className="mr-4 flex items-center">
           <Logo className="h-6 w-6 mr-2" />
-          <span className="font-bold">HealthGeek.ai</span>
+          <span className="font-bold">HealthGeek</span>
         </div>
         <div className="flex flex-1 items-center justify-end space-x-2">
            <Button variant="ghost" asChild>

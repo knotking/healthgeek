@@ -60,7 +60,7 @@ export default function DashboardLayout({
         <SidebarHeader>
           <div className="flex items-center gap-2">
             <Logo className="size-6" />
-            <span className="text-lg font-semibold">HealthGeek.ai</span>
+            <span className="text-lg font-semibold">HealthGeek</span>
           </div>
         </SidebarHeader>
         <SidebarContent>

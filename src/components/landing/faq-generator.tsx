@@ -43,7 +43,7 @@ export default function FaqGenerator() {
             AI-Powered FAQ Generator
           </h2>
           <p className="text-lg text-muted-foreground">
-            Curious what others are asking? Our AI can generate common health questions based on typical user interests. See how HealthGeek.ai provides relevant, instant answers.
+            Curious what others are asking? Our AI can generate common health questions based on typical user interests. See how HealthGeek provides relevant, instant answers.
           </p>
           <Button onClick={handleGenerateFaqs} disabled={loading}>
             {loading ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : null}

@@ -68,7 +68,7 @@ export default function ConversionOptimizer() {
         <div className="order-1 lg:order-2 space-y-4 text-center lg:text-left">
           <h2 className="text-3xl lg:text-4xl font-bold">Optimize for Success</h2>
           <p className="text-lg text-muted-foreground">
-            HealthGeek.ai goes beyond personal health. Our tools can analyze engagement on health-related platforms to suggest improvements. This demonstrates our deep understanding of user behavior in the health tech space.
+            HealthGeek goes beyond personal health. Our tools can analyze engagement on health-related platforms to suggest improvements. This demonstrates our deep understanding of user behavior in the health tech space.
           </p>
            <Image
             src="https://placehold.co/600x400.png"

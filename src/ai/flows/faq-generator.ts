@@ -17,7 +17,7 @@ const GenerateFaqInputSchema = z.object({
   userActivity: z
     .string()
     .describe(
-      'A description of the user activity on the HealthGeek.ai platform.'
+      'A description of the user activity on the HealthGeek platform.'
     ),
   userInterests: z
     .string()

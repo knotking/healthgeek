@@ -3,8 +3,8 @@ import { Toaster } from "@/components/ui/toaster"
 import './globals.css';
 
 export const metadata: Metadata = {
-  title: 'HealthGeek.ai | AI-Assisted Health Companion',
-  description: 'Discover personalized health insights with HealthGeek.ai. Our AI-powered platform helps you understand your health better.',
+  title: 'HealthGeek | AI-Assisted Health Companion',
+  description: 'Discover personalized health insights with HealthGeek. Our AI-powered platform helps you understand your health better.',
 };
 
 export default function RootLayout({
