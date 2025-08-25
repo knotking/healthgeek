@@ -39,8 +39,8 @@ export default function Home() {
     <div className="flex min-h-dvh flex-col bg-background">
       <Header />
       <main className="flex-1">
-        <HowItWorks />
         <Hero />
+        <HowItWorks />
       </main>
       <Footer />
     </div>
