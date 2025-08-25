@@ -15,11 +15,13 @@ import {
   CardDescription,
 } from '@/components/ui/card';
 import { useToast } from '@/hooks/use-toast';
-import { Loader2, Camera, Upload, Utensils, Zap, HeartPulse, List, AlertTriangle } from 'lucide-react';
+import { Loader2, Camera, Upload, Utensils, Zap, HeartPulse, List, AlertTriangle, Video, VideoOff } from 'lucide-react';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import Image from 'next/image';
 import { Progress } from '@/components/ui/progress';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from '@/components/ui/dialog';
+
 
 interface FoodLog extends FoodAnalysisOutput {
   id: string;
@@ -39,6 +41,54 @@ export default function TrackCaloriePage() {
   const [latestHealthReport, setLatestHealthReport] = useState<any>(null);
 
   const fileInputRef = useRef<HTMLInputElement>(null);
+
+  const [isCameraOpen, setIsCameraOpen] = useState(false);
+  const [hasCameraPermission, setHasCameraPermission] = useState<boolean | null>(null);
+  const videoRef = useRef<HTMLVideoElement>(null);
+  const canvasRef = useRef<HTMLCanvasElement>(null);
+
+  useEffect(() => {
+    const getCameraPermission = async () => {
+      if (!isCameraOpen) {
+          if (videoRef.current?.srcObject) {
+            const stream = videoRef.current.srcObject as MediaStream;
+            stream.getTracks().forEach(track => track.stop());
+            videoRef.current.srcObject = null;
+          }
+          return;
+      }
+      
+      try {
+        if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
+            throw new Error("Camera not supported on this browser.");
+        }
+        const stream = await navigator.mediaDevices.getUserMedia({ video: true });
+        setHasCameraPermission(true);
+
+        if (videoRef.current) {
+          videoRef.current.srcObject = stream;
+        }
+      } catch (error) {
+        console.error('Error accessing camera:', error);
+        setHasCameraPermission(false);
+        toast({
+          variant: 'destructive',
+          title: 'Camera Access Denied',
+          description: 'Please enable camera permissions in your browser settings.',
+        });
+        setIsCameraOpen(false);
+      }
+    };
+
+    getCameraPermission();
+
+    return () => {
+        if (videoRef.current?.srcObject) {
+            const stream = videoRef.current.srcObject as MediaStream;
+            stream.getTracks().forEach(track => track.stop());
+        }
+    }
+  }, [isCameraOpen, toast]);
 
   const fetchUserData = useCallback(async () => {
     if (user) {
@@ -116,6 +166,24 @@ export default function TrackCaloriePage() {
     }
   };
 
+  const handleTakePhoto = () => {
+    if (videoRef.current && canvasRef.current) {
+        const video = videoRef.current;
+        const canvas = canvasRef.current;
+        canvas.width = video.videoWidth;
+        canvas.height = video.videoHeight;
+        const context = canvas.getContext('2d');
+        if(context){
+            context.drawImage(video, 0, 0, video.videoWidth, video.videoHeight);
+            const dataUri = canvas.toDataURL('image/png');
+            setSelectedImage(dataUri);
+            handleAnalysis(dataUri);
+        }
+        setIsCameraOpen(false);
+    }
+  };
+
+
   const handleAnalysis = async (imageDataUri: string) => {
     if (!profile) {
        toast({
@@ -160,8 +228,7 @@ export default function TrackCaloriePage() {
         title: 'Food Logged',
         description: `${analysisResult.foodName} has been added to your daily log.`,
       });
-      setAnalysisResult(null);
-      setSelectedImage(null);
+      resetState();
       fetchDailyLog();
     } catch (error: any) {
        toast({
@@ -174,6 +241,15 @@ export default function TrackCaloriePage() {
     }
   };
 
+  const resetState = () => {
+    setSelectedImage(null);
+    setAnalysisResult(null);
+    setError(null);
+    if(fileInputRef.current) {
+      fileInputRef.current.value = "";
+    }
+  }
+
   const totalCalories = dailyLog.reduce((sum, log) => sum + log.calories, 0);
   const calorieTarget = profile?.dailyCalorieTarget || 0;
   const remainingCalories = calorieTarget - totalCalories;
@@ -182,122 +258,157 @@ export default function TrackCaloriePage() {
   const projectedCaloriesExceeded = analysisResult && (remainingCalories - analysisResult.calories < 0);
 
   return (
-    <Tabs defaultValue="track" className="w-full">
-      <TabsList className="grid w-full grid-cols-2">
-        <TabsTrigger value="track">Track Meal</TabsTrigger>
-        <TabsTrigger value="log">Today's Log</TabsTrigger>
-      </TabsList>
-      <TabsContent value="track">
-        <Card>
-          <CardHeader>
-            <CardTitle>Track Your Meal</CardTitle>
-            <CardDescription>Upload a photo of your food to get an AI-powered analysis of its nutritional content and health impact.</CardDescription>
-          </CardHeader>
-          <CardContent>
-            {selectedImage ? (
-                <div className="space-y-4">
-                    <Image
-                        src={selectedImage}
-                        alt="Selected food"
-                        width={500}
-                        height={400}
-                        className="rounded-lg object-cover w-full aspect-video"
-                    />
-                    {loading === 'analyzing' && (
-                        <div className="flex items-center justify-center gap-2 text-muted-foreground">
-                            <Loader2 className="h-5 w-5 animate-spin" />
-                            <p>Analyzing your food, please wait...</p>
-                        </div>
-                    )}
-                     {error && <Alert variant="destructive"><AlertTitle>Error</AlertTitle><AlertDescription>{error}</AlertDescription></Alert>}
-
-                    {analysisResult && (
-                        <Card>
-                            <CardHeader>
-                                <CardTitle className="flex items-center gap-2"><Utensils /> {analysisResult.foodName}</CardTitle>
-                            </CardHeader>
-                            <CardContent className="space-y-4">
-                                {projectedCaloriesExceeded && (
-                                    <Alert variant="destructive">
-                                        <AlertTriangle className="h-4 w-4" />
-                                        <AlertTitle>Warning</AlertTitle>
-                                        <AlertDescription>
-                                            Eating this will exceed your daily calorie target by approximately {Math.abs(remainingCalories - analysisResult.calories)} kcal.
-                                        </AlertDescription>
-                                    </Alert>
-                                )}
-                                <div className="flex items-center gap-2"><Zap /> <strong>Calories:</strong> {analysisResult.calories} kcal</div>
-                                <div className="flex items-start gap-2"><HeartPulse /> <strong>Health Impact:</strong> <p className="text-sm">{analysisResult.healthImpact}</p></div>
-                                <div className="flex gap-2 mt-4">
-                                    <Button onClick={handleCommit} disabled={loading === 'committing'} className="w-full">
-                                        {loading === 'committing' ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : null}
-                                        Commit to Log
-                                    </Button>
-                                    <Button variant="outline" onClick={() => { setSelectedImage(null); setAnalysisResult(null); }} className="w-full">
-                                        Cancel
-                                    </Button>
-                                </div>
-                            </CardContent>
-                        </Card>
-                    )}
-                </div>
-            ) : (
-                <div className="flex flex-col items-center justify-center gap-4 py-16 border-2 border-dashed rounded-lg">
-                    <Camera className="w-16 h-16 text-muted-foreground" />
-                    <p className="text-muted-foreground">Take or upload a picture of your food</p>
-                    <input type="file" accept="image/*" ref={fileInputRef} onChange={handleImageChange} className="hidden" />
-                    <Button onClick={() => fileInputRef.current?.click()} disabled={loading !== 'idle' || authLoading || !profile}>
-                        <Upload className="mr-2 h-4 w-4" /> Upload Photo
-                    </Button>
-                     {!profile && !authLoading && <p className="text-sm text-destructive">Please complete your profile first.</p>}
-                </div>
-            )}
-          </CardContent>
-        </Card>
-      </TabsContent>
-      <TabsContent value="log">
-        <Card>
-           <CardHeader>
-              <CardTitle className="flex items-center gap-2"><List/>Today's Food Log</CardTitle>
-              {calorieTarget > 0 ? (
-                <CardDescription>Your target for today is {calorieTarget} kcal.</CardDescription>
-              ) : (
-                <CardDescription>Set your profile to see a daily calorie target.</CardDescription>
-              )}
+    <>
+      <Tabs defaultValue="track" className="w-full">
+        <TabsList className="grid w-full grid-cols-2">
+          <TabsTrigger value="track">Track Meal</TabsTrigger>
+          <TabsTrigger value="log">Today's Log</TabsTrigger>
+        </TabsList>
+        <TabsContent value="track">
+          <Card>
+            <CardHeader>
+              <CardTitle>Track Your Meal</CardTitle>
+              <CardDescription>Upload or take a photo of your food to get an AI-powered analysis of its nutritional content and health impact.</CardDescription>
             </CardHeader>
             <CardContent>
-                {loading === 'fetching' && <div className="flex justify-center"><Loader2 className="h-6 w-6 animate-spin"/></div>}
-                
-                {calorieTarget > 0 && (
-                  <div className="space-y-4 mb-6">
-                    <div className="flex justify-between text-sm font-medium">
-                      <span>Consumed: {totalCalories} kcal</span>
-                      <span className="text-muted-foreground">Remaining: {remainingCalories} kcal</span>
-                    </div>
-                    <Progress value={progressPercentage} className="h-2" />
+              {selectedImage ? (
+                  <div className="space-y-4">
+                      <Image
+                          src={selectedImage}
+                          alt="Selected food"
+                          width={500}
+                          height={400}
+                          className="rounded-lg object-cover w-full aspect-video"
+                      />
+                      {loading === 'analyzing' && (
+                          <div className="flex items-center justify-center gap-2 text-muted-foreground">
+                              <Loader2 className="h-5 w-5 animate-spin" />
+                              <p>Analyzing your food, please wait...</p>
+                          </div>
+                      )}
+                      {error && <Alert variant="destructive"><AlertTitle>Error</AlertTitle><AlertDescription>{error}</AlertDescription></Alert>}
+
+                      {analysisResult && (
+                          <Card>
+                              <CardHeader>
+                                  <CardTitle className="flex items-center gap-2"><Utensils /> {analysisResult.foodName}</CardTitle>
+                              </CardHeader>
+                              <CardContent className="space-y-4">
+                                  {projectedCaloriesExceeded && (
+                                      <Alert variant="destructive">
+                                          <AlertTriangle className="h-4 w-4" />
+                                          <AlertTitle>Warning</AlertTitle>
+                                          <AlertDescription>
+                                              Eating this will exceed your daily calorie target by approximately {Math.abs(remainingCalories - analysisResult.calories)} kcal.
+                                          </AlertDescription>
+                                      </Alert>
+                                  )}
+                                  <div className="flex items-center gap-2"><Zap /> <strong>Calories:</strong> {analysisResult.calories} kcal</div>
+                                  <div className="flex items-start gap-2"><HeartPulse /> <strong>Health Impact:</strong> <p className="text-sm">{analysisResult.healthImpact}</p></div>
+                                  <div className="flex gap-2 mt-4">
+                                      <Button onClick={handleCommit} disabled={loading === 'committing'} className="w-full">
+                                          {loading === 'committing' ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : null}
+                                          Commit to Log
+                                      </Button>
+                                      <Button variant="outline" onClick={resetState} className="w-full">
+                                          Cancel
+                                      </Button>
+                                  </div>
+                              </CardContent>
+                          </Card>
+                      )}
                   </div>
-                )}
-                
-                {dailyLog.length > 0 ? (
-                    <div className="space-y-4">
-                        <ul className="space-y-3 max-h-96 overflow-y-auto">
-                           {dailyLog.map(log => (
-                            <li key={log.id} className="flex justify-between items-center p-3 bg-muted/50 rounded-md">
-                                <div>
-                                    <p className="font-semibold">{log.foodName}</p>
-                                    <p className="text-sm text-muted-foreground">{log.timestamp.toLocaleTimeString()}</p>
-                                </div>
-                                <p className="font-medium">{log.calories} kcal</p>
-                            </li>
-                           ))}
-                        </ul>
-                    </div>
-                ) : (
-                    loading === 'idle' && <p className="text-muted-foreground text-center py-8">No food logged yet today.</p>
-                )}
+              ) : (
+                  <div className="flex flex-col items-center justify-center gap-4 py-16 border-2 border-dashed rounded-lg">
+                      <Utensils className="w-16 h-16 text-muted-foreground" />
+                      <p className="text-muted-foreground">Take or upload a picture of your food</p>
+                      <input type="file" accept="image/*" ref={fileInputRef} onChange={handleImageChange} className="hidden" />
+                       <div className="flex gap-2">
+                        <Button onClick={() => setIsCameraOpen(true)} disabled={loading !== 'idle' || authLoading || !profile}>
+                          <Camera className="mr-2 h-4 w-4" /> Take Photo
+                        </Button>
+                        <Button onClick={() => fileInputRef.current?.click()} disabled={loading !== 'idle' || authLoading || !profile}>
+                          <Upload className="mr-2 h-4 w-4" /> Upload Photo
+                        </Button>
+                      </div>
+                      {!profile && !authLoading && <p className="text-sm text-destructive">Please complete your profile first.</p>}
+                  </div>
+              )}
             </CardContent>
-        </Card>
-      </TabsContent>
-    </Tabs>
+          </Card>
+        </TabsContent>
+        <TabsContent value="log">
+          <Card>
+            <CardHeader>
+                <CardTitle className="flex items-center gap-2"><List/>Today's Food Log</CardTitle>
+                {calorieTarget > 0 ? (
+                  <CardDescription>Your target for today is {calorieTarget} kcal.</CardDescription>
+                ) : (
+                  <CardDescription>Set your profile to see a daily calorie target.</CardDescription>
+                )}
+              </CardHeader>
+              <CardContent>
+                  {loading === 'fetching' && <div className="flex justify-center"><Loader2 className="h-6 w-6 animate-spin"/></div>}
+                  
+                  {calorieTarget > 0 && (
+                    <div className="space-y-4 mb-6">
+                      <div className="flex justify-between text-sm font-medium">
+                        <span>Consumed: {totalCalories} kcal</span>
+                        <span className="text-muted-foreground">Remaining: {remainingCalories} kcal</span>
+                      </div>
+                      <Progress value={progressPercentage} className="h-2" />
+                    </div>
+                  )}
+                  
+                  {dailyLog.length > 0 ? (
+                      <div className="space-y-4">
+                          <ul className="space-y-3 max-h-96 overflow-y-auto">
+                            {dailyLog.map(log => (
+                              <li key={log.id} className="flex justify-between items-center p-3 bg-muted/50 rounded-md">
+                                  <div>
+                                      <p className="font-semibold">{log.foodName}</p>
+                                      <p className="text-sm text-muted-foreground">{log.timestamp.toLocaleTimeString()}</p>
+                                  </div>
+                                  <p className="font-medium">{log.calories} kcal</p>
+                              </li>
+                            ))}
+                          </ul>
+                      </div>
+                  ) : (
+                      loading === 'idle' && <p className="text-muted-foreground text-center py-8">No food logged yet today.</p>
+                  )}
+              </CardContent>
+          </Card>
+        </TabsContent>
+      </Tabs>
+      <Dialog open={isCameraOpen} onOpenChange={setIsCameraOpen}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Take a Photo</DialogTitle>
+            <DialogDescription>
+              Center your food item in the frame and click capture.
+            </DialogDescription>
+          </DialogHeader>
+          <div className="relative">
+            <video ref={videoRef} className="w-full aspect-video rounded-md bg-muted" autoPlay muted playsInline />
+            <canvas ref={canvasRef} className="hidden" />
+            {hasCameraPermission === false && (
+                <div className="absolute inset-0 flex flex-col items-center justify-center bg-black/80 text-white rounded-md">
+                    <VideoOff className="w-12 h-12 mb-4" />
+                    <p className="text-center">Camera access is denied.<br/> Please enable it in your browser settings.</p>
+                </div>
+            )}
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setIsCameraOpen(false)}>Cancel</Button>
+            <Button onClick={handleTakePhoto} disabled={hasCameraPermission !== true}>
+              <Camera className="mr-2 h-4 w-4" /> Capture
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+    </>
   );
 }
+
+    

@@ -1,3 +1,4 @@
+
 'use client';
 
 import { useState, useRef, useEffect, useCallback } from 'react';
@@ -14,9 +15,10 @@ import {
   CardDescription,
 } from '@/components/ui/card';
 import { useToast } from '@/hooks/use-toast';
-import { Loader2, Camera, Upload, Utensils, HeartPulse, ChefHat, CheckCircle, XCircle } from 'lucide-react';
+import { Loader2, Camera, Upload, Utensils, HeartPulse, ChefHat, CheckCircle, XCircle, VideoOff } from 'lucide-react';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import Image from 'next/image';
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from '@/components/ui/dialog';
 
 export default function FoodAssessmentPage() {
   const [user, authLoading] = useAuthState(auth);
@@ -29,6 +31,53 @@ export default function FoodAssessmentPage() {
   const [latestHealthReport, setLatestHealthReport] = useState<any>(null);
 
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const [isCameraOpen, setIsCameraOpen] = useState(false);
+  const [hasCameraPermission, setHasCameraPermission] = useState<boolean | null>(null);
+  const videoRef = useRef<HTMLVideoElement>(null);
+  const canvasRef = useRef<HTMLCanvasElement>(null);
+
+  useEffect(() => {
+    const getCameraPermission = async () => {
+      if (!isCameraOpen) {
+          if (videoRef.current?.srcObject) {
+            const stream = videoRef.current.srcObject as MediaStream;
+            stream.getTracks().forEach(track => track.stop());
+            videoRef.current.srcObject = null;
+          }
+          return;
+      }
+      
+      try {
+        if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
+            throw new Error("Camera not supported on this browser.");
+        }
+        const stream = await navigator.mediaDevices.getUserMedia({ video: true });
+        setHasCameraPermission(true);
+
+        if (videoRef.current) {
+          videoRef.current.srcObject = stream;
+        }
+      } catch (error) {
+        console.error('Error accessing camera:', error);
+        setHasCameraPermission(false);
+        toast({
+          variant: 'destructive',
+          title: 'Camera Access Denied',
+          description: 'Please enable camera permissions in your browser settings.',
+        });
+        setIsCameraOpen(false);
+      }
+    };
+
+    getCameraPermission();
+
+    return () => {
+        if (videoRef.current?.srcObject) {
+            const stream = videoRef.current.srcObject as MediaStream;
+            stream.getTracks().forEach(track => track.stop());
+        }
+    }
+  }, [isCameraOpen, toast]);
 
   const fetchUserData = useCallback(async () => {
     if (user) {
@@ -78,6 +127,24 @@ export default function FoodAssessmentPage() {
     }
   };
 
+  const handleTakePhoto = () => {
+    if (videoRef.current && canvasRef.current) {
+        const video = videoRef.current;
+        const canvas = canvasRef.current;
+        canvas.width = video.videoWidth;
+        canvas.height = video.videoHeight;
+        const context = canvas.getContext('2d');
+        if(context){
+            context.drawImage(video, 0, 0, video.videoWidth, video.videoHeight);
+            const dataUri = canvas.toDataURL('image/png');
+            setSelectedImage(dataUri);
+            handleAssessment(dataUri);
+        }
+        setIsCameraOpen(false);
+    }
+  };
+
+
   const handleAssessment = async (imageDataUri: string) => {
     if (!profile) {
       toast({
@@ -117,10 +184,11 @@ export default function FoodAssessmentPage() {
   }
 
   return (
+    <>
     <Card>
       <CardHeader>
         <CardTitle>Food Assessment</CardTitle>
-        <CardDescription>Upload a photo of your food to get an AI-powered health assessment and recipe ideas based on your profile.</CardDescription>
+        <CardDescription>Upload or take a photo of your food to get an AI-powered health assessment and recipe ideas based on your profile.</CardDescription>
       </CardHeader>
       <CardContent>
         {selectedImage ? (
@@ -174,16 +242,51 @@ export default function FoodAssessmentPage() {
           </div>
         ) : (
           <div className="flex flex-col items-center justify-center gap-4 py-16 border-2 border-dashed rounded-lg">
-            <Camera className="w-16 h-16 text-muted-foreground" />
+            <Utensils className="w-16 h-16 text-muted-foreground" />
             <p className="text-muted-foreground">Take or upload a picture of a food item</p>
             <input type="file" accept="image/*" ref={fileInputRef} onChange={handleImageChange} className="hidden" />
-            <Button onClick={() => fileInputRef.current?.click()} disabled={loading || authLoading || !profile}>
-              <Upload className="mr-2 h-4 w-4" /> Upload Photo
-            </Button>
+            <div className="flex gap-2">
+              <Button onClick={() => setIsCameraOpen(true)} disabled={loading || authLoading || !profile}>
+                <Camera className="mr-2 h-4 w-4" /> Take Photo
+              </Button>
+              <Button onClick={() => fileInputRef.current?.click()} disabled={loading || authLoading || !profile}>
+                <Upload className="mr-2 h-4 w-4" /> Upload Photo
+              </Button>
+            </div>
             {!profile && !authLoading && <p className="text-sm text-destructive">Please complete your profile first.</p>}
           </div>
         )}
       </CardContent>
     </Card>
+
+    <Dialog open={isCameraOpen} onOpenChange={setIsCameraOpen}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Take a Photo</DialogTitle>
+            <DialogDescription>
+              Center your food item in the frame and click capture.
+            </DialogDescription>
+          </DialogHeader>
+          <div className="relative">
+            <video ref={videoRef} className="w-full aspect-video rounded-md bg-muted" autoPlay muted playsInline />
+            <canvas ref={canvasRef} className="hidden" />
+            {hasCameraPermission === false && (
+                <div className="absolute inset-0 flex flex-col items-center justify-center bg-black/80 text-white rounded-md">
+                    <VideoOff className="w-12 h-12 mb-4" />
+                    <p className="text-center">Camera access is denied.<br/> Please enable it in your browser settings.</p>
+                </div>
+            )}
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setIsCameraOpen(false)}>Cancel</Button>
+            <Button onClick={handleTakePhoto} disabled={hasCameraPermission !== true}>
+              <Camera className="mr-2 h-4 w-4" /> Capture
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+    </>
   );
 }
+
+    
