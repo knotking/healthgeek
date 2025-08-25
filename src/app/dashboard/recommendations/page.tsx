@@ -326,7 +326,7 @@ function RecipeGeneratorTab({ onSave, initialData, isVisible }: { onSave: () => 
 const focusAreas = [{ id: 'strength', label: 'Strength Training' }, { id: 'cardio', label: 'Cardiovascular' }, { id: 'flexibility', label: 'Flexibility & Mobility' }, { id: 'balance', label: 'Balance & Stability' }] as const;
 const workoutSchema = zWorkout.object({
   workoutDuration: zWorkout.number().min(10, "Duration must be at least 10 minutes.").max(120, "Duration must be less than 120 minutes."),
-  location: zWorkout.enum(['home', 'gym', 'outside'], { required_error: 'Please select a location.' }),
+  location: zWorkout.enum(['home', 'gym'], { required_error: 'Please select a location.' }),
   focusAreas: zWorkout.array(zWorkout.string()).refine((value) => value.some((item) => item), { message: 'You have to select at least one focus area.' }),
 });
 type WorkoutFormData = zWorkout.infer<typeof workoutSchema>;
@@ -508,7 +508,7 @@ function WorkoutGeneratorTab({ onSave, initialData, isVisible }: { onSave: () =>
                     <FormItemWorkout><FormLabelWorkout>Workout Duration: {field.value} minutes</FormLabelWorkout><FormControlWorkout><SliderWorkout value={[field.value]} onValueChange={(vals) => field.onChange(vals[0])} min={10} max={120} step={5} /></FormControlWorkout><FormMessageWorkout /></FormItemWorkout>
                   )} />
                   <FormFieldWorkout control={form.control} name="location" render={({ field }) => (
-                    <FormItemWorkout className="space-y-3"><FormLabelWorkout>Location</FormLabelWorkout><FormControlWorkout><RadioGroupWorkout onValueChange={field.onChange} defaultValue={field.value} className="flex gap-4"><FormItemWorkout className="flex items-center space-x-2 space-y-0"><FormControlWorkout><RadioGroupItemWorkout value="home" /></FormControlWorkout><FormLabelWorkout className="font-normal">Home</FormLabelWorkout></FormItemWorkout><FormItemWorkout className="flex items-center space-x-2 space-y-0"><FormControlWorkout><RadioGroupItemWorkout value="gym" /></FormControlWorkout><FormLabelWorkout className="font-normal">Gym</FormLabelWorkout></FormItemWorkout><FormItemWorkout className="flex items-center space-x-2 space-y-0"><FormControlWorkout><RadioGroupItemWorkout value="outside" /></FormControlWorkout><FormLabelWorkout className="font-normal">Outside</FormLabelWorkout></FormItemWorkout></RadioGroupWorkout></FormControlWorkout><FormMessageWorkout /></FormItemWorkout>
+                    <FormItemWorkout className="space-y-3"><FormLabelWorkout>Location</FormLabelWorkout><FormControlWorkout><RadioGroupWorkout onValueChange={field.onChange} defaultValue={field.value} className="flex gap-4"><FormItemWorkout className="flex items-center space-x-2 space-y-0"><FormControlWorkout><RadioGroupItemWorkout value="home" /></FormControlWorkout><FormLabelWorkout className="font-normal">Home</FormLabelWorkout></FormItemWorkout><FormItemWorkout className="flex items-center space-x-2 space-y-0"><FormControlWorkout><RadioGroupItemWorkout value="gym" /></FormControlWorkout><FormLabelWorkout className="font-normal">Gym</FormLabelWorkout></FormItemWorkout></RadioGroupWorkout></FormControlWorkout><FormMessageWorkout /></FormItemWorkout>
                   )} />
                   <FormFieldWorkout control={form.control} name="focusAreas" render={() => (
                     <FormItemWorkout>

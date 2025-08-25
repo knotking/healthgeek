@@ -14,7 +14,7 @@ const WorkoutPreferencesInputSchema = z.object({
   userProfile: z.string().describe("A JSON string of the user's profile data, including health issues, age, and BMI."),
   latestHealthReport: z.string().optional().describe('A JSON string of the user\'s latest health report analysis for more detailed health context.'),
   workoutDuration: z.number().describe('The desired workout duration in minutes.'),
-  location: z.enum(['home', 'gym', 'outside']).describe('The location where the user will be working out.'),
+  location: z.enum(['home', 'gym']).describe('The location where the user will be working out.'),
   focusAreas: z.array(z.string()).describe('A list of focus areas for the workout (e.g., "Cardio", "Strength Training", "Flexibility").'),
 });
 export type WorkoutPreferencesInput = z.infer<typeof WorkoutPreferencesInputSchema>;
