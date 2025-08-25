@@ -1,3 +1,4 @@
+
 'use client';
 import React, { useState, useEffect } from 'react';
 import Link from 'next/link';
@@ -119,7 +120,7 @@ export default function DashboardLayout({
               <SidebarMenuButton asChild isActive={pathname.startsWith('/dashboard/recipe-generator')}>
                 <Link href="/dashboard/recipe-generator">
                   <CookingPot />
-                  Generate Recipe
+                  Recipe
                 </Link>
               </SidebarMenuButton>
             </SidebarMenuItem>
