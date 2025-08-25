@@ -75,7 +75,7 @@ export default function RecipeGeneratorPage() {
         if (docSnap.exists()) {
           setProfile(docSnap.data());
         } else {
-          toast({ variant: 'destructive', title: 'Profile Required', description: 'Please complete your user profile first.' });
+           toast({ variant: 'destructive', title: 'Profile Required', description: 'Please complete your user profile first.' });
         }
         
         const historyQuery = query(
@@ -133,6 +133,7 @@ export default function RecipeGeneratorPage() {
   async function handleSaveRecipe() {
     if (!user || !recipeResult) return;
     setIsSaving(true);
+    let saved = false;
     try {
         await addDoc(collection(db, 'recipe-history'), {
             userId: user.uid,
@@ -140,12 +141,15 @@ export default function RecipeGeneratorPage() {
             ...recipeResult
         });
         toast({ title: "Recipe Saved", description: "This recipe has been saved to your history." });
-        await fetchUserDataAndHistory(); // Refresh history
-        resetFlow();
+        saved = true;
     } catch(e: any) {
         toast({ title: "Save Failed", description: e.message, variant: "destructive" });
     } finally {
         setIsSaving(false);
+        if (saved) {
+            await fetchUserDataAndHistory();
+            resetFlow();
+        }
     }
   }
 
@@ -419,5 +423,3 @@ export default function RecipeGeneratorPage() {
     </div>
   );
 }
-
-    
