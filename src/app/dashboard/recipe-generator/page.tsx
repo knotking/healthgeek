@@ -7,11 +7,12 @@ import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
 import { useAuthState } from 'react-firebase-hooks/auth';
 import { auth, db } from '@/lib/firebase';
-import { doc, getDoc } from 'firebase/firestore';
+import { doc, getDoc, addDoc, collection, query, orderBy, getDocs, Timestamp, where } from 'firebase/firestore';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription, CardFooter } from '@/components/ui/card';
+import { Badge } from '@/components/ui/badge';
 import { useToast } from '@/hooks/use-toast';
-import { Loader2, ChefHat, CookingPot, FileDown, Utensils, Clock, User, Sparkles, MoveRight, MoveLeft } from 'lucide-react';
+import { Loader2, ChefHat, CookingPot, FileDown, Utensils, Clock, User, Sparkles, MoveRight, MoveLeft, Bookmark, History } from 'lucide-react';
 import { generateSingleRecipe, SingleRecipeOutput } from '@/ai/flows/conversational-recipe-generator';
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from '@/components/ui/form';
 import { Input } from '@/components/ui/input';
@@ -20,6 +21,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { AnimatePresence, motion } from 'framer-motion';
 import jsPDF from 'jspdf';
 import 'jspdf-autotable';
+import { Separator } from '@/components/ui/separator';
 
 const recipeSchema = z.object({
   mealType: z.string().min(1, "Please select a meal type."),
@@ -31,6 +33,11 @@ const recipeSchema = z.object({
 
 type RecipeFormData = z.infer<typeof recipeSchema>;
 
+interface RecipeLog extends SingleRecipeOutput {
+  id: string;
+  timestamp: Date;
+}
+
 const Steps = {
   PREFERENCES: 1,
   GENERATING: 2,
@@ -41,9 +48,12 @@ export default function RecipeGeneratorPage() {
   const [user, authLoading] = useAuthState(auth);
   const { toast } = useToast();
   const [loading, setLoading] = useState(false);
+  const [isSaving, setIsSaving] = useState(false);
   const [profile, setProfile] = useState<any>(null);
   const [recipeResult, setRecipeResult] = useState<SingleRecipeOutput | null>(null);
   const [currentStep, setCurrentStep] = useState(Steps.PREFERENCES);
+  const [history, setHistory] = useState<RecipeLog[]>([]);
+  const [isFetchingHistory, setIsFetchingHistory] = useState(true);
 
   const form = useForm<RecipeFormData>({
     resolver: zodResolver(recipeSchema),
@@ -56,34 +66,45 @@ export default function RecipeGeneratorPage() {
     },
   });
 
-  const fetchUserData = useCallback(async () => {
+  const fetchUserDataAndHistory = useCallback(async () => {
     if (user) {
-      setLoading(true);
+      setIsFetchingHistory(true);
       try {
         const docRef = doc(db, 'profiles', user.uid);
         const docSnap = await getDoc(docRef);
         if (docSnap.exists()) {
           setProfile(docSnap.data());
         } else {
-          toast({
-            variant: 'destructive',
-            title: 'Profile Required',
-            description: 'Please complete your user profile first.',
-          });
+          toast({ variant: 'destructive', title: 'Profile Required', description: 'Please complete your user profile first.' });
         }
+        
+        const historyQuery = query(
+          collection(db, 'recipe-history'),
+          where('userId', '==', user.uid),
+          orderBy('timestamp', 'desc')
+        );
+        const historySnapshot = await getDocs(historyQuery);
+        const historyLogs = historySnapshot.docs.map(doc => ({
+            id: doc.id,
+            ...doc.data(),
+            timestamp: (doc.data().timestamp as Timestamp).toDate(),
+        })) as RecipeLog[];
+        setHistory(historyLogs);
+
       } catch (e: any) {
-         toast({ title: 'Error', description: 'Failed to fetch user data.', variant: 'destructive' });
+         toast({ title: 'Error', description: 'Failed to fetch user data or history.', variant: 'destructive' });
       } finally {
         setLoading(false);
+        setIsFetchingHistory(false);
       }
     }
   }, [user, toast]);
 
   useEffect(() => {
     if (!authLoading && user) {
-      fetchUserData();
+      fetchUserDataAndHistory();
     }
-  }, [user, authLoading, fetchUserData]);
+  }, [user, authLoading, fetchUserDataAndHistory]);
 
   async function onSubmit(values: RecipeFormData) {
     if (!profile) {
@@ -102,6 +123,25 @@ export default function RecipeGeneratorPage() {
       console.error(e);
       toast({ title: 'Generation Failed', description: e.message || 'An error occurred.', variant: 'destructive' });
       setCurrentStep(Steps.PREFERENCES);
+    }
+  }
+
+  async function handleSaveRecipe() {
+    if (!user || !recipeResult) return;
+    setIsSaving(true);
+    try {
+        await addDoc(collection(db, 'recipe-history'), {
+            userId: user.uid,
+            timestamp: new Date(),
+            ...recipeResult
+        });
+        toast({ title: "Recipe Saved", description: "This recipe has been saved to your history." });
+        fetchUserDataAndHistory(); // Refresh history
+        resetFlow();
+    } catch(e: any) {
+        toast({ title: "Save Failed", description: e.message, variant: "destructive" });
+    } finally {
+        setIsSaving(false);
     }
   }
 
@@ -292,6 +332,9 @@ export default function RecipeGeneratorPage() {
                     <CardDescription className="text-center text-md pt-2">{recipeResult.description}</CardDescription>
                 </CardHeader>
                  <CardContent className="space-y-8">
+                     <div className="flex gap-2 justify-center flex-wrap">
+                        {recipeResult.tags.map(tag => <Badge key={tag} variant="secondary">{tag}</Badge>)}
+                    </div>
                     <div className="grid grid-cols-2 md:grid-cols-4 gap-4 text-center">
                         <div className="bg-muted p-3 rounded-lg">
                             <h4 className="font-semibold text-sm">Prep Time</h4>
@@ -327,12 +370,49 @@ export default function RecipeGeneratorPage() {
                  </CardContent>
                  <CardFooter className="flex-col sm:flex-row gap-2">
                     <Button onClick={resetFlow} variant="outline"><MoveLeft className="mr-2"/> Generate Another</Button>
+                    <Button onClick={handleSaveRecipe} disabled={isSaving}>
+                        {isSaving ? <Loader2 className="mr-2 h-4 w-4 animate-spin"/> : <Bookmark className="mr-2 h-4 w-4"/>}
+                        Save to History
+                    </Button>
                     <Button onClick={() => handleDownloadPdf(recipeResult)}><FileDown className="mr-2"/> Download PDF</Button>
                  </CardFooter>
             </Card>
            </motion.div>
         )}
       </AnimatePresence>
+
+      <Card className="mt-8">
+        <CardHeader>
+          <CardTitle className="flex items-center gap-2"><History /> Recipe History</CardTitle>
+          <CardDescription>View your previously saved recipes.</CardDescription>
+        </CardHeader>
+        <CardContent>
+            {isFetchingHistory ? (
+              <div className="flex justify-center py-8">
+                <Loader2 className="h-8 w-8 animate-spin text-primary"/>
+              </div>
+            ) : history.length > 0 ? (
+                <div className="space-y-4 max-h-[600px] overflow-y-auto pr-4">
+                    {history.map(item => (
+                        <Card key={item.id} className="bg-muted/30">
+                           <CardHeader>
+                                <CardTitle className="text-lg">{item.name}</CardTitle>
+                                <CardDescription>Saved on {item.timestamp.toLocaleDateString()}</CardDescription>
+                            </CardHeader>
+                            <CardContent>
+                                <p className="text-sm text-muted-foreground mb-4">{item.description}</p>
+                                <div className="flex gap-2 flex-wrap">
+                                    {item.tags.map(tag => <Badge key={tag} variant="secondary">{tag}</Badge>)}
+                                </div>
+                            </CardContent>
+                        </Card>
+                    ))}
+                </div>
+            ) : (
+               <p className="text-muted-foreground text-center py-8">No saved recipes yet.</p>
+            )}
+        </CardContent>
+      </Card>
     </div>
   );
 }

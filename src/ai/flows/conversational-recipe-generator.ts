@@ -29,6 +29,7 @@ const SingleRecipeOutputSchema = z.object({
   prepTime: z.string().describe("Estimated preparation time."),
   cookTime: z.string().describe("Estimated cooking time."),
   servings: z.string().describe("Number of servings the recipe makes."),
+  tags: z.array(z.string()).describe("A list of 3-4 relevant tags for the recipe (e.g., 'High-Protein', 'Quick Meal', 'Vegetarian')."),
 });
 export type SingleRecipeOutput = z.infer<typeof SingleRecipeOutputSchema>;
 
@@ -54,7 +55,7 @@ User Preferences:
 Base your recommendations on the user's health profile below, considering their health issues and general diet.
 User Profile: {{{userProfile}}}
 
-Generate one complete recipe that includes a name, description, ingredients list, step-by-step instructions, health focus, prep time, cook time, and serving size.`,
+Generate one complete recipe that includes a name, description, ingredients list, step-by-step instructions, health focus, prep time, cook time, and serving size. Also, provide 3-4 relevant tags for the recipe.`,
 });
 
 const conversationalRecipeGeneratorFlow = ai.defineFlow(

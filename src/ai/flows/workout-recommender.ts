@@ -35,6 +35,7 @@ const WorkoutPlanOutputSchema = z.object({
   mainWorkout: z.array(ExerciseSchema).describe('The main list of exercises for the workout session.'),
   coolDown: z.array(ExerciseSchema).describe('A list of cool-down exercises.'),
   notes: z.string().describe('Important notes, safety considerations, or words of encouragement for the user based on their health profile.'),
+  tags: z.array(z.string()).describe("A list of 3-4 relevant tags for the workout plan (e.g., 'Home-Friendly', 'Strength', 'Low-Impact')."),
 });
 export type WorkoutPlanOutput = z.infer<typeof WorkoutPlanOutputSchema>;
 
@@ -65,7 +66,7 @@ Also consider the user's latest health report for a more in-depth personalizatio
 {{{latestHealthReport}}}
 {{/if}}
 
-Generate a complete workout plan that includes a title, summary, a warm-up section, the main workout, a cool-down section, and important notes. The main workout section should be the most substantial. For each exercise, provide the name, sets, reps/duration, rest time, and a brief description. Ensure the total time of the plan is close to the user's desired duration.`,
+Generate a complete workout plan that includes a title, summary, a warm-up section, the main workout, a cool-down section, and important notes. The main workout section should be the most substantial. For each exercise, provide the name, sets, reps/duration, rest time, and a brief description. Ensure the total time of the plan is close to the user's desired duration. Finally, add 3-4 relevant tags for the workout.`,
 });
 
 const workoutRecommenderFlow = ai.defineFlow(
