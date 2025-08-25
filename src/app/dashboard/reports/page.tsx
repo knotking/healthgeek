@@ -8,8 +8,7 @@ import { doc, getDoc, collection, query, where, getDocs, Timestamp, orderBy, lim
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Button } from '@/components/ui/button';
 import { useToast } from '@/hooks/use-toast';
-import { Loader2, FileDown, ChefHat, Calendar as CalendarIcon, Utensils, Sparkles } from 'lucide-react';
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { Loader2, FileDown, Calendar as CalendarIcon } from 'lucide-react';
 import { DateRange } from "react-day-picker";
 import { addDays, format } from "date-fns";
 import { Calendar } from "@/components/ui/calendar";
@@ -17,8 +16,6 @@ import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover
 import { cn } from "@/lib/utils";
 import jsPDF from 'jspdf';
 import 'jspdf-autotable';
-import { generateRecipes, RecipeGeneratorOutput } from '@/ai/flows/recipe-generator';
-import { Separator } from '@/components/ui/separator';
 import { Label } from '@/components/ui/label';
 
 interface FoodLog {
@@ -39,12 +36,10 @@ export default function ReportsPage() {
   const { toast } = useToast();
   const [loading, setLoading] = useState(false);
   const [profile, setProfile] = useState<UserProfile | null>(null);
-  const [latestHealthReport, setLatestHealthReport] = useState<any>(null);
   const [date, setDate] = useState<DateRange | undefined>({
     from: addDays(new Date(), -29),
     to: new Date(),
   });
-  const [recipeResult, setRecipeResult] = useState<RecipeGeneratorOutput | null>(null);
 
   const fetchUserData = useCallback(async () => {
     if (user) {
@@ -54,17 +49,6 @@ export default function ReportsPage() {
         const profileSnap = await getDoc(profileRef);
         if (profileSnap.exists()) {
           setProfile(profileSnap.data() as UserProfile);
-        }
-
-        const reportsQuery = query(
-          collection(db, 'health-reports'),
-          where('userId', '==', user.uid),
-          orderBy('timestamp', 'desc'),
-          limit(1)
-        );
-        const reportSnapshot = await getDocs(reportsQuery);
-        if (!reportSnapshot.empty) {
-          setLatestHealthReport(reportSnapshot.docs[0].data());
         }
       } catch (e: any) {
         toast({ title: 'Error', description: 'Failed to fetch user data.', variant: 'destructive' });
@@ -163,139 +147,58 @@ export default function ReportsPage() {
     }
   };
   
-  const handleGenerateRecipeReport = async () => {
-    if (!profile) {
-      toast({ title: 'Profile Not Found', description: 'Cannot generate recipes without a user profile.', variant: 'destructive' });
-      return;
-    }
-    setLoading(true);
-    setRecipeResult(null);
-    try {
-      const result = await generateRecipes({
-        userProfile: JSON.stringify(profile),
-        latestHealthReport: latestHealthReport ? JSON.stringify(latestHealthReport) : undefined,
-      });
-      setRecipeResult(result);
-      toast({ title: "Recipes Generated!", description: "We've crafted some new ideas for you." });
-    } catch(e: any) {
-       toast({ title: 'Recipe Generation Failed', description: e.message || 'An error occurred.', variant: 'destructive' });
-      console.error(e);
-    } finally {
-      setLoading(false);
-    }
-  }
-
-
   return (
-    <Tabs defaultValue="calorie">
-      <TabsList className="grid w-full grid-cols-2">
-        <TabsTrigger value="calorie">Calorie Report</TabsTrigger>
-        <TabsTrigger value="recipe">Recipe Report</TabsTrigger>
-      </TabsList>
-      <TabsContent value="calorie">
-        <Card>
-          <CardHeader>
-            <CardTitle>Calorie Intake Report</CardTitle>
-            <CardDescription>Generate a PDF report of your calorie intake for a specific period.</CardDescription>
-          </CardHeader>
-          <CardContent className="space-y-6">
-            <div className="flex flex-col items-start gap-4">
-              <Label>Select Date Range</Label>
-              <Popover>
-                <PopoverTrigger asChild>
-                  <Button
-                    id="date"
-                    variant={"outline"}
-                    className={cn(
-                      "w-[300px] justify-start text-left font-normal",
-                      !date && "text-muted-foreground"
-                    )}
-                  >
-                    <CalendarIcon className="mr-2 h-4 w-4" />
-                    {date?.from ? (
-                      date.to ? (
-                        <>
-                          {format(date.from, "LLL dd, y")} -{" "}
-                          {format(date.to, "LLL dd, y")}
-                        </>
-                      ) : (
-                        format(date.from, "LLL dd, y")
-                      )
-                    ) : (
-                      <span>Pick a date</span>
-                    )}
-                  </Button>
-                </PopoverTrigger>
-                <PopoverContent className="w-auto p-0" align="start">
-                  <Calendar
-                    initialFocus
-                    mode="range"
-                    defaultMonth={date?.from}
-                    selected={date}
-                    onSelect={setDate}
-                    numberOfMonths={2}
-                  />
-                </PopoverContent>
-              </Popover>
-            </div>
-            <Button onClick={handleGenerateCalorieReport} disabled={loading}>
-              {loading ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <FileDown className="mr-2 h-4 w-4" />}
-              Generate PDF
-            </Button>
-          </CardContent>
-        </Card>
-      </TabsContent>
-       <TabsContent value="recipe">
-        <Card>
-          <CardHeader>
-            <CardTitle>Personalized Recipe Report</CardTitle>
-            <CardDescription>Generate new, healthy recipe ideas tailored to your health profile and goals.</CardDescription>
-          </CardHeader>
-          <CardContent className="space-y-6">
-            <Button onClick={handleGenerateRecipeReport} disabled={loading}>
-              {loading ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <ChefHat className="mr-2 h-4 w-4" />}
-              Generate Recipes
-            </Button>
-            
-            {recipeResult && (
-              <div className="space-y-6 pt-4">
-                {recipeResult.recipes.map((recipe, index) => (
-                    <Card key={index} className="bg-muted/30">
-                        <CardHeader>
-                            <CardTitle className="flex items-center gap-2"><Utensils /> {recipe.name}</CardTitle>
-                            <CardDescription>{recipe.description}</CardDescription>
-                        </CardHeader>
-                        <CardContent className="space-y-4">
-                            <div className="flex items-start gap-2 p-3 bg-background rounded-md">
-                                <Sparkles className="h-5 w-5 mt-1 text-primary"/>
-                                <div>
-                                    <h4 className="font-semibold text-sm">Health Focus</h4>
-                                    <p className="text-sm text-muted-foreground">{recipe.healthFocus}</p>
-                                </div>
-                            </div>
-                            <div className="grid md:grid-cols-2 gap-6">
-                                <div>
-                                    <h4 className="font-semibold mb-2">Ingredients</h4>
-                                    <ul className="list-disc space-y-1 pl-5 text-sm">
-                                        {recipe.ingredients.map((item, i) => <li key={i}>{item}</li>)}
-                                    </ul>
-                                </div>
-                                <div>
-                                    <h4 className="font-semibold mb-2">Instructions</h4>
-                                     <ol className="list-decimal space-y-2 pl-5 text-sm">
-                                         {recipe.instructions.map((step, i) => <li key={i}>{step}</li>)}
-                                    </ol>
-                                </div>
-                            </div>
-                        </CardContent>
-                    </Card>
-                ))}
-              </div>
-            )}
-
-          </CardContent>
-        </Card>
-       </TabsContent>
-    </Tabs>
+    <Card>
+      <CardHeader>
+        <CardTitle>Calorie Intake Report</CardTitle>
+        <CardDescription>Generate a PDF report of your calorie intake for a specific period.</CardDescription>
+      </CardHeader>
+      <CardContent className="space-y-6">
+        <div className="flex flex-col items-start gap-4">
+          <Label>Select Date Range</Label>
+          <Popover>
+            <PopoverTrigger asChild>
+              <Button
+                id="date"
+                variant={"outline"}
+                className={cn(
+                  "w-[300px] justify-start text-left font-normal",
+                  !date && "text-muted-foreground"
+                )}
+              >
+                <CalendarIcon className="mr-2 h-4 w-4" />
+                {date?.from ? (
+                  date.to ? (
+                    <>
+                      {format(date.from, "LLL dd, y")} -{" "}
+                      {format(date.to, "LLL dd, y")}
+                    </>
+                  ) : (
+                    format(date.from, "LLL dd, y")
+                  )
+                ) : (
+                  <span>Pick a date</span>
+                )}
+              </Button>
+            </PopoverTrigger>
+            <PopoverContent className="w-auto p-0" align="start">
+              <Calendar
+                initialFocus
+                mode="range"
+                defaultMonth={date?.from}
+                selected={date}
+                onSelect={setDate}
+                numberOfMonths={2}
+              />
+            </PopoverContent>
+          </Popover>
+        </div>
+        <Button onClick={handleGenerateCalorieReport} disabled={loading}>
+          {loading ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <FileDown className="mr-2 h-4 w-4" />}
+          Generate PDF
+        </Button>
+      </CardContent>
+    </Card>
   );
 }
+
