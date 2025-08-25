@@ -4,7 +4,7 @@
 import { useState, useRef, useEffect, useCallback } from 'react';
 import { useAuthState } from 'react-firebase-hooks/auth';
 import { auth, db } from '@/lib/firebase';
-import { doc, getDoc, collection, query, orderBy, getDocs, Timestamp, where, limit } from 'firebase/firestore';
+import { doc, getDoc, collection, query, orderBy, getDocs, Timestamp, where, limit, addDoc } from 'firebase/firestore';
 import { assessFood, FoodAssessorOutput } from '@/ai/flows/food-assessor';
 import { Button } from '@/components/ui/button';
 import {
@@ -15,10 +15,17 @@ import {
   CardDescription,
 } from '@/components/ui/card';
 import { useToast } from '@/hooks/use-toast';
-import { Loader2, Camera, Upload, Utensils, HeartPulse, ChefHat, CheckCircle, XCircle, VideoOff } from 'lucide-react';
+import { Loader2, Camera, Upload, Utensils, HeartPulse, ChefHat, CheckCircle, XCircle, VideoOff, History } from 'lucide-react';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import Image from 'next/image';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from '@/components/ui/dialog';
+import { Separator } from '@/components/ui/separator';
+
+interface AssessmentLog extends FoodAssessorOutput {
+  id: string;
+  timestamp: Date;
+}
+
 
 export default function FoodAssessmentPage() {
   const [user, authLoading] = useAuthState(auth);
@@ -29,6 +36,8 @@ export default function FoodAssessmentPage() {
   const [error, setError] = useState<string | null>(null);
   const [profile, setProfile] = useState<any>(null);
   const [latestHealthReport, setLatestHealthReport] = useState<any>(null);
+  const [assessmentHistory, setAssessmentHistory] = useState<AssessmentLog[]>([]);
+  const [isFetchingHistory, setIsFetchingHistory] = useState(true);
 
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [isCameraOpen, setIsCameraOpen] = useState(false);
@@ -79,40 +88,64 @@ export default function FoodAssessmentPage() {
     }
   }, [isCameraOpen, toast]);
 
-  const fetchUserData = useCallback(async () => {
+  const fetchUserDataAndHistory = useCallback(async () => {
     if (user) {
-      // Fetch profile
-      const docRef = doc(db, 'profiles', user.uid);
-      const docSnap = await getDoc(docRef);
-      if (docSnap.exists()) {
-        setProfile(docSnap.data());
-      } else {
-        toast({
-          title: 'Profile Not Found',
-          description: 'Please complete your profile to use this feature.',
-          variant: 'destructive',
-        });
-      }
+      setIsFetchingHistory(true);
+      try {
+        // Fetch profile
+        const docRef = doc(db, 'profiles', user.uid);
+        const docSnap = await getDoc(docRef);
+        if (docSnap.exists()) {
+          setProfile(docSnap.data());
+        } else {
+          toast({
+            title: 'Profile Not Found',
+            description: 'Please complete your profile to use this feature.',
+            variant: 'destructive',
+          });
+        }
 
-      // Fetch latest health report
-      const reportsQuery = query(
-        collection(db, 'health-reports'),
-        where('userId', '==', user.uid),
-        orderBy('timestamp', 'desc'),
-        limit(1)
-      );
-      const reportSnapshot = await getDocs(reportsQuery);
-      if (!reportSnapshot.empty) {
-        setLatestHealthReport(reportSnapshot.docs[0].data());
+        // Fetch latest health report
+        const reportsQuery = query(
+          collection(db, 'health-reports'),
+          where('userId', '==', user.uid),
+          orderBy('timestamp', 'desc'),
+          limit(1)
+        );
+        const reportSnapshot = await getDocs(reportsQuery);
+        if (!reportSnapshot.empty) {
+          setLatestHealthReport(reportSnapshot.docs[0].data());
+        }
+
+        // Fetch assessment history
+        const historyQuery = query(
+            collection(db, 'food-assessments'),
+            where('userId', '==', user.uid),
+            orderBy('timestamp', 'desc'),
+            limit(10)
+        );
+        const historySnapshot = await getDocs(historyQuery);
+        const history = historySnapshot.docs.map(doc => ({
+            id: doc.id,
+            ...doc.data(),
+            timestamp: (doc.data().timestamp as Timestamp).toDate(),
+        })) as AssessmentLog[];
+        setAssessmentHistory(history);
+
+      } catch (e: any) {
+        toast({ title: 'Error', description: 'Failed to fetch user data or history.', variant: 'destructive' });
+        console.error(e);
+      } finally {
+        setIsFetchingHistory(false);
       }
     }
   }, [user, toast]);
 
   useEffect(() => {
     if (!authLoading && user) {
-      fetchUserData();
+      fetchUserDataAndHistory();
     }
-  }, [user, authLoading, fetchUserData]);
+  }, [user, authLoading, fetchUserDataAndHistory]);
 
   const handleImageChange = (event: React.ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0];
@@ -144,6 +177,20 @@ export default function FoodAssessmentPage() {
     }
   };
 
+  const saveAssessment = async (result: FoodAssessorOutput) => {
+      if(!user) return;
+      try {
+          await addDoc(collection(db, 'food-assessments'), {
+              userId: user.uid,
+              timestamp: new Date(),
+              ...result
+          });
+          fetchUserDataAndHistory(); // Refresh history
+      } catch (e: any) {
+          toast({ title: 'History Error', description: 'Failed to save assessment to your history.', variant: 'destructive'});
+      }
+  }
+
 
   const handleAssessment = async (imageDataUri: string) => {
     if (!profile) {
@@ -165,6 +212,7 @@ export default function FoodAssessmentPage() {
         latestHealthReport: latestHealthReport ? JSON.stringify(latestHealthReport) : undefined,
       });
       setAssessmentResult(result);
+      await saveAssessment(result);
     } catch (e: any) {
       setError('Failed to assess food. Please try again.');
       console.error(e);
@@ -185,6 +233,7 @@ export default function FoodAssessmentPage() {
 
   return (
     <>
+    <div className="space-y-6">
     <Card>
       <CardHeader>
         <CardTitle>Food Assessment</CardTitle>
@@ -259,6 +308,41 @@ export default function FoodAssessmentPage() {
       </CardContent>
     </Card>
 
+    <Card>
+      <CardHeader>
+        <CardTitle className="flex items-center gap-2"><History /> Assessment History</CardTitle>
+        <CardDescription>View your recently assessed food items.</CardDescription>
+      </CardHeader>
+      <CardContent>
+        {isFetchingHistory ? (
+          <div className="flex justify-center py-8"><Loader2 className="h-8 w-8 animate-spin text-primary"/></div>
+        ) : assessmentHistory.length > 0 ? (
+          <div className="space-y-4 max-h-[500px] overflow-y-auto pr-4">
+            {assessmentHistory.map(item => (
+              <Card key={item.id} className="bg-muted/30">
+                <CardHeader>
+                  <CardTitle className="text-lg flex items-center justify-between">
+                    {item.foodName}
+                    <span className={`text-sm font-semibold flex items-center gap-1.5 ${item.isHealthyChoice ? 'text-green-500' : 'text-red-500'}`}>
+                      {item.isHealthyChoice ? <CheckCircle className="h-4 w-4" /> : <XCircle className="h-4 w-4" />}
+                      {item.isHealthyChoice ? 'Healthy' : 'Not Ideal'}
+                    </span>
+                  </CardTitle>
+                  <CardDescription>{item.timestamp.toLocaleString()}</CardDescription>
+                </CardHeader>
+                <CardContent>
+                  <p className="text-sm text-muted-foreground">{item.healthAssessment}</p>
+                </CardContent>
+              </Card>
+            ))}
+          </div>
+        ) : (
+          <p className="text-center text-muted-foreground py-8">No assessments in your history yet.</p>
+        )}
+      </CardContent>
+    </Card>
+    </div>
+
     <Dialog open={isCameraOpen} onOpenChange={setIsCameraOpen}>
         <DialogContent>
           <DialogHeader>
@@ -288,5 +372,3 @@ export default function FoodAssessmentPage() {
     </>
   );
 }
-
-    
