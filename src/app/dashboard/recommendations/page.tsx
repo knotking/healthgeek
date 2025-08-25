@@ -11,8 +11,10 @@ import { useAuthState } from 'react-firebase-hooks/auth';
 import { auth, db } from '@/lib/firebase';
 import { collection, addDoc, query, where, orderBy, getDocs, Timestamp } from 'firebase/firestore';
 import { useToast } from '@/hooks/use-toast';
-import { BrainCircuit, ChefHat, Dumbbell, History, Loader2 as Loader2History, Save } from 'lucide-react';
+import { BrainCircuit, ChefHat, Dumbbell, History, Loader2 as Loader2History, Save, Eye } from 'lucide-react';
 import { Button } from '@/components/ui/button';
+import { Badge } from '@/components/ui/badge';
+
 
 // Recipe Generator Imports
 import { useState as useStateRecipe, useEffect as useEffectRecipe, useCallback as useCallbackRecipe } from 'react';
@@ -78,10 +80,12 @@ import { Checkbox as CheckboxMeditation } from '@/components/ui/checkbox';
 import { AnimatePresence as AnimatePresenceMeditation, motion as motionMeditation } from 'framer-motion';
 import { Alert as AlertMeditation, AlertDescription as AlertDescriptionMeditation, AlertTitle as AlertTitleMeditation } from '@/components/ui/alert';
 
+type RecommendationType = 'recipe' | 'workout' | 'meditation';
+
 type RecommendationHistoryItem = {
     id: string;
     timestamp: Date;
-    type: 'recipe' | 'workout' | 'meditation';
+    type: RecommendationType;
     data: any;
 };
 
@@ -96,14 +100,21 @@ const recipeSchema = zRecipe.object({
 type RecipeFormData = zRecipe.infer<typeof recipeSchema>;
 const RecipeSteps = { PREFERENCES: 1, GENERATING: 2, RESULT: 3 };
 
-function RecipeGeneratorTab({ onSave }: { onSave: () => void }) {
+function RecipeGeneratorTab({ onSave, initialData }: { onSave: () => void; initialData?: SingleRecipeOutput | null }) {
   const [user, authLoading] = useAuthStateRecipe(authRecipe);
   const { toast } = useToastRecipe();
   const [loading, setLoading] = useStateRecipe(true);
   const [isSaving, setIsSaving] = useStateRecipe(false);
   const [profile, setProfile] = useStateRecipe<any>(null);
-  const [recipeResult, setRecipeResult] = useStateRecipe<SingleRecipeOutput | null>(null);
-  const [currentStep, setCurrentStep] = useStateRecipe(RecipeSteps.PREFERENCES);
+  const [recipeResult, setRecipeResult] = useStateRecipe<SingleRecipeOutput | null>(initialData || null);
+  const [currentStep, setCurrentStep] = useStateRecipe(initialData ? RecipeSteps.RESULT : RecipeSteps.PREFERENCES);
+
+  useEffectRecipe(() => {
+    if (initialData) {
+      setRecipeResult(initialData);
+      setCurrentStep(RecipeSteps.RESULT);
+    }
+  }, [initialData]);
 
   const form = useFormRecipe<RecipeFormData>({
     resolver: zodResolverRecipe(recipeSchema),
@@ -301,15 +312,22 @@ const workoutSchema = zWorkout.object({
 type WorkoutFormData = zWorkout.infer<typeof workoutSchema>;
 const WorkoutSteps = { PREFERENCES: 1, GENERATING: 2, RESULT: 3 };
 
-function WorkoutGeneratorTab({ onSave }: { onSave: () => void }) {
+function WorkoutGeneratorTab({ onSave, initialData }: { onSave: () => void; initialData?: WorkoutPlanOutput | null }) {
   const [user, authLoading] = useAuthStateWorkout(authWorkout);
   const { toast } = useToastWorkout();
   const [initialLoading, setInitialLoading] = useStateWorkout(true);
   const [isSaving, setIsSaving] = useStateWorkout(false);
   const [profile, setProfile] = useStateWorkout<any>(null);
   const [latestHealthReport, setLatestHealthReport] = useStateWorkout<any>(null);
-  const [workoutResult, setWorkoutResult] = useStateWorkout<WorkoutPlanOutput | null>(null);
-  const [currentStep, setCurrentStep] = useStateWorkout(WorkoutSteps.PREFERENCES);
+  const [workoutResult, setWorkoutResult] = useStateWorkout<WorkoutPlanOutput | null>(initialData || null);
+  const [currentStep, setCurrentStep] = useStateWorkout(initialData ? WorkoutSteps.RESULT : WorkoutSteps.PREFERENCES);
+
+  useEffectWorkout(() => {
+    if (initialData) {
+      setWorkoutResult(initialData);
+      setCurrentStep(WorkoutSteps.RESULT);
+    }
+  }, [initialData]);
 
   const form = useFormWorkout<WorkoutFormData>({
     resolver: zodResolverWorkout(workoutSchema),
@@ -533,14 +551,21 @@ const meditationSchema = zMeditation.object({
 type MeditationFormData = zMeditation.infer<typeof meditationSchema>;
 const MeditationSteps = { PREFERENCES: 1, GENERATING: 2, RESULT: 3 };
 
-function MeditationGeneratorTab({ onSave }: { onSave: () => void }) {
+function MeditationGeneratorTab({ onSave, initialData }: { onSave: () => void; initialData?: MeditationPracticeOutput | null }) {
     const [user, authLoading] = useAuthStateMeditation(authMeditation);
     const { toast } = useToastMeditation();
     const [initialLoading, setInitialLoading] = useStateMeditation(true);
     const [isSaving, setIsSaving] = useStateMeditation(false);
     const [profile, setProfile] = useStateMeditation<any>(null);
-    const [meditationResult, setMeditationResult] = useStateMeditation<MeditationPracticeOutput | null>(null);
-    const [currentStep, setCurrentStep] = useStateMeditation(MeditationSteps.PREFERENCES);
+    const [meditationResult, setMeditationResult] = useStateMeditation<MeditationPracticeOutput | null>(initialData || null);
+    const [currentStep, setCurrentStep] = useStateMeditation(initialData ? MeditationSteps.RESULT : MeditationSteps.PREFERENCES);
+
+    useEffectMeditation(() => {
+        if (initialData) {
+          setMeditationResult(initialData);
+          setCurrentStep(MeditationSteps.RESULT);
+        }
+    }, [initialData]);
 
     const form = useFormMeditation<MeditationFormData>({
         resolver: zodResolverMeditation(meditationSchema),
@@ -747,26 +772,22 @@ function MeditationGeneratorTab({ onSave }: { onSave: () => void }) {
     );
 }
 
-const HistorySection = ({ history, loading }: { history: RecommendationHistoryItem[], loading: boolean }) => {
+const HistorySection = ({ history, loading, onView }: { history: RecommendationHistoryItem[], loading: boolean, onView: (item: RecommendationHistoryItem) => void }) => {
     
-    const renderContent = (item: RecommendationHistoryItem) => {
+    const getSummary = (item: RecommendationHistoryItem) => {
         switch(item.type) {
-            case 'workout':
-                return <p className="text-sm text-muted-foreground line-clamp-2">{item.data.planSummary}</p>;
-            case 'meditation':
-                 return <p className="text-sm text-muted-foreground line-clamp-2">{item.data.summary}</p>;
-            case 'recipe':
-                return <p className="text-sm text-muted-foreground line-clamp-2">{item.data.description}</p>;
-            default:
-                return null;
+            case 'workout': return item.data.planSummary;
+            case 'meditation': return item.data.summary;
+            case 'recipe': return item.data.description;
+            default: return "No summary available.";
         }
     }
 
     const getIcon = (type: string) => {
         switch(type) {
-            case 'workout': return <Dumbbell className="h-5 w-5 text-primary" />;
-            case 'meditation': return <BrainCircuit className="h-5 w-5 text-primary" />;
-            case 'recipe': return <ChefHat className="h-5 w-5 text-primary" />;
+            case 'workout': return <Dumbbell className="h-8 w-8 text-primary" />;
+            case 'meditation': return <BrainCircuit className="h-8 w-8 text-primary" />;
+            case 'recipe': return <ChefHat className="h-8 w-8 text-primary" />;
             default: return null;
         }
     }
@@ -784,31 +805,35 @@ const HistorySection = ({ history, loading }: { history: RecommendationHistoryIt
         <Card>
             <CardHeader>
                 <CardTitle className="flex items-center gap-2"><History/> Recommendation History</CardTitle>
-                <CardDescription>Your saved recommendations. Click to expand.</CardDescription>
+                <CardDescription>Your saved recommendations. Click a card to view the full details.</CardDescription>
             </CardHeader>
             <CardContent>
                 {loading ? <div className="flex justify-center"><Loader2History className="h-6 w-6 animate-spin"/></div> :
                     history.length === 0 ? <p className="text-muted-foreground text-center">No history saved yet.</p> :
-                    <Accordion type="single" collapsible className="w-full">
+                    <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
                        {history.map(item => (
-                           <AccordionItem key={item.id} value={item.id}>
-                               <AccordionTrigger>
-                                   <div className="flex items-center gap-4">
-                                       {getIcon(item.type)}
-                                       <div>
-                                           <h4 className="font-semibold text-left">{getTitle(item)}</h4>
-                                           <p className="text-xs text-muted-foreground text-left">{item.timestamp.toLocaleDateString()}</p>
-                                       </div>
+                           <Card key={item.id} className="flex flex-col">
+                               <CardHeader className="flex flex-row items-start gap-4 space-y-0 pb-4">
+                                   {getIcon(item.type)}
+                                   <div className="flex-1">
+                                       <p className="text-xs text-muted-foreground">{item.timestamp.toLocaleDateString()}</p>
+                                       <CardTitle className="text-lg">{getTitle(item)}</CardTitle>
                                    </div>
-                               </AccordionTrigger>
-                               <AccordionContent>
-                                   <div className="px-4 py-2 bg-muted/30 rounded-md">
-                                     {renderContent(item)}
+                               </CardHeader>
+                               <CardContent className="flex-1 space-y-4">
+                                   <p className="text-sm text-muted-foreground line-clamp-3">{getSummary(item)}</p>
+                                   <div className="flex flex-wrap gap-1">
+                                       {(item.data.tags || []).map((tag:string) => <Badge key={tag} variant="secondary">{tag}</Badge>)}
                                    </div>
-                               </AccordionContent>
-                           </AccordionItem>
+                               </CardContent>
+                               <div className="p-6 pt-0">
+                                   <Button className="w-full" variant="outline" onClick={() => onView(item)}>
+                                       <Eye className="mr-2"/> View
+                                   </Button>
+                               </div>
+                           </Card>
                        ))}
-                    </Accordion>
+                    </div>
                 }
             </CardContent>
         </Card>
@@ -822,6 +847,9 @@ export default function RecommendationsPage() {
     const { toast } = useToast();
     const [history, setHistory] = useState<RecommendationHistoryItem[]>([]);
     const [loadingHistory, setLoadingHistory] = useState(true);
+
+    const [activeTab, setActiveTab] = useState<RecommendationType>('workout');
+    const [viewData, setViewData] = useState<any>(null);
 
     const fetchHistory = useCallback(async () => {
         if (user) {
@@ -856,32 +884,42 @@ export default function RecommendationsPage() {
             fetchHistory();
         }
     }, [user, authLoading, fetchHistory]);
+
+    const handleViewHistoryItem = (item: RecommendationHistoryItem) => {
+        setViewData(null); // Clear previous view data
+        setTimeout(() => {
+            setActiveTab(item.type);
+            setViewData(item.data);
+        }, 50); // Small delay to ensure state updates
+    };
     
   return (
     <div className="space-y-6">
-        <HistorySection history={history} loading={loadingHistory} />
-        <Tabs defaultValue="workout" className="w-full">
+        <HistorySection history={history} loading={loadingHistory} onView={handleViewHistoryItem} />
+        <Tabs value={activeTab} onValueChange={(val) => { setActiveTab(val as RecommendationType); setViewData(null); }} className="w-full">
         <TabsList className="grid w-full grid-cols-3">
             <TabsTrigger value="workout">Workout</TabsTrigger>
             <TabsTrigger value="meditation">Meditation</TabsTrigger>
             <TabsTrigger value="recipe">Recipe</TabsTrigger>
         </TabsList>
-        <TabsContent value="workout">
-            <div className="max-w-4xl mx-auto space-y-6">
-                <WorkoutGeneratorTab onSave={fetchHistory} />
+        <TabsContent value="workout" forceMount>
+             <div className="max-w-4xl mx-auto space-y-6" key={viewData ? 'workout-view' : 'workout-new'}>
+                <WorkoutGeneratorTab onSave={fetchHistory} initialData={activeTab === 'workout' ? viewData : null} />
             </div>
         </TabsContent>
-        <TabsContent value="meditation">
-            <div className="max-w-4xl mx-auto space-y-6">
-                <MeditationGeneratorTab onSave={fetchHistory} />
+        <TabsContent value="meditation" forceMount>
+            <div className="max-w-4xl mx-auto space-y-6" key={viewData ? 'meditation-view' : 'meditation-new'}>
+                <MeditationGeneratorTab onSave={fetchHistory} initialData={activeTab === 'meditation' ? viewData : null} />
             </div>
         </TabsContent>
-        <TabsContent value="recipe">
-            <div className="max-w-4xl mx-auto space-y-6">
-                <RecipeGeneratorTab onSave={fetchHistory} />
+        <TabsContent value="recipe" forceMount>
+            <div className="max-w-4xl mx-auto space-y-6" key={viewData ? 'recipe-view' : 'recipe-new'}>
+                <RecipeGeneratorTab onSave={fetchHistory} initialData={activeTab === 'recipe' ? viewData : null} />
             </div>
         </TabsContent>
         </Tabs>
     </div>
   );
 }
+
+    
