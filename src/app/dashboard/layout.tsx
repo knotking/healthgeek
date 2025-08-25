@@ -18,7 +18,7 @@ import {
   SidebarInset,
 } from '@/components/ui/sidebar';
 import { Logo } from '@/components/logo';
-import { User, BarChart, UtensilsCrossed, Book, LogOut, Loader2 } from 'lucide-react';
+import { User, BarChart, UtensilsCrossed, Book, LogOut, Loader2, ClipboardList } from 'lucide-react';
 import { usePathname } from 'next/navigation';
 
 export default function DashboardLayout({
@@ -94,6 +94,14 @@ export default function DashboardLayout({
                 <Link href="/dashboard/reports">
                   <Book />
                   Reports
+                </Link>
+              </SidebarMenuButton>
+            </SidebarMenuItem>
+            <SidebarMenuItem>
+              <SidebarMenuButton asChild isActive={pathname.startsWith('/dashboard/analysis')}>
+                <Link href="/dashboard/analysis">
+                  <ClipboardList />
+                  Analysis
                 </Link>
               </SidebarMenuButton>
             </SidebarMenuItem>
