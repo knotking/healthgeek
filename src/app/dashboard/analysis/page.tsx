@@ -225,8 +225,8 @@ export default function AnalysisPage() {
                               <div>
                                   <h4 className="font-semibold mb-2">Extracted Metrics</h4>
                                   <ul className="space-y-2">
-                                      {analysisResult.extractedMetrics.map(metric => (
-                                          <li key={metric.name} className="flex justify-between text-sm p-2 bg-muted/50 rounded-md">
+                                      {analysisResult.extractedMetrics.map((metric, index) => (
+                                          <li key={`${metric.name}-${index}`} className="flex justify-between text-sm p-2 bg-muted/50 rounded-md">
                                             <span><strong>{metric.name}:</strong> {metric.value}</span>
                                             <span className="font-medium">{metric.interpretation}</span>
                                           </li>
@@ -293,8 +293,8 @@ export default function AnalysisPage() {
                                 <div>
                                    <h4 className="font-semibold text-sm mb-2">Extracted Metrics</h4>
                                     <ul className="space-y-2">
-                                        {report.extractedMetrics.map(metric => (
-                                            <li key={metric.name} className="flex justify-between text-xs p-2 bg-background/50 rounded-md">
+                                        {report.extractedMetrics.map((metric, index) => (
+                                            <li key={`${metric.name}-${index}`} className="flex justify-between text-xs p-2 bg-background/50 rounded-md">
                                               <span><strong>{metric.name}:</strong> {metric.value}</span>
                                               <span className="font-medium">{metric.interpretation}</span>
                                             </li>
