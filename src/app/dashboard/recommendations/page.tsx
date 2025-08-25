@@ -1,4 +1,5 @@
 
+
 'use client';
 
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
@@ -987,12 +988,14 @@ export default function RecommendationsPage() {
             const items = snap.docs.map(doc => ({ id: doc.id, ...doc.data(), timestamp: (doc.data().timestamp as Timestamp).toDate() })) as RecommendationHistoryItem[];
             const lastDoc = snap.docs[snap.docs.length - 1];
             setMyHistoryLastVisible(lastDoc);
-            if (direction === 'next') setMyHistoryPageStack(prev => [...prev, myHistoryLastVisible]);
+            if (direction === 'next' && myHistoryLastVisible) {
+                setMyHistoryPageStack(prev => [...prev, myHistoryLastVisible]);
+            }
             setMyHistory(items);
             setMyHistoryHasMore(items.length === ITEMS_PER_PAGE);
         } catch (e: any) { toast({ title: "Error fetching history", description: e.message, variant: "destructive"}); } 
         finally { setLoadingMyHistory(false); }
-    }, [user, myHistoryLastVisible, toast, myHistoryPageStack]);
+    }, [user, toast]); // Removed state setters from dependency array
     
     const fetchCommunityRecs = useCallback(async (direction: 'next' | 'prev' = 'next') => {
         setLoadingCommunityRecs(true);
@@ -1009,26 +1012,29 @@ export default function RecommendationsPage() {
             const items = snap.docs.map(doc => ({ id: doc.id, ...doc.data(), timestamp: (doc.data().timestamp as Timestamp).toDate() })) as RecommendationHistoryItem[];
             const lastDoc = snap.docs[snap.docs.length - 1];
             setCommunityLastVisible(lastDoc);
-            if (direction === 'next') setCommunityPageStack(prev => [...prev, communityLastVisible]);
+            if (direction === 'next' && communityLastVisible) {
+                setCommunityPageStack(prev => [...prev, communityLastVisible]);
+            }
             setCommunityRecs(items);
             setCommunityHasMore(items.length === ITEMS_PER_PAGE);
         } catch (e: any) {
              console.error("Error fetching community data:", e);
         }
         finally { setLoadingCommunityRecs(false); }
-    }, [communityLastVisible, communityPageStack, toast]);
+    }, [toast]); // Removed state setters from dependency array
 
 
     useEffect(() => {
         if (!authLoading && user) {
             fetchMyHistory();
-            fetchCommunityRecs();
         } else if (!authLoading && !user) {
             setLoadingMyHistory(false);
-            setLoadingCommunityRecs(false);
-            fetchCommunityRecs(); // Fetch public data even if not logged in
         }
-    }, [user, authLoading, fetchMyHistory, fetchCommunityRecs]);
+    }, [user, authLoading, fetchMyHistory]);
+
+    useEffect(() => {
+        fetchCommunityRecs();
+    }, [fetchCommunityRecs]);
 
     const handleViewHistoryItem = (item: RecommendationHistoryItem) => {
         setViewData(null); 
@@ -1153,3 +1159,5 @@ export default function RecommendationsPage() {
     </div>
   );
 }
+
+    
