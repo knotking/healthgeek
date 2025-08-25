@@ -12,7 +12,7 @@ import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription, CardFooter } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { useToast } from '@/hooks/use-toast';
-import { Loader2, Dumbbell, FileDown, Activity, Users, Clock, Flame, Shield, MoveRight, MoveLeft, Bookmark, History } from 'lucide-react';
+import { Loader2, Dumbbell, FileDown, Activity, Users, Clock, Flame, Shield, MoveRight, MoveLeft, Bookmark, History, Repeat, Target, Timer, HeartPulse } from 'lucide-react';
 import { generateWorkoutPlan, type WorkoutPlanOutput } from '@/ai/flows/workout-recommender';
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from '@/components/ui/form';
 import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
@@ -21,6 +21,7 @@ import { Checkbox } from '@/components/ui/checkbox';
 import { AnimatePresence, motion } from 'framer-motion';
 import jsPDF from 'jspdf';
 import 'jspdf-autotable';
+import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 
 
 const focusAreas = [
@@ -108,8 +109,8 @@ export default function WorkoutPage() {
             timestamp: (doc.data().timestamp as Timestamp).toDate(),
         })) as WorkoutLog[];
         setHistory(historyLogs);
-        
-      } catch (e:any) {
+      } catch (e: any) {
+        toast({ title: "History Fetch Failed", description: "Could not load your workout history. You can still generate new plans.", variant: "destructive" });
         setHistory([]);
       } finally {
         setInitialLoading(false);
@@ -149,22 +150,22 @@ export default function WorkoutPage() {
   }
 
   async function handleSaveWorkout() {
-    if (!user || !workoutResult) return;
-    setIsSaving(true);
-    try {
-        await addDoc(collection(db, 'workout-plans'), {
-            userId: user.uid,
-            timestamp: new Date(),
-            ...workoutResult
-        });
-        toast({ title: "Workout Saved", description: "This plan has been saved to your history." });
-        await fetchUserDataAndHistory(); // Refresh history
-        resetFlow();
-    } catch(e: any) {
-        toast({ title: "Save Failed", description: e.message, variant: "destructive" });
-    } finally {
-        setIsSaving(false);
-    }
+      if (!user || !workoutResult) return;
+      setIsSaving(true);
+      try {
+          await addDoc(collection(db, 'workout-plans'), {
+              userId: user.uid,
+              timestamp: new Date(),
+              ...workoutResult
+          });
+          toast({ title: "Workout Saved", description: "This plan has been saved to your history." });
+          await fetchUserDataAndHistory();
+          resetFlow();
+      } catch(e: any) {
+          toast({ title: "Save Failed", description: e.message, variant: "destructive" });
+      } finally {
+          setIsSaving(false);
+      }
   }
 
   function handleDownloadPdf() {
@@ -405,36 +406,39 @@ export default function WorkoutPage() {
                      <div className="flex gap-2 justify-center flex-wrap">
                         {workoutResult.tags.map(tag => <Badge key={tag} variant="secondary">{tag}</Badge>)}
                     </div>
-                     <div className="bg-yellow-50 dark:bg-yellow-900/20 border-l-4 border-yellow-400 p-4 rounded-md">
-                        <h4 className="font-bold text-yellow-800 dark:text-yellow-300 flex items-center gap-2"><Shield /> Safety Notes</h4>
-                        <p className="text-sm text-yellow-700 dark:text-yellow-400 mt-1">{workoutResult.notes}</p>
-                    </div>
+                     <Alert variant="destructive">
+                        <Shield className="h-4 w-4"/>
+                        <AlertTitle>Safety First!</AlertTitle>
+                        <AlertDescription>
+                           {workoutResult.notes}
+                        </AlertDescription>
+                     </Alert>
 
                     {[
-                        {title: 'Warm-Up', icon: Flame, exercises: workoutResult.warmUp},
-                        {title: 'Main Workout', icon: Activity, exercises: workoutResult.mainWorkout},
-                        {title: 'Cool-Down', icon: Users, exercises: workoutResult.coolDown}
+                        {title: 'Warm-Up', icon: Activity, exercises: workoutResult.warmUp},
+                        {title: 'Main Workout', icon: Dumbbell, exercises: workoutResult.mainWorkout},
+                        {title: 'Cool-Down', icon: HeartPulse, exercises: workoutResult.coolDown}
                     ].map(section => (
                        section.exercises.length > 0 && <div key={section.title}>
                             <h3 className="font-bold text-xl mb-4 flex items-center gap-2"><section.icon className="text-primary"/> {section.title}</h3>
                             <div className="space-y-4">
                                 {section.exercises.map((ex, i) => (
-                                    <div key={i} className="p-4 bg-muted/50 rounded-lg">
-                                        <h4 className="font-semibold">{ex.name}</h4>
-                                        <div className="flex flex-wrap gap-x-4 gap-y-1 text-sm text-muted-foreground mt-2">
-                                            <span><strong>Sets:</strong> {ex.sets}</span>
-                                            <span><strong>Reps:</strong> {ex.reps}</span>
-                                            <span><strong>Rest:</strong> {ex.rest}</span>
+                                    <Card key={i} className="p-4 bg-muted/50">
+                                        <CardTitle className="text-lg">{ex.name}</CardTitle>
+                                        <div className="flex flex-wrap gap-x-6 gap-y-2 text-sm text-muted-foreground mt-3 mb-3">
+                                            <div className="flex items-center gap-1.5"><Repeat/> <strong>Sets:</strong> {ex.sets}</div>
+                                            <div className="flex items-center gap-1.5"><Target/> <strong>Reps:</strong> {ex.reps}</div>
+                                            <div className="flex items-center gap-1.5"><Timer/> <strong>Rest:</strong> {ex.rest}</div>
                                         </div>
-                                        <p className="text-sm mt-2">{ex.description}</p>
-                                    </div>
+                                        <CardDescription>{ex.description}</CardDescription>
+                                    </Card>
                                 ))}
                             </div>
                         </div>
                     ))}
                  </CardContent>
                  <CardFooter className="flex-col sm:flex-row gap-2">
-                    <Button onClick={resetFlow} variant="outline"><MoveLeft className="mr-2"/> Generate Another</Button>
+                    <Button onClick={resetFlow} variant="outline"><MoveLeft className="mr-2"/> New Workout</Button>
                     <Button onClick={handleSaveWorkout} disabled={isSaving}>
                         {isSaving ? <Loader2 className="mr-2 h-4 w-4 animate-spin"/> : <Bookmark className="mr-2 h-4 w-4"/>}
                         Save to History
@@ -448,3 +452,5 @@ export default function WorkoutPage() {
     </div>
   );
 }
+
+    
