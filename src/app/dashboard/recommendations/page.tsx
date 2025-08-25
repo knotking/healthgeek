@@ -3,6 +3,16 @@
 
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
+import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from '@/components/ui/accordion';
+
+// Common History Imports
+import { useState, useEffect, useCallback } from 'react';
+import { useAuthState } from 'react-firebase-hooks/auth';
+import { auth, db } from '@/lib/firebase';
+import { collection, addDoc, query, where, orderBy, getDocs, Timestamp } from 'firebase/firestore';
+import { useToast } from '@/hooks/use-toast';
+import { BrainCircuit, ChefHat, Dumbbell, History, Loader2 as Loader2History } from 'lucide-react';
+import { Button } from '@/components/ui/button';
 
 // Recipe Generator Imports
 import { useState as useStateRecipe, useEffect as useEffectRecipe, useCallback as useCallbackRecipe } from 'react';
@@ -15,7 +25,7 @@ import { doc as docRecipe, getDoc as getDocRecipe } from 'firebase/firestore';
 import { Button as ButtonRecipe } from '@/components/ui/button';
 import { Badge as BadgeRecipe } from '@/components/ui/badge';
 import { useToast as useToastRecipe } from '@/hooks/use-toast';
-import { Loader2 as Loader2Recipe, ChefHat, CookingPot, FileDown as FileDownRecipe, Utensils, Clock, User, Sparkles as SparklesRecipe, MoveRight as MoveRightRecipe, MoveLeft as MoveLeftRecipe } from 'lucide-react';
+import { Loader2 as Loader2Recipe, CookingPot, FileDown as FileDownRecipe, Utensils, Clock, User, Sparkles as SparklesRecipe, MoveRight as MoveRightRecipe, MoveLeft as MoveLeftRecipe, Save } from 'lucide-react';
 import { generateSingleRecipe, SingleRecipeOutput } from '@/ai/flows/conversational-recipe-generator';
 import { Form as FormRecipe, FormControl as FormControlRecipe, FormField as FormFieldRecipe, FormItem as FormItemRecipe, FormLabel as FormLabelRecipe, FormMessage as FormMessageRecipe } from '@/components/ui/form';
 import { Input as InputRecipe } from '@/components/ui/input';
@@ -37,7 +47,7 @@ import { doc as docWorkout, getDoc as getDocWorkout, collection as collectionWor
 import { Button as ButtonWorkout } from '@/components/ui/button';
 import { Badge as BadgeWorkout } from '@/components/ui/badge';
 import { useToast as useToastWorkout } from '@/hooks/use-toast';
-import { Loader2 as Loader2Workout, Dumbbell, FileDown as FileDownWorkout, Activity, Shield, MoveRight as MoveRightWorkout, MoveLeft as MoveLeftWorkout, Repeat, Target, Timer as TimerWorkout, HeartPulse } from 'lucide-react';
+import { Loader2 as Loader2Workout, FileDown as FileDownWorkout, Activity, Shield, MoveRight as MoveRightWorkout, MoveLeft as MoveLeftWorkout, Repeat, Target, Timer as TimerWorkout, HeartPulse } from 'lucide-react';
 import { generateWorkoutPlan, type WorkoutPlanOutput } from '@/ai/flows/workout-recommender';
 import { Form as FormWorkout, FormControl as FormControlWorkout, FormField as FormFieldWorkout, FormItem as FormItemWorkout, FormLabel as FormLabelWorkout, FormMessage as FormMessageWorkout } from '@/components/ui/form';
 import { RadioGroup as RadioGroupWorkout, RadioGroupItem as RadioGroupItemWorkout } from '@/components/ui/radio-group';
@@ -58,7 +68,7 @@ import { doc as docMeditation, getDoc as getDocMeditation } from 'firebase/fires
 import { Button as ButtonMeditation } from '@/components/ui/button';
 import { Badge as BadgeMeditation } from '@/components/ui/badge';
 import { useToast as useToastMeditation } from '@/hooks/use-toast';
-import { Loader2 as Loader2Meditation, BrainCircuit, FileDown as FileDownMeditation, MoveRight as MoveRightMeditation, MoveLeft as MoveLeftMeditation, Sparkles as SparklesMeditation, Timer as TimerMeditation } from 'lucide-react';
+import { Loader2 as Loader2Meditation, FileDown as FileDownMeditation, MoveRight as MoveRightMeditation, MoveLeft as MoveLeftMeditation, Sparkles as SparklesMeditation, Timer as TimerMeditation } from 'lucide-react';
 import { generateMeditationPractice, type MeditationPracticeOutput } from '@/ai/flows/meditation-recommender';
 import { Form as FormMeditation, FormControl as FormControlMeditation, FormField as FormFieldMeditation, FormItem as FormItemMeditation, FormLabel as FormLabelMeditation, FormMessage as FormMessageMeditation } from '@/components/ui/form';
 import { RadioGroup as RadioGroupMeditation, RadioGroupItem as RadioGroupItemMeditation } from '@/components/ui/radio-group';
@@ -67,6 +77,13 @@ import { Checkbox as CheckboxMeditation } from '@/components/ui/checkbox';
 import { AnimatePresence as AnimatePresenceMeditation, motion as motionMeditation } from 'framer-motion';
 import { Alert as AlertMeditation, AlertDescription as AlertDescriptionMeditation, AlertTitle as AlertTitleMeditation } from '@/components/ui/alert';
 import { CardFooter as CardFooterMeditation } from '@/components/ui/card';
+
+type RecommendationHistoryItem = {
+    id: string;
+    timestamp: Date;
+    type: 'recipe' | 'workout' | 'meditation';
+    data: any;
+};
 
 // --- Recipe Component ---
 const recipeSchema = zRecipe.object({
@@ -79,10 +96,11 @@ const recipeSchema = zRecipe.object({
 type RecipeFormData = zRecipe.infer<typeof recipeSchema>;
 const RecipeSteps = { PREFERENCES: 1, GENERATING: 2, RESULT: 3 };
 
-function RecipeGeneratorTab() {
+function RecipeGeneratorTab({ onSave }: { onSave: () => void }) {
   const [user, authLoading] = useAuthStateRecipe(authRecipe);
   const { toast } = useToastRecipe();
   const [loading, setLoading] = useStateRecipe(true);
+  const [isSaving, setIsSaving] = useStateRecipe(false);
   const [profile, setProfile] = useStateRecipe<any>(null);
   const [recipeResult, setRecipeResult] = useStateRecipe<SingleRecipeOutput | null>(null);
   const [currentStep, setCurrentStep] = useStateRecipe(RecipeSteps.PREFERENCES);
@@ -130,6 +148,25 @@ function RecipeGeneratorTab() {
     }
   }
 
+  async function handleSave() {
+    if (!user || !recipeResult) return;
+    setIsSaving(true);
+    try {
+        await addDoc(collection(dbRecipe, 'recommendation-history'), {
+            userId: user.uid,
+            timestamp: new Date(),
+            type: 'recipe',
+            data: recipeResult
+        });
+        toast({ title: 'Recipe Saved', description: 'This recipe has been saved to your history.'});
+        onSave();
+    } catch(e: any) {
+        toast({ title: "Save Failed", description: e.message, variant: "destructive" });
+    } finally {
+        setIsSaving(false);
+    }
+  }
+
   function handleDownloadPdf(recipeData: SingleRecipeOutput) {
     const doc = new jsPDF();
     const pageHeight = doc.internal.pageSize.height;
@@ -154,7 +191,6 @@ function RecipeGeneratorTab() {
         startY: finalY2 + 10, theme: 'striped',
     });
 
-    // Add footer
     const pageCount = (doc as any).internal.getNumberOfPages();
     for (let i = 1; i <= pageCount; i++) {
         doc.setPage(i);
@@ -240,7 +276,14 @@ function RecipeGeneratorTab() {
                       <div className="md:col-span-3"><h3 className="font-bold text-xl mb-4 flex items-center gap-2"><CookingPot /> Instructions</h3><ol className="space-y-4 text-muted-foreground">{recipeResult.instructions.map((step, i) => <li key={i} className="flex items-start"><span className="font-bold text-primary mr-3">{i + 1}.</span><span>{step}</span></li>)}</ol></div>
                   </div>
                </CardContent>
-               <CardFooterRecipe className="flex-col sm:flex-row gap-2"><ButtonRecipe onClick={resetFlow} variant="outline"><MoveLeftRecipe className="mr-2"/> Generate Another</ButtonRecipe><ButtonRecipe onClick={() => handleDownloadPdf(recipeResult)}><FileDownRecipe className="mr-2"/> Download PDF</ButtonRecipe></CardFooterRecipe>
+               <CardFooterRecipe className="flex-col sm:flex-row gap-2 justify-center">
+                    <ButtonRecipe onClick={resetFlow} variant="outline"><MoveLeftRecipe className="mr-2"/> Generate Another</ButtonRecipe>
+                    <ButtonRecipe onClick={() => handleDownloadPdf(recipeResult)}><FileDownRecipe className="mr-2"/> Download PDF</ButtonRecipe>
+                    <ButtonRecipe onClick={handleSave} disabled={isSaving}>
+                        {isSaving ? <Loader2Recipe className="animate-spin mr-2"/> : <Save className="mr-2"/>}
+                        Save to History
+                    </ButtonRecipe>
+                </CardFooterRecipe>
           </Card>
          </motionRecipe.div>
       )}
@@ -258,10 +301,11 @@ const workoutSchema = zWorkout.object({
 type WorkoutFormData = zWorkout.infer<typeof workoutSchema>;
 const WorkoutSteps = { PREFERENCES: 1, GENERATING: 2, RESULT: 3 };
 
-function WorkoutGeneratorTab() {
+function WorkoutGeneratorTab({ onSave }: { onSave: () => void }) {
   const [user, authLoading] = useAuthStateWorkout(authWorkout);
   const { toast } = useToastWorkout();
   const [initialLoading, setInitialLoading] = useStateWorkout(true);
+  const [isSaving, setIsSaving] = useStateWorkout(false);
   const [profile, setProfile] = useStateWorkout<any>(null);
   const [latestHealthReport, setLatestHealthReport] = useStateWorkout<any>(null);
   const [workoutResult, setWorkoutResult] = useStateWorkout<WorkoutPlanOutput | null>(null);
@@ -313,11 +357,30 @@ function WorkoutGeneratorTab() {
     }
   }
 
+  async function handleSave() {
+    if (!user || !workoutResult) return;
+    setIsSaving(true);
+    try {
+      await addDoc(collection(db, 'recommendation-history'), {
+        userId: user.uid,
+        timestamp: new Date(),
+        type: 'workout',
+        data: workoutResult,
+      });
+      toast({ title: 'Workout Saved', description: 'This workout has been saved to your history.' });
+      onSave();
+    } catch (e: any) {
+      toast({ title: 'Save Failed', description: e.message, variant: 'destructive' });
+    } finally {
+      setIsSaving(false);
+    }
+  }
+
   function handleDownloadPdf() {
     if (!workoutResult) return;
     const doc = new jsPDF();
-    const pageHeight = doc.internal.pageSize.height;
     let finalY = 0;
+    const pageHeight = doc.internal.pageSize.height;
     
     doc.setFontSize(22);
     doc.text(workoutResult.planTitle, 105, 20, { align: 'center' });
@@ -350,7 +413,6 @@ function WorkoutGeneratorTab() {
     addSection('Main Workout', workoutResult.mainWorkout);
     addSection('Cool-Down', workoutResult.coolDown);
     
-    // Add footer
     const pageCount = (doc as any).internal.getNumberOfPages();
     for (let i = 1; i <= pageCount; i++) {
         doc.setPage(i);
@@ -446,7 +508,14 @@ function WorkoutGeneratorTab() {
                       </div>
                   ))}
                </CardContent>
-               <CardFooterWorkout className="flex-col sm:flex-row gap-2"><ButtonWorkout onClick={resetFlow} variant="outline"><MoveLeftWorkout className="mr-2"/> New Workout</ButtonWorkout><ButtonWorkout onClick={handleDownloadPdf}><FileDownWorkout className="mr-2"/> Download PDF</ButtonWorkout></CardFooterWorkout>
+               <CardFooterWorkout className="flex-col sm:flex-row gap-2 justify-center">
+                    <ButtonWorkout onClick={resetFlow} variant="outline"><MoveLeftWorkout className="mr-2"/> New Workout</ButtonWorkout>
+                    <ButtonWorkout onClick={handleDownloadPdf}><FileDownWorkout className="mr-2"/> Download PDF</ButtonWorkout>
+                    <ButtonWorkout onClick={handleSave} disabled={isSaving}>
+                        {isSaving ? <Loader2Workout className="animate-spin mr-2"/> : <Save className="mr-2"/>}
+                        Save to History
+                    </ButtonWorkout>
+                </CardFooterWorkout>
           </Card>
          </motionWorkout.div>
       )}
@@ -464,10 +533,11 @@ const meditationSchema = zMeditation.object({
 type MeditationFormData = zMeditation.infer<typeof meditationSchema>;
 const MeditationSteps = { PREFERENCES: 1, GENERATING: 2, RESULT: 3 };
 
-function MeditationGeneratorTab() {
+function MeditationGeneratorTab({ onSave }: { onSave: () => void }) {
     const [user, authLoading] = useAuthStateMeditation(authMeditation);
     const { toast } = useToastMeditation();
     const [initialLoading, setInitialLoading] = useStateMeditation(true);
+    const [isSaving, setIsSaving] = useStateMeditation(false);
     const [profile, setProfile] = useStateMeditation<any>(null);
     const [meditationResult, setMeditationResult] = useStateMeditation<MeditationPracticeOutput | null>(null);
     const [currentStep, setCurrentStep] = useStateMeditation(MeditationSteps.PREFERENCES);
@@ -514,6 +584,25 @@ function MeditationGeneratorTab() {
         }
     }
 
+    async function handleSave() {
+        if (!user || !meditationResult) return;
+        setIsSaving(true);
+        try {
+          await addDoc(collection(db, 'recommendation-history'), {
+            userId: user.uid,
+            timestamp: new Date(),
+            type: 'meditation',
+            data: meditationResult,
+          });
+          toast({ title: 'Meditation Saved', description: 'This practice has been saved to your history.' });
+          onSave();
+        } catch (e: any) {
+          toast({ title: 'Save Failed', description: e.message, variant: 'destructive' });
+        } finally {
+          setIsSaving(false);
+        }
+      }
+
     function handleDownloadPdf() {
         if (!meditationResult) return;
         const doc = new jsPDF();
@@ -533,6 +622,7 @@ function MeditationGeneratorTab() {
         finalY = (doc as any).lastAutoTable.finalY;
 
         meditationResult.steps.forEach(step => {
+            if (finalY > pageHeight - 40) doc.addPage();
             (doc as any).autoTable({
                 head: [[`Step ${step.step}: ${step.title} (${step.duration})`]],
                 body: [[step.instruction]],
@@ -542,7 +632,6 @@ function MeditationGeneratorTab() {
             finalY = (doc as any).lastAutoTable.finalY;
         });
 
-        // Add footer
         const pageCount = (doc as any).internal.getNumberOfPages();
         for (let i = 1; i <= pageCount; i++) {
             doc.setPage(i);
@@ -643,7 +732,14 @@ function MeditationGeneratorTab() {
                                 </div>
                             </div>
                         </CardContent>
-                        <CardFooterMeditation className="flex-col sm:flex-row gap-2"><ButtonMeditation onClick={resetFlow} variant="outline"><MoveLeftMeditation className="mr-2"/> New Practice</ButtonMeditation><ButtonMeditation onClick={handleDownloadPdf}><FileDownMeditation className="mr-2"/> Download PDF</ButtonMeditation></CardFooterMeditation>
+                        <CardFooterMeditation className="flex-col sm:flex-row gap-2 justify-center">
+                            <ButtonMeditation onClick={resetFlow} variant="outline"><MoveLeftMeditation className="mr-2"/> New Practice</ButtonMeditation>
+                            <ButtonMeditation onClick={handleDownloadPdf}><FileDownMeditation className="mr-2"/> Download PDF</ButtonMeditation>
+                            <ButtonMeditation onClick={handleSave} disabled={isSaving}>
+                                {isSaving ? <Loader2Meditation className="animate-spin mr-2"/> : <Save className="mr-2"/>}
+                                Save to History
+                            </ButtonMeditation>
+                        </CardFooterMeditation>
                     </Card>
                 </motionMeditation.div>
             )}
@@ -651,31 +747,142 @@ function MeditationGeneratorTab() {
     );
 }
 
+const HistorySection = ({ history, loading, onRefresh }: { history: RecommendationHistoryItem[], loading: boolean, onRefresh: () => void }) => {
+    
+    const renderContent = (item: RecommendationHistoryItem) => {
+        switch(item.type) {
+            case 'workout':
+                return <p className="text-sm text-muted-foreground line-clamp-2">{item.data.planSummary}</p>;
+            case 'meditation':
+                 return <p className="text-sm text-muted-foreground line-clamp-2">{item.data.summary}</p>;
+            case 'recipe':
+                return <p className="text-sm text-muted-foreground line-clamp-2">{item.data.description}</p>;
+            default:
+                return null;
+        }
+    }
+
+    const getIcon = (type: string) => {
+        switch(type) {
+            case 'workout': return <Dumbbell className="h-5 w-5 text-primary" />;
+            case 'meditation': return <BrainCircuit className="h-5 w-5 text-primary" />;
+            case 'recipe': return <ChefHat className="h-5 w-5 text-primary" />;
+            default: return null;
+        }
+    }
+
+    const getTitle = (item: RecommendationHistoryItem) => {
+         switch(item.type) {
+            case 'workout': return item.data.planTitle;
+            case 'meditation': return item.data.title;
+            case 'recipe': return item.data.name;
+            default: return "History Item";
+        }
+    }
+    
+    return (
+        <Card>
+            <CardHeader>
+                <CardTitle className="flex items-center gap-2"><History/> Recommendation History</CardTitle>
+                <CardDescription>Your saved recommendations. Click to expand.</CardDescription>
+            </CardHeader>
+            <CardContent>
+                {loading ? <div className="flex justify-center"><Loader2History className="h-6 w-6 animate-spin"/></div> :
+                    history.length === 0 ? <p className="text-muted-foreground text-center">No history saved yet.</p> :
+                    <Accordion type="single" collapsible className="w-full">
+                       {history.map(item => (
+                           <AccordionItem key={item.id} value={item.id}>
+                               <AccordionTrigger>
+                                   <div className="flex items-center gap-4">
+                                       {getIcon(item.type)}
+                                       <div>
+                                           <h4 className="font-semibold text-left">{getTitle(item)}</h4>
+                                           <p className="text-xs text-muted-foreground text-left">{item.timestamp.toLocaleDateString()}</p>
+                                       </div>
+                                   </div>
+                               </AccordionTrigger>
+                               <AccordionContent>
+                                   <div className="px-4 py-2 bg-muted/30 rounded-md">
+                                     {renderContent(item)}
+                                   </div>
+                               </AccordionContent>
+                           </AccordionItem>
+                       ))}
+                    </Accordion>
+                }
+            </CardContent>
+        </Card>
+    );
+};
+
 
 // --- Main Component ---
 export default function RecommendationsPage() {
+    const [user, authLoading] = useAuthState(auth);
+    const { toast } = useToast();
+    const [history, setHistory] = useState<RecommendationHistoryItem[]>([]);
+    const [loadingHistory, setLoadingHistory] = useState(true);
+
+    const fetchHistory = useCallback(async () => {
+        if (user) {
+            setLoadingHistory(true);
+            try {
+                const q = query(
+                    collection(db, 'recommendation-history'),
+                    where('userId', '==', user.uid),
+                    orderBy('timestamp', 'desc')
+                );
+                const querySnapshot = await getDocs(q);
+                const historyItems = querySnapshot.docs.map(doc => ({
+                    id: doc.id,
+                    ...doc.data(),
+                    timestamp: (doc.data().timestamp as Timestamp).toDate()
+                })) as RecommendationHistoryItem[];
+                setHistory(historyItems);
+            } catch (e: any) {
+                console.error("Failed to fetch history:", e);
+                toast({ title: 'History Error', description: 'Could not fetch your recommendation history.', variant: 'destructive'});
+            } finally {
+                setLoadingHistory(false);
+            }
+        }
+    }, [user, toast]);
+
+    useEffect(() => {
+        if (!authLoading && user) {
+            fetchHistory();
+        } else if(!authLoading && !user) {
+            setLoadingHistory(false);
+        }
+    }, [user, authLoading, fetchHistory]);
+    
   return (
-    <Tabs defaultValue="workout" className="w-full">
-      <TabsList className="grid w-full grid-cols-3">
-        <TabsTrigger value="workout">Workout</TabsTrigger>
-        <TabsTrigger value="meditation">Meditation</TabsTrigger>
-        <TabsTrigger value="recipe">Recipe</TabsTrigger>
-      </TabsList>
-      <TabsContent value="workout">
-        <div className="max-w-4xl mx-auto space-y-6">
-            <WorkoutGeneratorTab />
-        </div>
-      </TabsContent>
-      <TabsContent value="meditation">
-        <div className="max-w-4xl mx-auto space-y-6">
-            <MeditationGeneratorTab />
-        </div>
-      </TabsContent>
-      <TabsContent value="recipe">
-        <div className="max-w-4xl mx-auto space-y-6">
-            <RecipeGeneratorTab />
-        </div>
-      </TabsContent>
-    </Tabs>
+    <div className="space-y-6">
+        <HistorySection history={history} loading={loadingHistory} onRefresh={fetchHistory} />
+        <Tabs defaultValue="workout" className="w-full">
+        <TabsList className="grid w-full grid-cols-3">
+            <TabsTrigger value="workout">Workout</TabsTrigger>
+            <TabsTrigger value="meditation">Meditation</TabsTrigger>
+            <TabsTrigger value="recipe">Recipe</TabsTrigger>
+        </TabsList>
+        <TabsContent value="workout">
+            <div className="max-w-4xl mx-auto space-y-6">
+                <WorkoutGeneratorTab onSave={fetchHistory} />
+            </div>
+        </TabsContent>
+        <TabsContent value="meditation">
+            <div className="max-w-4xl mx-auto space-y-6">
+                <MeditationGeneratorTab onSave={fetchHistory} />
+            </div>
+        </TabsContent>
+        <TabsContent value="recipe">
+            <div className="max-w-4xl mx-auto space-y-6">
+                <RecipeGeneratorTab onSave={fetchHistory} />
+            </div>
+        </TabsContent>
+        </Tabs>
+    </div>
   );
 }
+
+    
