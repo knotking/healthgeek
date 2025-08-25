@@ -4,7 +4,7 @@
 import { useState, useRef, useEffect, useCallback } from 'react';
 import { useAuthState } from 'react-firebase-hooks/auth';
 import { auth, db } from '@/lib/firebase';
-import { doc, getDoc, collection, query, orderBy, where, limit } from 'firebase/firestore';
+import { doc, getDoc, collection, query, orderBy, where, limit, getDocs } from 'firebase/firestore';
 import { assessFood, FoodAssessorOutput } from '@/ai/flows/food-assessor';
 import { Button } from '@/components/ui/button';
 import {
