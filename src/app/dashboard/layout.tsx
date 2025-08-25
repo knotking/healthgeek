@@ -90,18 +90,18 @@ export default function DashboardLayout({
               </SidebarMenuButton>
             </SidebarMenuItem>
             <SidebarMenuItem>
-              <SidebarMenuButton asChild isActive={pathname.startsWith('/dashboard/reports')}>
-                <Link href="/dashboard/reports">
-                  <Book />
-                  Reports
-                </Link>
-              </SidebarMenuButton>
-            </SidebarMenuItem>
-            <SidebarMenuItem>
               <SidebarMenuButton asChild isActive={pathname.startsWith('/dashboard/analysis')}>
                 <Link href="/dashboard/analysis">
                   <ClipboardList />
                   Analysis
+                </Link>
+              </SidebarMenuButton>
+            </SidebarMenuItem>
+            <SidebarMenuItem>
+              <SidebarMenuButton asChild isActive={pathname.startsWith('/dashboard/reports')}>
+                <Link href="/dashboard/reports">
+                  <Book />
+                  Reports
                 </Link>
               </SidebarMenuButton>
             </SidebarMenuItem>
