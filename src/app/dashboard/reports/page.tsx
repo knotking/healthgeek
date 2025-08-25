@@ -19,10 +19,11 @@ import jsPDF from 'jspdf';
 import 'jspdf-autotable';
 import { generateRecipes, RecipeGeneratorOutput } from '@/ai/flows/recipe-generator';
 import { Separator } from '@/components/ui/separator';
+import { Label } from '@/components/ui/label';
 
 interface FoodLog {
   id: string;
-  timestamp: Date;
+  timestamp: Date | Timestamp;
   foodName: string;
   calories: number;
 }
@@ -99,6 +100,7 @@ export default function ReportsPage() {
 
       if (logs.length === 0) {
         toast({ title: 'No Data', description: 'No food logs found in the selected date range.' });
+        setLoading(false);
         return;
       }
 
@@ -118,7 +120,7 @@ export default function ReportsPage() {
 
       let totalCalories = 0;
       logs.forEach(log => {
-        const logDate = log.timestamp instanceof Timestamp ? log.timestamp.toDate() : log.timestamp;
+        const logDate = log.timestamp instanceof Timestamp ? log.timestamp.toDate() : new Date(log.timestamp);
         const row = [
           format(logDate, 'yyyy-MM-dd HH:mm'),
           log.foodName,
@@ -138,13 +140,17 @@ export default function ReportsPage() {
       doc.setFontSize(12);
       doc.text(`Total Calorie Intake: ${totalCalories} kcal`, 14, finalY + 10);
       
-      const avgCalories = (totalCalories / logs.length).toFixed(2);
-      doc.text(`Average Calories per Entry: ${avgCalories} kcal`, 14, finalY + 16);
+      const numberOfDays = (date.to.getTime() - date.from.getTime()) / (1000 * 3600 * 24) + 1;
+      const avgDailyCalories = totalCalories / numberOfDays;
+      doc.text(`Average Daily Intake: ${avgDailyCalories.toFixed(2)} kcal/day`, 14, finalY + 16);
+
 
       if(profile.dailyCalorieTarget) {
-          const days = (date.to.getTime() - date.from.getTime()) / (1000 * 3600 * 24) + 1;
-          const targetTotal = profile.dailyCalorieTarget * days;
+          const targetTotal = profile.dailyCalorieTarget * numberOfDays;
           doc.text(`Target for Period: ~${targetTotal.toFixed(0)} kcal (${profile.dailyCalorieTarget} kcal/day)`, 14, finalY + 22);
+          const difference = totalCalories - targetTotal;
+          doc.text(`Difference from Target: ${difference.toFixed(2)} kcal`, 14, finalY + 28);
+
       }
       
       doc.save(`Calorie_Report_${profile.name}_${format(new Date(), 'yyyy-MM-dd')}.pdf`);
