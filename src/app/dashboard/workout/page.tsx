@@ -7,12 +7,12 @@ import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
 import { useAuthState } from 'react-firebase-hooks/auth';
 import { auth, db } from '@/lib/firebase';
-import { doc, getDoc, collection, query, orderBy, where, limit, getDocs, addDoc, Timestamp } from 'firebase/firestore';
+import { doc, getDoc, collection, query, orderBy, where, limit, getDocs } from 'firebase/firestore';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription, CardFooter } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { useToast } from '@/hooks/use-toast';
-import { Loader2, Dumbbell, FileDown, Activity, Users, Clock, Flame, Shield, MoveRight, MoveLeft, Bookmark, History, Repeat, Target, Timer, HeartPulse } from 'lucide-react';
+import { Loader2, Dumbbell, FileDown, Activity, Shield, MoveRight, MoveLeft, Repeat, Target, Timer, HeartPulse } from 'lucide-react';
 import { generateWorkoutPlan, type WorkoutPlanOutput } from '@/ai/flows/workout-recommender';
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from '@/components/ui/form';
 import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
@@ -42,11 +42,6 @@ const workoutSchema = z.object({
 
 type WorkoutFormData = z.infer<typeof workoutSchema>;
 
-interface WorkoutLog extends WorkoutPlanOutput {
-  id: string;
-  timestamp: Date;
-}
-
 const Steps = {
   PREFERENCES: 1,
   GENERATING: 2,
@@ -57,13 +52,10 @@ export default function WorkoutPage() {
   const [user, authLoading] = useAuthState(auth);
   const { toast } = useToast();
   const [initialLoading, setInitialLoading] = useState(true);
-  const [isSaving, setIsSaving] = useState(false);
   const [profile, setProfile] = useState<any>(null);
   const [latestHealthReport, setLatestHealthReport] = useState<any>(null);
   const [workoutResult, setWorkoutResult] = useState<WorkoutPlanOutput | null>(null);
   const [currentStep, setCurrentStep] = useState(Steps.PREFERENCES);
-  const [history, setHistory] = useState<WorkoutLog[]>([]);
-  const [isFetchingHistory, setIsFetchingHistory] = useState(true);
 
   const form = useForm<WorkoutFormData>({
     resolver: zodResolver(workoutSchema),
@@ -74,9 +66,8 @@ export default function WorkoutPage() {
     },
   });
 
-  const fetchUserDataAndHistory = useCallback(async () => {
+  const fetchUserData = useCallback(async () => {
     if (user) {
-      setIsFetchingHistory(true);
       try {
         const profileRef = doc(db, 'profiles', user.uid);
         const profileSnap = await getDoc(profileRef);
@@ -96,55 +87,22 @@ export default function WorkoutPage() {
         if (!reportSnapshot.empty) {
           setLatestHealthReport(reportSnapshot.docs[0].data());
         }
-
-        const historyQuery = query(
-          collection(db, 'workout-plans'),
-          where('userId', '==', user.uid),
-          orderBy('timestamp', 'desc')
-        );
-        const historySnapshot = await getDocs(historyQuery);
-        const historyLogs = historySnapshot.docs.map(doc => ({
-            id: doc.id,
-            ...doc.data(),
-            timestamp: (doc.data().timestamp as Timestamp).toDate(),
-        })) as WorkoutLog[];
-        setHistory(historyLogs);
       } catch (e: any) {
-        toast({ title: "History Fetch Failed", description: "Could not load your workout history. You can still generate new plans.", variant: "destructive" });
-        setHistory([]);
+        toast({ title: "Data Fetch Failed", description: "Could not load your user data.", variant: "destructive" });
       } finally {
         setInitialLoading(false);
-        setIsFetchingHistory(false);
       }
     }
   }, [user, toast]);
 
   useEffect(() => {
     if (!authLoading && user) {
-      fetchUserDataAndHistory();
+      fetchUserData();
     } else if (!authLoading && !user) {
       setInitialLoading(false);
-      setIsFetchingHistory(false);
     }
-  }, [user, authLoading, fetchUserDataAndHistory]);
+  }, [user, authLoading, fetchUserData]);
   
-  async function handleSaveWorkout(workoutToSave: WorkoutPlanOutput) {
-      if (!user) return;
-      setIsSaving(true);
-      try {
-          await addDoc(collection(db, 'workout-plans'), {
-              userId: user.uid,
-              timestamp: new Date(),
-              ...workoutToSave
-          });
-          toast({ title: "Workout Saved", description: "This plan has been saved to your history." });
-          await fetchUserDataAndHistory();
-      } catch(e: any) {
-          toast({ title: "Save Failed", description: e.message, variant: "destructive" });
-      } finally {
-          setIsSaving(false);
-      }
-  }
 
   async function onSubmit(values: WorkoutFormData) {
     if (!profile || !user) {
@@ -159,7 +117,6 @@ export default function WorkoutPage() {
         latestHealthReport: latestHealthReport ? JSON.stringify(latestHealthReport) : undefined,
       });
       setWorkoutResult(result);
-      await handleSaveWorkout(result);
       setCurrentStep(Steps.RESULT);
     } catch (e: any) {
       console.error(e);
@@ -358,7 +315,7 @@ export default function WorkoutPage() {
             <Card className="flex flex-col items-center justify-center py-24">
               <Loader2 className="h-16 w-16 animate-spin text-primary" />
               <CardTitle className="mt-6">Building your workout plan...</CardTitle>
-              <CardDescription className="mt-2">Our AI coach is personalizing your session and saving it!</CardDescription>
+              <CardDescription className="mt-2">Our AI coach is personalizing your session!</CardDescription>
             </Card>
           </motion.div>
         )}
@@ -413,40 +370,6 @@ export default function WorkoutPage() {
            </motion.div>
         )}
       </AnimatePresence>
-      <Card>
-        <CardHeader>
-          <CardTitle className="flex items-center gap-2"><History /> Workout History</CardTitle>
-          <CardDescription>View your previously generated and saved workout plans.</CardDescription>
-        </CardHeader>
-        <CardContent>
-            {isFetchingHistory ? (
-              <div className="flex justify-center py-8">
-                <Loader2 className="h-8 w-8 animate-spin text-primary"/>
-              </div>
-            ) : history.length > 0 ? (
-                <div className="space-y-4 max-h-[600px] overflow-y-auto pr-4">
-                    {history.map(item => (
-                        <Card key={item.id} className="bg-muted/30">
-                           <CardHeader>
-                                <CardTitle className="text-lg">{item.planTitle}</CardTitle>
-                                <CardDescription>Saved on {item.timestamp.toLocaleDateString()}</CardDescription>
-                            </CardHeader>
-                            <CardContent>
-                                <p className="text-sm text-muted-foreground mb-4">{item.planSummary}</p>
-                                <div className="flex gap-2 flex-wrap">
-                                    {item.tags.map(tag => <Badge key={tag} variant="secondary">{tag}</Badge>)}
-                                </div>
-                            </CardContent>
-                        </Card>
-                    ))}
-                </div>
-            ) : (
-               <p className="text-muted-foreground text-center py-8">No saved workout plans yet. Generate one to get started!</p>
-            )}
-        </CardContent>
-      </Card>
     </div>
   );
 }
-
-    

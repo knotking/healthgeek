@@ -7,12 +7,12 @@ import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
 import { useAuthState } from 'react-firebase-hooks/auth';
 import { auth, db } from '@/lib/firebase';
-import { doc, getDoc, addDoc, collection, query, orderBy, getDocs, Timestamp, where } from 'firebase/firestore';
+import { doc, getDoc } from 'firebase/firestore';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription, CardFooter } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { useToast } from '@/hooks/use-toast';
-import { Loader2, ChefHat, CookingPot, FileDown, Utensils, Clock, User, Sparkles, MoveRight, MoveLeft, Bookmark, History } from 'lucide-react';
+import { Loader2, ChefHat, CookingPot, FileDown, Utensils, Clock, User, Sparkles, MoveRight, MoveLeft } from 'lucide-react';
 import { generateSingleRecipe, SingleRecipeOutput } from '@/ai/flows/conversational-recipe-generator';
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from '@/components/ui/form';
 import { Input } from '@/components/ui/input';
@@ -21,7 +21,6 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { AnimatePresence, motion } from 'framer-motion';
 import jsPDF from 'jspdf';
 import 'jspdf-autotable';
-import { Separator } from '@/components/ui/separator';
 
 const recipeSchema = z.object({
   mealType: z.string().min(1, "Please select a meal type."),
@@ -33,11 +32,6 @@ const recipeSchema = z.object({
 
 type RecipeFormData = z.infer<typeof recipeSchema>;
 
-interface RecipeLog extends SingleRecipeOutput {
-  id: string;
-  timestamp: Date;
-}
-
 const Steps = {
   PREFERENCES: 1,
   GENERATING: 2,
@@ -48,12 +42,9 @@ export default function RecipeGeneratorPage() {
   const [user, authLoading] = useAuthState(auth);
   const { toast } = useToast();
   const [loading, setLoading] = useState(true);
-  const [isSaving, setIsSaving] = useState(false);
   const [profile, setProfile] = useState<any>(null);
   const [recipeResult, setRecipeResult] = useState<SingleRecipeOutput | null>(null);
   const [currentStep, setCurrentStep] = useState(Steps.PREFERENCES);
-  const [history, setHistory] = useState<RecipeLog[]>([]);
-  const [isFetchingHistory, setIsFetchingHistory] = useState(true);
 
   const form = useForm<RecipeFormData>({
     resolver: zodResolver(recipeSchema),
@@ -66,9 +57,8 @@ export default function RecipeGeneratorPage() {
     },
   });
 
-  const fetchUserDataAndHistory = useCallback(async () => {
+  const fetchUserData = useCallback(async () => {
     if (user) {
-      setIsFetchingHistory(true);
       try {
         const docRef = doc(db, 'profiles', user.uid);
         const docSnap = await getDoc(docRef);
@@ -77,57 +67,22 @@ export default function RecipeGeneratorPage() {
         } else {
            toast({ variant: 'destructive', title: 'Profile Required', description: 'Please complete your user profile first.' });
         }
-        
-        const historyQuery = query(
-          collection(db, 'recipe-history'),
-          where('userId', '==', user.uid),
-          orderBy('timestamp', 'desc')
-        );
-        const historySnapshot = await getDocs(historyQuery);
-        const historyLogs = historySnapshot.docs.map(doc => ({
-            id: doc.id,
-            ...doc.data(),
-            timestamp: (doc.data().timestamp as Timestamp).toDate(),
-        })) as RecipeLog[];
-        setHistory(historyLogs);
-
       } catch (e: any) {
-         console.error("Failed to fetch user data or history:", e);
-         toast({ title: "History Fetch Failed", description: "Could not load your recipe history. You can still generate new recipes.", variant: "destructive" });
-         setHistory([]);
+         console.error("Failed to fetch user data:", e);
+         toast({ title: "Profile Fetch Failed", description: "Could not load your profile.", variant: "destructive" });
       } finally {
         setLoading(false);
-        setIsFetchingHistory(false);
       }
     }
   }, [user, toast]);
 
   useEffect(() => {
     if (!authLoading && user) {
-      fetchUserDataAndHistory();
+      fetchUserData();
     } else if (!authLoading && !user) {
       setLoading(false);
-      setIsFetchingHistory(false);
     }
-  }, [user, authLoading, fetchUserDataAndHistory]);
-
-  async function handleSaveRecipe(recipeToSave: SingleRecipeOutput) {
-    if (!user) return;
-    setIsSaving(true);
-    try {
-        await addDoc(collection(db, 'recipe-history'), {
-            userId: user.uid,
-            timestamp: new Date(),
-            ...recipeToSave
-        });
-        toast({ title: "Recipe Saved", description: "This recipe has been saved to your history." });
-        await fetchUserDataAndHistory();
-    } catch(e: any) {
-        toast({ title: "Save Failed", description: e.message, variant: "destructive" });
-    } finally {
-        setIsSaving(false);
-    }
-  }
+  }, [user, authLoading, fetchUserData]);
 
   async function onSubmit(values: RecipeFormData) {
     if (!profile || !user) {
@@ -141,7 +96,6 @@ export default function RecipeGeneratorPage() {
         userProfile: JSON.stringify(profile),
       });
       setRecipeResult(result);
-      await handleSaveRecipe(result);
       setCurrentStep(Steps.RESULT);
     } catch (e: any) {
       console.error(e);
@@ -324,7 +278,7 @@ export default function RecipeGeneratorPage() {
             <Card className="flex flex-col items-center justify-center py-24">
               <Loader2 className="h-16 w-16 animate-spin text-primary" />
               <CardTitle className="mt-6">Crafting your recipe...</CardTitle>
-              <CardDescription className="mt-2">Our AI chef is at work and saving it to your history!</CardDescription>
+              <CardDescription className="mt-2">Our AI chef is at work!</CardDescription>
             </Card>
           </motion.div>
         )}
@@ -381,40 +335,6 @@ export default function RecipeGeneratorPage() {
            </motion.div>
         )}
       </AnimatePresence>
-       <Card>
-        <CardHeader>
-          <CardTitle className="flex items-center gap-2"><History /> Recipe History</CardTitle>
-          <CardDescription>View your previously generated and saved recipes.</CardDescription>
-        </CardHeader>
-        <CardContent>
-            {isFetchingHistory ? (
-              <div className="flex justify-center py-8">
-                <Loader2 className="h-8 w-8 animate-spin text-primary"/>
-              </div>
-            ) : history.length > 0 ? (
-                <div className="space-y-4 max-h-[600px] overflow-y-auto pr-4">
-                    {history.map(item => (
-                        <Card key={item.id} className="bg-muted/30">
-                           <CardHeader>
-                                <CardTitle className="text-lg">{item.name}</CardTitle>
-                                <CardDescription>Saved on {item.timestamp.toLocaleDateString()}</CardDescription>
-                            </CardHeader>
-                            <CardContent>
-                                <p className="text-sm text-muted-foreground mb-4">{item.description}</p>
-                                <div className="flex gap-2 flex-wrap">
-                                    {item.tags.map(tag => <Badge key={tag} variant="secondary">{tag}</Badge>)}
-                                </div>
-                            </CardContent>
-                        </Card>
-                    ))}
-                </div>
-            ) : (
-               <p className="text-muted-foreground text-center py-8">No saved recipes yet. Generate one above to get started!</p>
-            )}
-        </CardContent>
-      </Card>
     </div>
   );
 }
-
-    
