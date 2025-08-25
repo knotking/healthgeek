@@ -93,7 +93,7 @@ export default function RecipeGeneratorPage() {
 
       } catch (e: any) {
          console.error("Failed to fetch user data or history:", e);
-         setHistory([]);
+         setHistory([]); // Clear history on error to show empty state
       } finally {
         setLoading(false);
         setIsFetchingHistory(false);
@@ -419,3 +419,5 @@ export default function RecipeGeneratorPage() {
     </div>
   );
 }
+
+    
