@@ -24,6 +24,7 @@ import { Loader2 } from 'lucide-react';
 import Link from 'next/link';
 import { Checkbox } from "@/components/ui/checkbox";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
+import { generateCalorieTarget } from '@/ai/flows/calorie-target-generator';
 
 const healthIssues = [
   { id: 'diabetes', label: 'Diabetes' },
@@ -71,10 +72,10 @@ export default function SignupPage() {
       email: '',
       password: '',
       name: '',
-      age: '' as any,
-      bmi: '' as any,
-      currentWeight: '' as any,
-      targetWeight: '' as any,
+      age: 0,
+      bmi: 0,
+      currentWeight: 0,
+      targetWeight: 0,
       weightUnit: 'LB',
       healthIssues: [],
       diets: [],
@@ -86,6 +87,16 @@ export default function SignupPage() {
     try {
       const userCredential = await createUserWithEmailAndPassword(auth, values.email, values.password);
       const user = userCredential.user;
+
+      const { dailyCalorieTarget } = await generateCalorieTarget({
+        age: values.age,
+        bmi: values.bmi,
+        currentWeight: values.currentWeight,
+        targetWeight: values.targetWeight,
+        weightUnit: values.weightUnit,
+        healthIssues: values.healthIssues,
+        diets: values.diets,
+      });
 
       const profileData = {
         name: values.name,
@@ -99,10 +110,16 @@ export default function SignupPage() {
         healthIssues: values.healthIssues,
         diets: values.diets,
         email: values.email,
+        dailyCalorieTarget,
       };
 
       await setDoc(doc(db, 'profiles', user.uid), profileData);
       
+      toast({
+        title: "Account Created!",
+        description: `Your daily calorie target has been set to ${dailyCalorieTarget} kcal.`
+      });
+
       router.push('/dashboard');
     } catch (error: any) {
       console.error('Signup error:', error);

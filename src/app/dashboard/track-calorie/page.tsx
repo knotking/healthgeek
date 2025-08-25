@@ -14,9 +14,10 @@ import {
   CardDescription,
 } from '@/components/ui/card';
 import { useToast } from '@/hooks/use-toast';
-import { Loader2, Camera, Upload, Utensils, Zap, HeartPulse, List } from 'lucide-react';
+import { Loader2, Camera, Upload, Utensils, Zap, HeartPulse, List, AlertTriangle } from 'lucide-react';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import Image from 'next/image';
+import { Progress } from '@/components/ui/progress';
 
 interface FoodLog extends FoodAnalysisOutput {
   id: string;
@@ -42,9 +43,15 @@ export default function TrackCaloriePage() {
       const docSnap = await getDoc(docRef);
       if (docSnap.exists()) {
         setProfile(docSnap.data());
+      } else {
+        toast({
+          title: 'Profile Not Found',
+          description: 'Please complete your profile to set a calorie target.',
+          variant: 'destructive',
+        });
       }
     }
-  }, [user]);
+  }, [user, toast]);
 
   const fetchDailyLog = useCallback(async () => {
     if (user) {
@@ -74,7 +81,7 @@ export default function TrackCaloriePage() {
   }, [user]);
 
   useEffect(() => {
-    if (!authLoading) {
+    if (!authLoading && user) {
       fetchUserProfile();
       fetchDailyLog();
     }
@@ -151,6 +158,11 @@ export default function TrackCaloriePage() {
   };
 
   const totalCalories = dailyLog.reduce((sum, log) => sum + log.calories, 0);
+  const calorieTarget = profile?.dailyCalorieTarget || 0;
+  const remainingCalories = calorieTarget - totalCalories;
+  const progressPercentage = calorieTarget > 0 ? (totalCalories / calorieTarget) * 100 : 0;
+  
+  const projectedCaloriesExceeded = analysisResult && (remainingCalories - analysisResult.calories < 0);
 
   return (
     <div className="grid md:grid-cols-3 gap-6">
@@ -184,6 +196,15 @@ export default function TrackCaloriePage() {
                                 <CardTitle className="flex items-center gap-2"><Utensils /> {analysisResult.foodName}</CardTitle>
                             </CardHeader>
                             <CardContent className="space-y-4">
+                                {projectedCaloriesExceeded && (
+                                    <Alert variant="destructive">
+                                        <AlertTriangle className="h-4 w-4" />
+                                        <AlertTitle>Warning</AlertTitle>
+                                        <AlertDescription>
+                                            Eating this will exceed your daily calorie target by approximately {Math.abs(remainingCalories - analysisResult.calories)} kcal.
+                                        </AlertDescription>
+                                    </Alert>
+                                )}
                                 <div className="flex items-center gap-2"><Zap /> <strong>Calories:</strong> {analysisResult.calories} kcal</div>
                                 <div className="flex items-start gap-2"><HeartPulse /> <strong>Health Impact:</strong> <p className="text-sm">{analysisResult.healthImpact}</p></div>
                                 <div className="flex gap-2 mt-4">
@@ -204,9 +225,10 @@ export default function TrackCaloriePage() {
                     <Camera className="w-16 h-16 text-muted-foreground" />
                     <p className="text-muted-foreground">Take or upload a picture of your food</p>
                     <input type="file" accept="image/*" ref={fileInputRef} onChange={handleImageChange} className="hidden" />
-                    <Button onClick={() => fileInputRef.current?.click()} disabled={loading !== 'idle' || authLoading}>
+                    <Button onClick={() => fileInputRef.current?.click()} disabled={loading !== 'idle' || authLoading || !profile}>
                         <Upload className="mr-2 h-4 w-4" /> Upload Photo
                     </Button>
+                     {!profile && !authLoading && <p className="text-sm text-destructive">Please complete your profile first.</p>}
                 </div>
             )}
           </CardContent>
@@ -217,14 +239,28 @@ export default function TrackCaloriePage() {
         <Card>
            <CardHeader>
               <CardTitle className="flex items-center gap-2"><List/>Today's Food Log</CardTitle>
-              <CardDescription>A summary of the food you've tracked today.</CardDescription>
+              {calorieTarget > 0 ? (
+                <CardDescription>Your target for today is {calorieTarget} kcal.</CardDescription>
+              ) : (
+                <CardDescription>Set your profile to see a daily calorie target.</CardDescription>
+              )}
             </CardHeader>
             <CardContent>
                 {loading === 'fetching' && <div className="flex justify-center"><Loader2 className="h-6 w-6 animate-spin"/></div>}
+                
+                {calorieTarget > 0 && (
+                  <div className="space-y-4 mb-6">
+                    <div className="flex justify-between text-sm font-medium">
+                      <span>Consumed: {totalCalories} kcal</span>
+                      <span className="text-muted-foreground">Remaining: {remainingCalories} kcal</span>
+                    </div>
+                    <Progress value={progressPercentage} className="h-2" />
+                  </div>
+                )}
+                
                 {dailyLog.length > 0 ? (
                     <div className="space-y-4">
-                         <div className="text-lg font-bold">Total Calories: {totalCalories} kcal</div>
-                        <ul className="space-y-3">
+                        <ul className="space-y-3 max-h-96 overflow-y-auto">
                            {dailyLog.map(log => (
                             <li key={log.id} className="flex justify-between items-center p-3 bg-muted/50 rounded-md">
                                 <div>

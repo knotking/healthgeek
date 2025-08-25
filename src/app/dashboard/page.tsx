@@ -22,6 +22,7 @@ import { useToast } from '@/hooks/use-toast';
 import { Loader2 } from 'lucide-react';
 import { Checkbox } from "@/components/ui/checkbox";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
+import { generateCalorieTarget } from '@/ai/flows/calorie-target-generator';
 
 const healthIssues = [
   { id: 'diabetes', label: 'Diabetes' },
@@ -52,6 +53,7 @@ const profileSchema = z.object({
   diets: z.array(z.string()).refine((value) => value.some((item) => item), {
     message: 'You have to select at least one diet preference.',
   }),
+  dailyCalorieTarget: z.coerce.number().optional(),
 });
 
 type ProfileFormData = z.infer<typeof profileSchema>;
@@ -66,13 +68,14 @@ export default function ProfilePage() {
     resolver: zodResolver(profileSchema),
     defaultValues: {
       name: '',
-      age: '' as any,
-      bmi: '' as any,
-      currentWeight: '' as any,
-      targetWeight: '' as any,
+      age: 0,
+      bmi: 0,
+      currentWeight: 0,
+      targetWeight: 0,
       weightUnit: 'LB',
       healthIssues: [],
       diets: [],
+      dailyCalorieTarget: 0,
     },
   });
 
@@ -93,6 +96,7 @@ export default function ProfilePage() {
             weightUnit: profileData.weight.unit,
             healthIssues: profileData.healthIssues,
             diets: profileData.diets,
+            dailyCalorieTarget: profileData.dailyCalorieTarget,
           });
         }
         setFetchingProfile(false);
@@ -107,6 +111,16 @@ export default function ProfilePage() {
     if (!user) return;
     setLoading(true);
     try {
+      const { dailyCalorieTarget } = await generateCalorieTarget({
+        age: values.age,
+        bmi: values.bmi,
+        currentWeight: values.currentWeight,
+        targetWeight: values.targetWeight,
+        weightUnit: values.weightUnit,
+        healthIssues: values.healthIssues,
+        diets: values.diets,
+      });
+
       const profileData = {
         name: values.name,
         age: values.age,
@@ -119,11 +133,13 @@ export default function ProfilePage() {
         healthIssues: values.healthIssues,
         diets: values.diets,
         email: user.email,
+        dailyCalorieTarget: dailyCalorieTarget,
       };
       await setDoc(doc(db, 'profiles', user.uid), profileData);
+      form.setValue('dailyCalorieTarget', dailyCalorieTarget);
       toast({
         title: 'Profile Updated',
-        description: 'Your profile has been successfully updated.',
+        description: `Your profile has been successfully updated. Your new daily calorie target is ${dailyCalorieTarget} kcal.`,
       });
     } catch (error: any) {
       console.error('Profile update error:', error);
@@ -149,7 +165,7 @@ export default function ProfilePage() {
     <Card>
       <CardHeader>
         <CardTitle>Your Profile</CardTitle>
-        <CardDescription>View and edit your personal information.</CardDescription>
+        <CardDescription>View and edit your personal information. Your daily calorie target is calculated automatically based on your profile.</CardDescription>
       </CardHeader>
       <CardContent>
         <Form {...form}>
@@ -286,6 +302,14 @@ export default function ProfilePage() {
                   </FormItem>
                 )}
               />
+
+              <FormField control={form.control} name="dailyCalorieTarget" render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Daily Calorie Target (kcal)</FormLabel>
+                    <FormControl><Input type="number" {...field} disabled /></FormControl>
+                    <FormMessage />
+                  </FormItem>
+              )} />
             </div>
             <Button type="submit" className="w-full md:w-auto" disabled={loading}>
               {loading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
