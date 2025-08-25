@@ -1,3 +1,4 @@
+
 'use client';
 
 import { useState, useRef, useEffect, useCallback } from 'react';
@@ -18,6 +19,7 @@ import { Loader2, Camera, Upload, Utensils, Zap, HeartPulse, List, AlertTriangle
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import Image from 'next/image';
 import { Progress } from '@/components/ui/progress';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 
 interface FoodLog extends FoodAnalysisOutput {
   id: string;
@@ -165,8 +167,12 @@ export default function TrackCaloriePage() {
   const projectedCaloriesExceeded = analysisResult && (remainingCalories - analysisResult.calories < 0);
 
   return (
-    <div className="grid md:grid-cols-3 gap-6">
-      <div className="md:col-span-2">
+    <Tabs defaultValue="track" className="w-full">
+      <TabsList className="grid w-full grid-cols-2">
+        <TabsTrigger value="track">Track Meal</TabsTrigger>
+        <TabsTrigger value="log">Today's Log</TabsTrigger>
+      </TabsList>
+      <TabsContent value="track">
         <Card>
           <CardHeader>
             <CardTitle>Track Your Meal</CardTitle>
@@ -233,9 +239,8 @@ export default function TrackCaloriePage() {
             )}
           </CardContent>
         </Card>
-      </div>
-
-      <div className="md:col-span-1">
+      </TabsContent>
+      <TabsContent value="log">
         <Card>
            <CardHeader>
               <CardTitle className="flex items-center gap-2"><List/>Today's Food Log</CardTitle>
@@ -277,7 +282,7 @@ export default function TrackCaloriePage() {
                 )}
             </CardContent>
         </Card>
-      </div>
-    </div>
+      </TabsContent>
+    </Tabs>
   );
 }
