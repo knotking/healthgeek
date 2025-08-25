@@ -33,12 +33,13 @@ export default function AnalysisPage() {
   const [error, setError] = useState<string | null>(null);
   const [profile, setProfile] = useState<any>(null);
   const [reportHistory, setReportHistory] = useState<HealthReportLog[]>([]);
+  const [isFetchingHistory, setIsFetchingHistory] = useState(true);
 
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   const fetchUserAndReports = useCallback(async () => {
     if (user) {
-      setLoading(true);
+      setIsFetchingHistory(true);
       try {
         const profileRef = doc(db, 'profiles', user.uid);
         const profileSnap = await getDoc(profileRef);
@@ -63,8 +64,9 @@ export default function AnalysisPage() {
 
       } catch (e: any) {
         toast({ title: 'Error', description: 'Failed to fetch user data or reports.', variant: 'destructive' });
+        console.error(e);
       } finally {
-        setLoading(false);
+        setIsFetchingHistory(false);
       }
     }
   }, [user, toast]);
@@ -72,6 +74,8 @@ export default function AnalysisPage() {
   useEffect(() => {
     if (!authLoading && user) {
       fetchUserAndReports();
+    } else if (!authLoading && !user) {
+      setIsFetchingHistory(false);
     }
   }, [user, authLoading, fetchUserAndReports]);
 
@@ -258,9 +262,12 @@ export default function AnalysisPage() {
           <CardDescription>View your previously analyzed health reports.</CardDescription>
         </CardHeader>
         <CardContent>
-            {loading && reportHistory.length === 0 && <div className="flex justify-center"><Loader2 className="h-6 w-6 animate-spin"/></div>}
-            {reportHistory.length > 0 ? (
-                <div className="space-y-4 max-h-[500px] overflow-y-auto">
+            {isFetchingHistory ? (
+              <div className="flex justify-center py-8">
+                <Loader2 className="h-8 w-8 animate-spin text-primary"/>
+              </div>
+            ) : reportHistory.length > 0 ? (
+                <div className="space-y-4 max-h-[500px] overflow-y-auto pr-4">
                     {reportHistory.map(report => (
                         <Card key={report.id} className="bg-muted/30">
                             <CardHeader>
@@ -268,21 +275,33 @@ export default function AnalysisPage() {
                                 <CardDescription>{report.timestamp.toLocaleTimeString()}</CardDescription>
                             </CardHeader>
                             <CardContent>
-                                <p className="text-sm font-semibold mb-2">Summary:</p>
-                                <p className="text-sm text-muted-foreground mb-4">{report.summary}</p>
-                                <p className="text-sm font-semibold mb-2">Metrics:</p>
-                                <ul className="space-y-1 text-xs">
-                                  {report.extractedMetrics.map(m => <li key={m.name}>- {m.name}: {m.value} ({m.interpretation})</li>)}
-                                </ul>
+                                <div>
+                                  <h4 className="font-semibold text-sm mb-2">Summary</h4>
+                                  <p className="text-sm text-muted-foreground mb-4">{report.summary}</p>
+                                </div>
+                                <Separator className="my-4"/>
+                                <div>
+                                   <h4 className="font-semibold text-sm mb-2">Extracted Metrics</h4>
+                                    <ul className="space-y-2">
+                                        {report.extractedMetrics.map(metric => (
+                                            <li key={metric.name} className="flex justify-between text-xs p-2 bg-background/50 rounded-md">
+                                              <span><strong>{metric.name}:</strong> {metric.value}</span>
+                                              <span className="font-medium">{metric.interpretation}</span>
+                                            </li>
+                                        ))}
+                                    </ul>
+                                </div>
                             </CardContent>
                         </Card>
                     ))}
                 </div>
             ) : (
-               !loading && <p className="text-muted-foreground text-center py-8">No reports analyzed yet.</p>
+               <p className="text-muted-foreground text-center py-8">No reports analyzed yet.</p>
             )}
         </CardContent>
       </Card>
     </div>
   );
 }
+
+    
