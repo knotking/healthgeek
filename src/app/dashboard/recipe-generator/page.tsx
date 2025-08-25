@@ -93,6 +93,7 @@ export default function RecipeGeneratorPage() {
 
       } catch (e: any) {
          toast({ title: 'Error', description: 'Failed to fetch user data or history.', variant: 'destructive' });
+         setHistory([]);
       } finally {
         setLoading(false);
         setIsFetchingHistory(false);
@@ -137,6 +138,7 @@ export default function RecipeGeneratorPage() {
         });
         toast({ title: "Recipe Saved", description: "This recipe has been saved to your history." });
         await fetchUserDataAndHistory(); // Refresh history
+        resetFlow();
     } catch(e: any) {
         toast({ title: "Save Failed", description: e.message, variant: "destructive" });
     } finally {
@@ -213,6 +215,38 @@ export default function RecipeGeneratorPage() {
 
   return (
     <div className="max-w-4xl mx-auto space-y-6">
+       <Card>
+        <CardHeader>
+          <CardTitle className="flex items-center gap-2"><History /> Recipe History</CardTitle>
+          <CardDescription>View your previously saved recipes.</CardDescription>
+        </CardHeader>
+        <CardContent>
+            {isFetchingHistory ? (
+              <div className="flex justify-center py-8">
+                <Loader2 className="h-8 w-8 animate-spin text-primary"/>
+              </div>
+            ) : history.length > 0 ? (
+                <div className="space-y-4 max-h-[600px] overflow-y-auto pr-4">
+                    {history.map(item => (
+                        <Card key={item.id} className="bg-muted/30">
+                           <CardHeader>
+                                <CardTitle className="text-lg">{item.name}</CardTitle>
+                                <CardDescription>Saved on {item.timestamp.toLocaleDateString()}</CardDescription>
+                            </CardHeader>
+                            <CardContent>
+                                <p className="text-sm text-muted-foreground mb-4">{item.description}</p>
+                                <div className="flex gap-2 flex-wrap">
+                                    {item.tags.map(tag => <Badge key={tag} variant="secondary">{tag}</Badge>)}
+                                </div>
+                            </CardContent>
+                        </Card>
+                    ))}
+                </div>
+            ) : (
+               <p className="text-muted-foreground text-center py-8">No saved recipes yet.</p>
+            )}
+        </CardContent>
+      </Card>
       <AnimatePresence mode="wait">
         {currentStep === Steps.PREFERENCES && (
           <motion.div key="preferences" initial="initial" animate="in" exit="out" variants={pageVariants} transition={pageTransition}>
@@ -379,43 +413,6 @@ export default function RecipeGeneratorPage() {
            </motion.div>
         )}
       </AnimatePresence>
-
-      <Card className="mt-8">
-        <CardHeader>
-          <CardTitle className="flex items-center gap-2"><History /> Recipe History</CardTitle>
-          <CardDescription>View your previously saved recipes.</CardDescription>
-        </CardHeader>
-        <CardContent>
-            {isFetchingHistory ? (
-              <div className="flex justify-center py-8">
-                <Loader2 className="h-8 w-8 animate-spin text-primary"/>
-              </div>
-            ) : history.length > 0 ? (
-                <div className="space-y-4 max-h-[600px] overflow-y-auto pr-4">
-                    {history.map(item => (
-                        <Card key={item.id} className="bg-muted/30">
-                           <CardHeader>
-                                <CardTitle className="text-lg">{item.name}</CardTitle>
-                                <CardDescription>Saved on {item.timestamp.toLocaleDateString()}</CardDescription>
-                            </CardHeader>
-                            <CardContent>
-                                <p className="text-sm text-muted-foreground mb-4">{item.description}</p>
-                                <div className="flex gap-2 flex-wrap">
-                                    {item.tags.map(tag => <Badge key={tag} variant="secondary">{tag}</Badge>)}
-                                </div>
-                            </CardContent>
-                        </Card>
-                    ))}
-                </div>
-            ) : (
-               <p className="text-muted-foreground text-center py-8">No saved recipes yet.</p>
-            )}
-        </CardContent>
-      </Card>
     </div>
   );
 }
-
-    
-
-    
