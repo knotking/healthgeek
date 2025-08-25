@@ -93,11 +93,6 @@ export default function RecipeGeneratorPage() {
 
       } catch (e: any) {
          console.error("Failed to fetch user data or history:", e);
-         toast({
-            variant: "destructive",
-            title: "Could Not Fetch History",
-            description: "There was a problem fetching your recipe history. Please try again later.",
-          });
          setHistory([]);
       } finally {
         setLoading(false);
@@ -138,7 +133,6 @@ export default function RecipeGeneratorPage() {
   async function handleSaveRecipe() {
     if (!user || !recipeResult) return;
     setIsSaving(true);
-    let saved = false;
     try {
         await addDoc(collection(db, 'recipe-history'), {
             userId: user.uid,
@@ -146,15 +140,12 @@ export default function RecipeGeneratorPage() {
             ...recipeResult
         });
         toast({ title: "Recipe Saved", description: "This recipe has been saved to your history." });
-        await fetchUserDataAndHistory();
-        saved = true;
+        await fetchUserDataAndHistory(); // Refresh the history list
+        resetFlow(); // Reset the UI only after a successful save and refresh
     } catch(e: any) {
         toast({ title: "Save Failed", description: e.message, variant: "destructive" });
     } finally {
         setIsSaving(false);
-        if (saved) {
-            resetFlow();
-        }
     }
   }
 
