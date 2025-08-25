@@ -19,11 +19,11 @@ import { Loader2, Camera, Upload, Utensils, HeartPulse, ChefHat, CheckCircle, XC
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import Image from 'next/image';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from '@/components/ui/dialog';
-import { Separator } from '@/components/ui/separator';
 
 interface AssessmentLog extends FoodAssessorOutput {
   id: string;
   timestamp: Date;
+  photoDataUri: string;
 }
 
 
@@ -177,15 +177,22 @@ export default function FoodAssessmentPage() {
     }
   };
 
-  const saveAssessment = async (result: FoodAssessorOutput) => {
+  const saveAssessment = async (result: FoodAssessorOutput, imageDataUri: string) => {
       if(!user) return;
       try {
-          await addDoc(collection(db, 'food-assessments'), {
+          const docRef = await addDoc(collection(db, 'food-assessments'), {
               userId: user.uid,
               timestamp: new Date(),
+              photoDataUri: imageDataUri, // Saving image with the assessment
               ...result
           });
-          fetchUserDataAndHistory(); // Refresh history
+          const newHistoryItem: AssessmentLog = {
+              id: docRef.id,
+              ...result,
+              photoDataUri: imageDataUri,
+              timestamp: new Date()
+          }
+          setAssessmentHistory(prev => [newHistoryItem, ...prev]);
       } catch (e: any) {
           toast({ title: 'History Error', description: 'Failed to save assessment to your history.', variant: 'destructive'});
       }
@@ -212,7 +219,7 @@ export default function FoodAssessmentPage() {
         latestHealthReport: latestHealthReport ? JSON.stringify(latestHealthReport) : undefined,
       });
       setAssessmentResult(result);
-      await saveAssessment(result);
+      await saveAssessment(result, imageDataUri);
     } catch (e: any) {
       setError('Failed to assess food. Please try again.');
       console.error(e);
@@ -317,21 +324,24 @@ export default function FoodAssessmentPage() {
         {isFetchingHistory ? (
           <div className="flex justify-center py-8"><Loader2 className="h-8 w-8 animate-spin text-primary"/></div>
         ) : assessmentHistory.length > 0 ? (
-          <div className="space-y-4 max-h-[500px] overflow-y-auto pr-4">
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
             {assessmentHistory.map(item => (
-              <Card key={item.id} className="bg-muted/30">
-                <CardHeader>
-                  <CardTitle className="text-lg flex items-center justify-between">
-                    {item.foodName}
-                    <span className={`text-sm font-semibold flex items-center gap-1.5 ${item.isHealthyChoice ? 'text-green-500' : 'text-red-500'}`}>
+              <Card key={item.id} className="bg-muted/30 flex flex-col">
+                <CardHeader className="flex-row gap-4 items-center space-y-0">
+                    <Image src={item.photoDataUri} alt={item.foodName} width={64} height={64} className="rounded-lg object-cover aspect-square"/>
+                    <div className="flex-1">
+                        <CardTitle className="text-lg flex items-center justify-between">
+                            {item.foodName}
+                        </CardTitle>
+                        <CardDescription>{item.timestamp.toLocaleDateString()}</CardDescription>
+                    </div>
+                </CardHeader>
+                <CardContent className="flex-grow">
+                  <p className="text-sm text-muted-foreground line-clamp-2">{item.healthAssessment}</p>
+                   <span className={`mt-2 inline-flex items-center gap-1.5 text-sm font-semibold ${item.isHealthyChoice ? 'text-green-500' : 'text-red-500'}`}>
                       {item.isHealthyChoice ? <CheckCircle className="h-4 w-4" /> : <XCircle className="h-4 w-4" />}
                       {item.isHealthyChoice ? 'Healthy' : 'Not Ideal'}
                     </span>
-                  </CardTitle>
-                  <CardDescription>{item.timestamp.toLocaleString()}</CardDescription>
-                </CardHeader>
-                <CardContent>
-                  <p className="text-sm text-muted-foreground">{item.healthAssessment}</p>
                 </CardContent>
               </Card>
             ))}

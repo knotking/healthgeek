@@ -26,6 +26,7 @@ import {
   DialogHeader,
   DialogTitle,
   DialogDescription,
+  DialogFooter as DialogFooterPdf
 } from '@/components/ui/dialog';
 
 const recipeSchema = z.object({
@@ -120,12 +121,18 @@ export default function RecipeGeneratorPage() {
   async function saveRecipeToHistory(result: SingleRecipeOutput) {
     if (!user) return;
     try {
-      await addDoc(collection(db, 'recipe-history'), {
+      const docRef = await addDoc(collection(db, 'recipe-history'), {
         userId: user.uid,
         timestamp: new Date(),
         ...result,
       });
-      fetchUserDataAndHistory(); // Refresh history
+      const newHistoryItem: RecipeLog = {
+          id: docRef.id,
+          ...result,
+          timestamp: new Date()
+      };
+      setRecipeHistory(prev => [newHistoryItem, ...prev]);
+
     } catch(e:any) {
       toast({ title: 'History Error', description: 'Failed to save recipe to your history.', variant: 'destructive' });
     }
@@ -454,9 +461,9 @@ export default function RecipeGeneratorPage() {
                         </div>
                     </div>
                  </div>
-                 <DialogFooter>
+                 <DialogFooterPdf>
                      <Button onClick={() => handleDownloadPdf(selectedHistoryRecipe)}><FileDown className="mr-2"/> Download PDF</Button>
-                 </DialogFooter>
+                 </DialogFooterPdf>
                 </>
             )}
         </DialogContent>

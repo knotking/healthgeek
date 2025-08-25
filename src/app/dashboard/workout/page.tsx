@@ -20,7 +20,6 @@ import { Checkbox } from '@/components/ui/checkbox';
 import { AnimatePresence, motion } from 'framer-motion';
 import jsPDF from 'jspdf';
 import 'jspdf-autotable';
-import { Separator } from '@/components/ui/separator';
 import {
   Accordion,
   AccordionContent,
@@ -138,12 +137,17 @@ export default function WorkoutPage() {
   async function saveWorkoutToHistory(result: WorkoutPlanOutput) {
     if(!user) return;
     try {
-        await addDoc(collection(db, 'workout-plans'), {
+        const docRef = await addDoc(collection(db, 'workout-plans'), {
             userId: user.uid,
             timestamp: new Date(),
             ...result,
         });
-        fetchUserDataAndHistory();
+        const newHistoryItem: WorkoutLog = {
+            id: docRef.id,
+            ...result,
+            timestamp: new Date()
+        };
+        setWorkoutHistory(prev => [newHistoryItem, ...prev]);
     } catch(e:any) {
         toast({ title: 'History Error', description: 'Failed to save workout to your history.', variant: 'destructive'});
     }
@@ -425,7 +429,7 @@ export default function WorkoutPage() {
                                     <span className="text-xs text-muted-foreground">{plan.timestamp.toLocaleDateString()}</span>
                                 </div>
                             </AccordionTrigger>
-                            <AccordionContent className="space-y-6">
+                            <AccordionContent className="space-y-6 p-2">
                                 <p className="text-sm text-muted-foreground">{plan.planSummary}</p>
                                 <div className="bg-yellow-50 dark:bg-yellow-900/20 border-l-4 border-yellow-400 p-4 rounded-md">
                                     <h4 className="font-bold text-yellow-800 dark:text-yellow-300 flex items-center gap-2"><Shield /> Safety Notes</h4>
