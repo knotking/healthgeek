@@ -2,7 +2,7 @@
 'use client';
 
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
+import { Card, CardContent, CardHeader, CardTitle, CardDescription, CardFooter } from '@/components/ui/card';
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from '@/components/ui/accordion';
 
 // Common History Imports
@@ -11,7 +11,7 @@ import { useAuthState } from 'react-firebase-hooks/auth';
 import { auth, db } from '@/lib/firebase';
 import { collection, addDoc, query, where, orderBy, getDocs, Timestamp } from 'firebase/firestore';
 import { useToast } from '@/hooks/use-toast';
-import { BrainCircuit, ChefHat, Dumbbell, History, Loader2 as Loader2History, Save, Eye, PlusCircle } from 'lucide-react';
+import { BrainCircuit, ChefHat, Dumbbell, History, Loader2, Save, Eye } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 
@@ -79,7 +79,6 @@ import { Slider as SliderMeditation } from '@/components/ui/slider';
 import { Checkbox as CheckboxMeditation } from '@/components/ui/checkbox';
 import { AnimatePresence as AnimatePresenceMeditation, motion as motionMeditation } from 'framer-motion';
 import { Alert as AlertMeditation, AlertDescription as AlertDescriptionMeditation, AlertTitle as AlertTitleMeditation } from '@/components/ui/alert';
-import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
 
 type RecommendationType = 'recipe' | 'workout' | 'meditation';
 
@@ -845,7 +844,7 @@ const HistorySection = ({ history, loading, onView }: { history: RecommendationH
                 <CardDescription>Your saved recommendations. Click a card to view the full details.</CardDescription>
             </CardHeader>
             <CardContent>
-                {loading ? <div className="flex justify-center"><Loader2History className="h-6 w-6 animate-spin"/></div> :
+                {loading ? <div className="flex justify-center"><Loader2 className="h-6 w-6 animate-spin"/></div> :
                     history.length === 0 ? <p className="text-muted-foreground text-center">No history saved yet.</p> :
                     <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
                        {history.map(item => (
@@ -863,11 +862,11 @@ const HistorySection = ({ history, loading, onView }: { history: RecommendationH
                                        {(item.data.tags || []).map((tag:string) => <Badge key={tag} variant="secondary">{tag}</Badge>)}
                                    </div>
                                </CardContent>
-                               <div className="p-6 pt-0">
+                               <CardFooter className="p-6 pt-0">
                                    <Button className="w-full" variant="outline" onClick={() => onView(item)}>
                                        <Eye className="mr-2"/> View
                                    </Button>
-                               </div>
+                               </CardFooter>
                            </Card>
                        ))}
                     </div>
@@ -881,13 +880,11 @@ const HistorySection = ({ history, loading, onView }: { history: RecommendationH
 // --- Main Component ---
 export default function RecommendationsPage() {
     const [user, authLoading] = useAuthState(auth);
-    const { toast } = useToast();
     const [history, setHistory] = useState<RecommendationHistoryItem[]>([]);
     const [loadingHistory, setLoadingHistory] = useState(true);
 
     const [activeTab, setActiveTab] = useState<RecommendationType>('workout');
     const [viewData, setViewData] = useState<any>(null);
-    const [creatorOpen, setCreatorOpen] = useState(false);
 
     const fetchHistory = useCallback(async () => {
         if (user) {
@@ -926,7 +923,6 @@ export default function RecommendationsPage() {
     const handleViewHistoryItem = (item: RecommendationHistoryItem) => {
         setViewData(null); 
         setActiveTab(item.type);
-        setCreatorOpen(false);
         setTimeout(() => {
             setViewData(item.data);
         }, 50); 
@@ -936,29 +932,15 @@ export default function RecommendationsPage() {
         const newTab = val as RecommendationType;
         setActiveTab(newTab);
         setViewData(null);
-        setCreatorOpen(false);
     }
     
   const CurrentCreator = useMemo(() => {
     if (viewData) return null; // Don't show creator if viewing history item
-
-    return (
-         <Collapsible open={creatorOpen} onOpenChange={setCreatorOpen}>
-            <CollapsibleTrigger asChild>
-                <div className="flex justify-center py-4">
-                     <Button variant="outline">
-                        <PlusCircle className="mr-2"/> Create New {activeTab.charAt(0).toUpperCase() + activeTab.slice(1)}
-                    </Button>
-                </div>
-            </CollapsibleTrigger>
-            <CollapsibleContent>
-                 {activeTab === 'workout' && <WorkoutGeneratorTab onSave={fetchHistory} initialData={null} isVisible={creatorOpen} />}
-                 {activeTab === 'meditation' && <MeditationGeneratorTab onSave={fetchHistory} initialData={null} isVisible={creatorOpen} />}
-                 {activeTab === 'recipe' && <RecipeGeneratorTab onSave={fetchHistory} initialData={null} isVisible={creatorOpen} />}
-            </CollapsibleContent>
-        </Collapsible>
-    )
-  }, [activeTab, creatorOpen, viewData, fetchHistory]);
+    if (activeTab === 'workout') return <WorkoutGeneratorTab onSave={fetchHistory} initialData={null} isVisible={!viewData} />;
+    if (activeTab === 'meditation') return <MeditationGeneratorTab onSave={fetchHistory} initialData={null} isVisible={!viewData} />;
+    if (activeTab === 'recipe') return <RecipeGeneratorTab onSave={fetchHistory} initialData={null} isVisible={!viewData} />;
+    return null;
+  }, [activeTab, viewData, fetchHistory]);
   
   const ViewedItem = useMemo(() => {
       if(!viewData) return null;
