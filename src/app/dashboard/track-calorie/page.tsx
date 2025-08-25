@@ -50,12 +50,12 @@ export default function TrackCaloriePage() {
   useEffect(() => {
     const getCameraPermission = async () => {
       if (!isCameraOpen) {
-          if (videoRef.current?.srcObject) {
-            const stream = videoRef.current.srcObject as MediaStream;
-            stream.getTracks().forEach(track => track.stop());
-            videoRef.current.srcObject = null;
-          }
-          return;
+        if (videoRef.current?.srcObject) {
+          const stream = videoRef.current.srcObject as MediaStream;
+          stream.getTracks().forEach(track => track.stop());
+          videoRef.current.srcObject = null;
+        }
+        return;
       }
       
       try {
