@@ -15,7 +15,7 @@ import { doc as docRecipe, getDoc as getDocRecipe } from 'firebase/firestore';
 import { Button as ButtonRecipe } from '@/components/ui/button';
 import { Badge as BadgeRecipe } from '@/components/ui/badge';
 import { useToast as useToastRecipe } from '@/hooks/use-toast';
-import { Loader2 as Loader2Recipe, ChefHat, CookingPot, FileDown, Utensils, Clock, User, Sparkles, MoveRight, MoveLeft } from 'lucide-react';
+import { Loader2 as Loader2Recipe, ChefHat, CookingPot, FileDown as FileDownRecipe, Utensils, Clock, User, Sparkles as SparklesRecipe, MoveRight as MoveRightRecipe, MoveLeft as MoveLeftRecipe } from 'lucide-react';
 import { generateSingleRecipe, SingleRecipeOutput } from '@/ai/flows/conversational-recipe-generator';
 import { Form as FormRecipe, FormControl as FormControlRecipe, FormField as FormFieldRecipe, FormItem as FormItemRecipe, FormLabel as FormLabelRecipe, FormMessage as FormMessageRecipe } from '@/components/ui/form';
 import { Input as InputRecipe } from '@/components/ui/input';
@@ -36,7 +36,7 @@ import { doc as docWorkout, getDoc as getDocWorkout, collection as collectionWor
 import { Button as ButtonWorkout } from '@/components/ui/button';
 import { Badge as BadgeWorkout } from '@/components/ui/badge';
 import { useToast as useToastWorkout } from '@/hooks/use-toast';
-import { Loader2 as Loader2Workout, Dumbbell, FileDown, Activity, Shield, MoveRight, MoveLeft, Repeat, Target, Timer, HeartPulse } from 'lucide-react';
+import { Loader2 as Loader2Workout, Dumbbell, FileDown as FileDownWorkout, Activity, Shield, MoveRight as MoveRightWorkout, MoveLeft as MoveLeftWorkout, Repeat, Target, Timer as TimerWorkout, HeartPulse } from 'lucide-react';
 import { generateWorkoutPlan, type WorkoutPlanOutput } from '@/ai/flows/workout-recommender';
 import { Form as FormWorkout, FormControl as FormControlWorkout, FormField as FormFieldWorkout, FormItem as FormItemWorkout, FormLabel as FormLabelWorkout, FormMessage as FormMessageWorkout } from '@/components/ui/form';
 import { RadioGroup as RadioGroupWorkout, RadioGroupItem as RadioGroupItemWorkout } from '@/components/ui/radio-group';
@@ -191,7 +191,7 @@ function RecipeGeneratorTab() {
                    <FormFieldRecipe control={form.control} name="dietaryNotes" render={({ field }) => (
                     <FormItemRecipe><FormLabelRecipe>Other Dietary Notes (optional)</FormLabelRecipe><FormControlRecipe><TextareaRecipe placeholder="e.g., low-fodmap, extra spicy, for kids..." {...field} /></FormControlRecipe><FormMessageRecipe /></FormItemRecipe>
                   )} />
-                  <ButtonRecipe type="submit" disabled={!profile}>Generate Recipe <MoveRight className="ml-2" /></ButtonRecipe>
+                  <ButtonRecipe type="submit" disabled={!profile}>Generate Recipe <MoveRightRecipe className="ml-2" /></ButtonRecipe>
                 </form>
               </FormRecipe>
             </CardContent>
@@ -213,14 +213,14 @@ function RecipeGeneratorTab() {
                       <div className="bg-muted p-3 rounded-lg"><h4 className="font-semibold text-sm">Prep Time</h4><p className="text-lg flex items-center justify-center gap-1"><Clock className="h-4 w-4"/> {recipeResult.prepTime}</p></div>
                       <div className="bg-muted p-3 rounded-lg"><h4 className="font-semibold text-sm">Cook Time</h4><p className="text-lg flex items-center justify-center gap-1"><Clock className="h-4 w-4"/> {recipeResult.cookTime}</p></div>
                       <div className="bg-muted p-3 rounded-lg"><h4 className="font-semibold text-sm">Servings</h4><p className="text-lg flex items-center justify-center gap-1"><User className="h-4 w-4"/>{recipeResult.servings}</p></div>
-                      <div className="bg-muted p-3 rounded-lg"><h4 className="font-semibold text-sm">Health Focus</h4><p className="text-md flex items-center justify-center gap-1"><Sparkles className="h-4 w-4 text-primary"/>{recipeResult.healthFocus}</p></div>
+                      <div className="bg-muted p-3 rounded-lg"><h4 className="font-semibold text-sm">Health Focus</h4><p className="text-md flex items-center justify-center gap-1"><SparklesRecipe className="h-4 w-4 text-primary"/>{recipeResult.healthFocus}</p></div>
                   </div>
                   <div className="grid md:grid-cols-5 gap-8">
                       <div className="md:col-span-2"><h3 className="font-bold text-xl mb-4 flex items-center gap-2"><Utensils /> Ingredients</h3><ul className="space-y-2 text-muted-foreground">{recipeResult.ingredients.map((item, i) => <li key={i} className="flex items-start"><span className="mr-2 mt-1.5">&#8226;</span><span>{item}</span></li>)}</ul></div>
                       <div className="md:col-span-3"><h3 className="font-bold text-xl mb-4 flex items-center gap-2"><CookingPot /> Instructions</h3><ol className="space-y-4 text-muted-foreground">{recipeResult.instructions.map((step, i) => <li key={i} className="flex items-start"><span className="font-bold text-primary mr-3">{i + 1}.</span><span>{step}</span></li>)}</ol></div>
                   </div>
                </CardContent>
-               <CardFooter className="flex-col sm:flex-row gap-2"><ButtonRecipe onClick={resetFlow} variant="outline"><MoveLeft className="mr-2"/> Generate Another</ButtonRecipe><ButtonRecipe onClick={() => handleDownloadPdf(recipeResult)}><FileDown className="mr-2"/> Download PDF</ButtonRecipe></CardFooter>
+               <CardFooter className="flex-col sm:flex-row gap-2"><ButtonRecipe onClick={resetFlow} variant="outline"><MoveLeftRecipe className="mr-2"/> Generate Another</ButtonRecipe><ButtonRecipe onClick={() => handleDownloadPdf(recipeResult)}><FileDownRecipe className="mr-2"/> Download PDF</ButtonRecipe></CardFooter>
           </Card>
          </motionRecipe.div>
       )}
@@ -362,13 +362,13 @@ function WorkoutGeneratorTab() {
                       <div className="grid grid-cols-2 gap-4">
                         {focusAreas.map((item) => (
                           <FormFieldWorkout key={item.id} control={form.control} name="focusAreas" render={({ field }) => (
-                            <FormItemWorkout key={item.id} className="flex flex-row items-start space-x-3 space-y-0"><FormControlWorkout><CheckboxWorkout checked={field.value?.includes(item.id)} onCheckedChange={(checked) => { return checked ? field.onChange([...field.value, item.id]) : field.onChange(field.value?.filter((value) => value !== item.id)); }} /></FormControlWorkout><FormLabelWorkout className="font-normal">{item.label}</FormLabelWorkout></FormItemWorkout>
+                            <FormItemWorkout key={item.id} className="flex flex-row items-start space-x-3 space-y-0"><FormControlWorkout><CheckboxWorkout checked={field.value?.includes(item.id)} onCheckedChange={(checked) => { return checked ? field.onChange([...(field.value || []), item.id]) : field.onChange(field.value?.filter((value) => value !== item.id)); }} /></FormControlWorkout><FormLabelWorkout className="font-normal">{item.label}</FormLabelWorkout></FormItemWorkout>
                           )} />
                         ))}
                       </div><FormMessageWorkout />
                     </FormItemWorkout>
                   )} />
-                  <ButtonWorkout type="submit" disabled={!profile}>Generate Workout Plan <MoveRight className="ml-2" /></ButtonWorkout>
+                  <ButtonWorkout type="submit" disabled={!profile}>Generate Workout Plan <MoveRightWorkout className="ml-2" /></ButtonWorkout>
                 </form>
               </FormWorkout>
             </CardContent>
@@ -397,7 +397,7 @@ function WorkoutGeneratorTab() {
                                       <div className="flex flex-wrap gap-x-6 gap-y-2 text-sm text-muted-foreground mt-3 mb-3">
                                           <div className="flex items-center gap-1.5"><Repeat/> <strong>Sets:</strong> {ex.sets}</div>
                                           <div className="flex items-center gap-1.5"><Target/> <strong>Reps:</strong> {ex.reps}</div>
-                                          <div className="flex items-center gap-1.5"><Timer/> <strong>Rest:</strong> {ex.rest}</div>
+                                          <div className="flex items-center gap-1.5"><TimerWorkout/> <strong>Rest:</strong> {ex.rest}</div>
                                       </div>
                                       <CardDescription>{ex.description}</CardDescription>
                                   </Card>
@@ -406,7 +406,7 @@ function WorkoutGeneratorTab() {
                       </div>
                   ))}
                </CardContent>
-               <CardFooter className="flex-col sm:flex-row gap-2"><ButtonWorkout onClick={resetFlow} variant="outline"><MoveLeft className="mr-2"/> New Workout</ButtonWorkout><ButtonWorkout onClick={handleDownloadPdf}><FileDown className="mr-2"/> Download PDF</ButtonWorkout></CardFooter>
+               <CardFooter className="flex-col sm:flex-row gap-2"><ButtonWorkout onClick={resetFlow} variant="outline"><MoveLeftWorkout className="mr-2"/> New Workout</ButtonWorkout><ButtonWorkout onClick={handleDownloadPdf}><FileDownWorkout className="mr-2"/> Download PDF</ButtonWorkout></CardFooter>
           </Card>
          </motionWorkout.div>
       )}
