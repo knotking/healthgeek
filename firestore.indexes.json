@@ -11,6 +11,10 @@
         {
           "fieldPath": "rating",
           "order": "DESCENDING"
+        },
+        {
+          "fieldPath": "timestamp",
+          "order": "DESCENDING"
         }
       ]
     }

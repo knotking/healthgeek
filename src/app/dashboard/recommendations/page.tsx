@@ -1003,7 +1003,14 @@ export default function RecommendationsPage() {
             newLastVisible = newStack.pop() || null;
             setCommunityPageStack(newStack);
         }
-        const q = query(collection(db, 'recommendation-history'), where('isPublic', '==', true), orderBy('rating', 'desc'), orderBy('timestamp', 'desc'), ...(newLastVisible ? [startAfter(newLastVisible)] : []), limit(ITEMS_PER_PAGE));
+        const q = query(
+            collection(db, 'recommendation-history'), 
+            where('isPublic', '==', true), 
+            orderBy('rating', 'desc'), 
+            orderBy('timestamp', 'desc'), 
+            ...(newLastVisible ? [startAfter(newLastVisible)] : []), 
+            limit(ITEMS_PER_PAGE)
+        );
         try {
             const snap = await getDocs(q);
             const items = snap.docs.map(doc => ({ id: doc.id, ...doc.data(), timestamp: (doc.data().timestamp as Timestamp).toDate() })) as RecommendationHistoryItem[];
@@ -1014,18 +1021,19 @@ export default function RecommendationsPage() {
             setCommunityHasMore(items.length === ITEMS_PER_PAGE);
         } catch (e: any) {
             console.error("Error fetching community data:", e);
-            // Do not show a toast, just log the error and show an empty state.
         }
         finally { setLoadingCommunityRecs(false); }
-    }, [communityLastVisible, toast, communityPageStack]);
+    }, [communityLastVisible, communityPageStack]);
 
 
     useEffect(() => {
         if (!authLoading && user) {
             fetchMyHistory();
             fetchCommunityRecs();
+        } else if (!authLoading && !user) {
+            fetchCommunityRecs(); // Fetch for non-logged-in users if applicable (e.g. public page)
         }
-    }, [user, authLoading]);
+    }, [user, authLoading, fetchMyHistory, fetchCommunityRecs]);
 
     const handleViewHistoryItem = (item: RecommendationHistoryItem) => {
         setViewData(null); 

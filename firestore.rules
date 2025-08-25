@@ -1,48 +1,41 @@
-
 rules_version = '2';
 
 service cloud.firestore {
   match /databases/{database}/documents {
 
     // Helper functions
-    function isSignedIn() {
-      return request.auth != null;
-    }
-
     function isOwner(userId) {
-      return request.auth.uid == userId;
+      return request.auth != null && request.auth.uid == userId;
     }
 
     // Profiles: Users can only read/write their own profile.
     match /profiles/{userId} {
-      allow read, write: if isSignedIn() && isOwner(userId);
+      allow read, write: if isOwner(userId);
     }
-    
+
     // Food Log: Users can only read/write their own food logs.
     match /food-log/{logId} {
-      allow read, create: if isSignedIn() && isOwner(request.resource.data.userId);
-      allow update, delete: if isSignedIn() && isOwner(resource.data.userId);
+      allow read, create, delete: if isOwner(request.resource.data.userId);
     }
 
     // Health Reports: Users can only read/write their own health reports.
     match /health-reports/{reportId} {
-       allow read, create: if isSignedIn() && isOwner(request.resource.data.userId);
-       allow update, delete: if isSignedIn() && isOwner(resource.data.userId);
+       allow read, create, delete: if isOwner(request.resource.data.userId);
     }
 
     // Recommendation History
-    match /recommendation-history/{itemId} {
-      // Allow anyone to read a document if it's public.
+    match /recommendation-history/{recId} {
+      // Anyone can read a recommendation if it is public
       allow get: if resource.data.isPublic == true;
       
-      // Allow anyone to query for public recommendations.
-      allow list: if request.query.get('where').find(constraint => constraint[0] == 'isPublic' && constraint[2] == true) != null;
-      
-      // Allow signed-in users to create their own items.
-      allow create: if isSignedIn() && isOwner(request.resource.data.userId);
-      
-      // Allow owners to read, update, and delete their own items.
-      allow read, update, delete: if isSignedIn() && isOwner(resource.data.userId);
+      // Anyone can query for public recommendations
+      allow list: if request.query.get('isPublic') == true;
+
+      // Authenticated users can create recommendations for themselves
+      allow create: if isOwner(request.resource.data.userId);
+
+      // Authenticated users can read, update, and delete their own recommendations
+      allow read, update, delete: if isOwner(resource.data.userId);
     }
   }
 }
