@@ -4,10 +4,10 @@
 import { useState, useEffect, useCallback } from 'react';
 import { useAuthState } from 'react-firebase-hooks/auth';
 import { auth, db } from '@/lib/firebase';
-import { collection, query, where, getDocs, Timestamp, orderBy } from 'firebase/firestore';
+import { collection, query, where, getDocs, Timestamp, orderBy, getCountFromServer } from 'firebase/firestore';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { useToast } from '@/hooks/use-toast';
-import { Loader2 } from 'lucide-react';
+import { Loader2, Dumbbell, BrainCircuit, ChefHat, UtensilsCrossed, ClipboardList } from 'lucide-react';
 import { BarChart, Bar, LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer } from 'recharts';
 import { subDays, format, startOfDay } from 'date-fns';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
@@ -41,6 +41,14 @@ interface MetricChartData {
     value: number;
 }
 
+interface UsageMetrics {
+    workouts: number;
+    meditations: number;
+    recipes: number;
+    foodAssessments: number;
+    numberAnalyses: number;
+}
+
 export default function InsightsPage() {
   const [user, authLoading] = useAuthState(auth);
   const { toast } = useToast();
@@ -50,6 +58,7 @@ export default function InsightsPage() {
   const [availableMetrics, setAvailableMetrics] = useState<string[]>([]);
   const [selectedMetric, setSelectedMetric] = useState<string | null>(null);
   const [metricChartData, setMetricChartData] = useState<MetricChartData[]>([]);
+  const [usageMetrics, setUsageMetrics] = useState<UsageMetrics | null>(null);
 
   const processCalorieDataForChart = (logs: FoodLog[]): CalorieChartData[] => {
     const data: { [key: string]: number } = {};
@@ -142,6 +151,29 @@ export default function InsightsPage() {
         if (metricNames.length > 0) {
           setSelectedMetric(metricNames[0]);
         }
+        
+        // Fetch Usage Metrics
+        const workoutsQuery = query(collection(db, 'recommendation-history'), where('userId', '==', user.uid), where('type', '==', 'workout'));
+        const meditationsQuery = query(collection(db, 'recommendation-history'), where('userId', '==', user.uid), where('type', '==', 'meditation'));
+        const recipesQuery = query(collection(db, 'recommendation-history'), where('userId', '==', user.uid), where('type', '==', 'recipe'));
+        const foodAssessmentsQuery = query(collection(db, 'food-log'), where('userId', '==', user.uid));
+        const numberAnalysesQuery = query(collection(db, 'health-reports'), where('userId', '==', user.uid));
+        
+        const [workoutsSnap, meditationsSnap, recipesSnap, foodAssessmentsSnap, numberAnalysesSnap] = await Promise.all([
+            getCountFromServer(workoutsQuery),
+            getCountFromServer(meditationsQuery),
+            getCountFromServer(recipesQuery),
+            getCountFromServer(foodAssessmentsQuery),
+            getCountFromServer(numberAnalysesQuery),
+        ]);
+        
+        setUsageMetrics({
+            workouts: workoutsSnap.data().count,
+            meditations: meditationsSnap.data().count,
+            recipes: recipesSnap.data().count,
+            foodAssessments: foodAssessmentsSnap.data().count,
+            numberAnalyses: numberAnalysesSnap.data().count,
+        });
 
       } catch (e: any) {
         toast({ title: 'Error', description: 'Failed to fetch insights data.', variant: 'destructive' });
@@ -185,6 +217,45 @@ export default function InsightsPage() {
             </div>
           ) : (
             <>
+
+            {usageMetrics && (
+                <Card>
+                    <CardHeader>
+                        <CardTitle>Feature Usage</CardTitle>
+                        <CardDescription>Here's a summary of your activity.</CardDescription>
+                    </CardHeader>
+                    <CardContent>
+                        <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-4 text-center">
+                            <Card className="p-4">
+                                <Dumbbell className="mx-auto h-8 w-8 text-primary mb-2"/>
+                                <p className="text-2xl font-bold">{usageMetrics.workouts}</p>
+                                <p className="text-sm text-muted-foreground">Workouts</p>
+                            </Card>
+                             <Card className="p-4">
+                                <BrainCircuit className="mx-auto h-8 w-8 text-primary mb-2"/>
+                                <p className="text-2xl font-bold">{usageMetrics.meditations}</p>
+                                <p className="text-sm text-muted-foreground">Meditations</p>
+                            </Card>
+                             <Card className="p-4">
+                                <ChefHat className="mx-auto h-8 w-8 text-primary mb-2"/>
+                                <p className="text-2xl font-bold">{usageMetrics.recipes}</p>
+                                <p className="text-sm text-muted-foreground">Recipes</p>
+                            </Card>
+                             <Card className="p-4">
+                                <UtensilsCrossed className="mx-auto h-8 w-8 text-primary mb-2"/>
+                                <p className="text-2xl font-bold">{usageMetrics.foodAssessments}</p>
+                                <p className="text-sm text-muted-foreground">Meals Logged</p>
+                            </Card>
+                             <Card className="p-4">
+                                <ClipboardList className="mx-auto h-8 w-8 text-primary mb-2"/>
+                                <p className="text-2xl font-bold">{usageMetrics.numberAnalyses}</p>
+                                <p className="text-sm text-muted-foreground">Reports Analyzed</p>
+                            </Card>
+                        </div>
+                    </CardContent>
+                </Card>
+            )}
+
             <Card>
               <CardHeader>
                 <CardTitle>Daily Calorie Intake (Last 7 Days)</CardTitle>
