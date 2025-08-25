@@ -29,7 +29,7 @@ import {
 } from "@/components/ui/dropdown-menu";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Logo } from '@/components/logo';
-import { User, BarChart, UtensilsCrossed, Book, LogOut, Loader2, ClipboardList, PieChart, Settings, LifeBuoy, ChevronUp, CookingPot, Dumbbell, BrainCircuit } from 'lucide-react';
+import { User, BarChart, UtensilsCrossed, Book, LogOut, Loader2, ClipboardList, PieChart, Settings, LifeBuoy, ChevronUp, Sparkles } from 'lucide-react';
 import { usePathname } from 'next/navigation';
 
 export default function DashboardLayout({
@@ -101,18 +101,10 @@ export default function DashboardLayout({
               </SidebarMenuButton>
             </SidebarMenuItem>
              <SidebarMenuItem>
-              <SidebarMenuButton asChild isActive={pathname.startsWith('/dashboard/workout')}>
-                <Link href="/dashboard/workout">
-                  <Dumbbell />
-                  Workout
-                </Link>
-              </SidebarMenuButton>
-            </SidebarMenuItem>
-            <SidebarMenuItem>
-              <SidebarMenuButton asChild isActive={pathname.startsWith('/dashboard/meditation')}>
-                <Link href="/dashboard/meditation">
-                  <BrainCircuit />
-                  Meditation
+              <SidebarMenuButton asChild isActive={pathname.startsWith('/dashboard/recommendations')}>
+                <Link href="/dashboard/recommendations">
+                  <Sparkles />
+                  Recommendations
                 </Link>
               </SidebarMenuButton>
             </SidebarMenuItem>
@@ -129,14 +121,6 @@ export default function DashboardLayout({
                 <Link href="/dashboard/analysis">
                   <ClipboardList />
                   Number Analysis
-                </Link>
-              </SidebarMenuButton>
-            </SidebarMenuItem>
-             <SidebarMenuItem>
-              <SidebarMenuButton asChild isActive={pathname.startsWith('/dashboard/recipe-generator')}>
-                <Link href="/dashboard/recipe-generator">
-                  <CookingPot />
-                  Recipe
                 </Link>
               </SidebarMenuButton>
             </SidebarMenuItem>
