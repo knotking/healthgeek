@@ -75,7 +75,6 @@ export default function WorkoutPage() {
 
   const fetchUserDataAndHistory = useCallback(async () => {
     if (user) {
-      setInitialLoading(true);
       setIsFetchingHistory(true);
       try {
         const profileRef = doc(db, 'profiles', user.uid);
@@ -112,6 +111,7 @@ export default function WorkoutPage() {
         
       } catch (e:any) {
         console.error("Failed to fetch user data or history:", e);
+        toast({ title: 'Error', description: 'Failed to fetch workout history. Please try again later.', variant: 'destructive' });
         setHistory([]); // Clear history on error to show empty state
       } finally {
         setInitialLoading(false);
@@ -160,8 +160,8 @@ export default function WorkoutPage() {
             ...workoutResult
         });
         toast({ title: "Workout Saved", description: "This plan has been saved to your history." });
-        await fetchUserDataAndHistory(); // Refresh history
         resetFlow();
+        fetchUserDataAndHistory(); // Refresh history
     } catch(e: any) {
         toast({ title: "Save Failed", description: e.message, variant: "destructive" });
     } finally {
