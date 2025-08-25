@@ -1012,7 +1012,10 @@ export default function RecommendationsPage() {
             if (direction === 'next') setCommunityPageStack(prev => [...prev, communityLastVisible]);
             setCommunityRecs(items);
             setCommunityHasMore(items.length === ITEMS_PER_PAGE);
-        } catch (e: any) { toast({ title: "Error fetching community data", description: e.message, variant: "destructive"}); }
+        } catch (e: any) {
+            console.error("Error fetching community data:", e);
+            // Do not show a toast, just log the error and show an empty state.
+        }
         finally { setLoadingCommunityRecs(false); }
     }, [communityLastVisible, toast, communityPageStack]);
 
@@ -1147,3 +1150,5 @@ export default function RecommendationsPage() {
     </div>
   );
 }
+
+    
