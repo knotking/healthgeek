@@ -1,3 +1,4 @@
+
 'use client';
 
 import { useState, useRef, useEffect, useCallback } from 'react';
@@ -85,7 +86,13 @@ export default function AnalysisPage() {
       const reader = new FileReader();
       reader.onloadend = () => {
         const dataUri = reader.result as string;
-        setSelectedImage(dataUri);
+        // For non-image files, we might want a different display, but for now, we'll just handle the data.
+        if (file.type.startsWith('image/')) {
+          setSelectedImage(dataUri);
+        } else {
+          // You could set a generic icon for documents. For now, no preview for non-images.
+          setSelectedImage(null);
+        }
         handleAnalysis(dataUri);
       };
       reader.readAsDataURL(file);
@@ -170,14 +177,14 @@ export default function AnalysisPage() {
       <Card>
         <CardHeader>
           <CardTitle>Health Report Analysis</CardTitle>
-          <CardDescription>Upload a photo of your health report (e.g., blood work) for an AI-powered analysis.</CardDescription>
+          <CardDescription>Upload a photo or document of your health report (e.g., blood work) for an AI-powered analysis.</CardDescription>
         </CardHeader>
         <CardContent>
-          {!selectedImage ? (
+          {!analysisResult && !loading ? (
              <div className="flex flex-col items-center justify-center gap-4 py-16 border-2 border-dashed rounded-lg">
                 <FileScan className="w-16 h-16 text-muted-foreground" />
-                <p className="text-muted-foreground">Upload a clear picture of your health report</p>
-                <input type="file" accept="image/*" ref={fileInputRef} onChange={handleImageChange} className="hidden" />
+                <p className="text-muted-foreground">Upload a clear picture or document of your health report</p>
+                <input type="file" accept="image/*,application/pdf,.doc,.docx" ref={fileInputRef} onChange={handleImageChange} className="hidden" />
                 <Button onClick={() => fileInputRef.current?.click()} disabled={loading || authLoading || !profile}>
                   <Upload className="mr-2 h-4 w-4" /> Upload Report
                 </Button>
@@ -185,17 +192,20 @@ export default function AnalysisPage() {
              </div>
           ) : (
              <div className="space-y-4">
-                <Image
-                    src={selectedImage}
-                    alt="Uploaded health report"
-                    width={500}
-                    height={700}
-                    className="rounded-lg object-contain w-full max-h-[500px]"
-                />
+                {selectedImage && (
+                    <Image
+                        src={selectedImage}
+                        alt="Uploaded health report"
+                        width={500}
+                        height={700}
+                        className="rounded-lg object-contain w-full max-h-[500px]"
+                    />
+                )}
                  {loading && !analysisResult && (
-                  <div className="flex items-center justify-center gap-2 text-muted-foreground">
-                    <Loader2 className="h-5 w-5 animate-spin" />
+                  <div className="flex flex-col items-center justify-center gap-2 text-muted-foreground py-10">
+                    <Loader2 className="h-8 w-8 animate-spin" />
                     <p>Analyzing your report...</p>
+                    <p className="text-sm">This may take a moment.</p>
                   </div>
                 )}
                 {error && <Alert variant="destructive"><AlertTitle>Error</AlertTitle><AlertDescription>{error}</AlertDescription></Alert>}
@@ -303,5 +313,3 @@ export default function AnalysisPage() {
     </div>
   );
 }
-
-    
