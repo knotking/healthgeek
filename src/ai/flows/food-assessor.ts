@@ -17,6 +17,7 @@ const FoodAssessorInputSchema = z.object({
       "A photo of food, as a data URI that must include a MIME type and use Base64 encoding. Expected format: 'data:<mimetype>;base64,<encoded_data>'."
     ),
   userProfile: z.string().describe("A JSON string of the user's profile data, including health issues and diet preferences."),
+  latestHealthReport: z.string().optional().describe('A JSON string of the user\'s latest health report analysis.'),
 });
 export type FoodAssessorInput = z.infer<typeof FoodAssessorInputSchema>;
 
@@ -41,6 +42,11 @@ const prompt = ai.definePrompt({
 Analyze the food in the provided image. Based on the user's profile, determine if it is a healthy choice for them. Provide a clear 'yes' or 'no' for the 'isHealthyChoice' field and a detailed 'healthAssessment' explaining your reasoning.
 
 Then, identify the primary food item and provide three creative and healthy 'recipeSuggestions' that could be made with it, keeping the user's health profile in mind.
+
+{{#if latestHealthReport}}
+Also consider the user's latest health report for a more in-depth analysis:
+{{{latestHealthReport}}}
+{{/if}}
 
 User Profile: {{{userProfile}}}
 

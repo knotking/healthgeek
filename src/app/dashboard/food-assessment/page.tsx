@@ -3,7 +3,7 @@
 import { useState, useRef, useEffect, useCallback } from 'react';
 import { useAuthState } from 'react-firebase-hooks/auth';
 import { auth, db } from '@/lib/firebase';
-import { doc, getDoc } from 'firebase/firestore';
+import { doc, getDoc, collection, query, orderBy, getDocs, Timestamp, where, limit } from 'firebase/firestore';
 import { assessFood, FoodAssessorOutput } from '@/ai/flows/food-assessor';
 import { Button } from '@/components/ui/button';
 import {
@@ -26,11 +26,13 @@ export default function FoodAssessmentPage() {
   const [selectedImage, setSelectedImage] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [profile, setProfile] = useState<any>(null);
+  const [latestHealthReport, setLatestHealthReport] = useState<any>(null);
 
   const fileInputRef = useRef<HTMLInputElement>(null);
 
-  const fetchUserProfile = useCallback(async () => {
+  const fetchUserData = useCallback(async () => {
     if (user) {
+      // Fetch profile
       const docRef = doc(db, 'profiles', user.uid);
       const docSnap = await getDoc(docRef);
       if (docSnap.exists()) {
@@ -42,14 +44,26 @@ export default function FoodAssessmentPage() {
           variant: 'destructive',
         });
       }
+
+      // Fetch latest health report
+      const reportsQuery = query(
+        collection(db, 'health-reports'),
+        where('userId', '==', user.uid),
+        orderBy('timestamp', 'desc'),
+        limit(1)
+      );
+      const reportSnapshot = await getDocs(reportsQuery);
+      if (!reportSnapshot.empty) {
+        setLatestHealthReport(reportSnapshot.docs[0].data());
+      }
     }
   }, [user, toast]);
 
   useEffect(() => {
     if (!authLoading && user) {
-      fetchUserProfile();
+      fetchUserData();
     }
-  }, [user, authLoading, fetchUserProfile]);
+  }, [user, authLoading, fetchUserData]);
 
   const handleImageChange = (event: React.ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0];
@@ -81,6 +95,7 @@ export default function FoodAssessmentPage() {
       const result = await assessFood({
         photoDataUri: imageDataUri,
         userProfile: JSON.stringify(profile),
+        latestHealthReport: latestHealthReport ? JSON.stringify(latestHealthReport) : undefined,
       });
       setAssessmentResult(result);
     } catch (e: any) {

@@ -4,7 +4,7 @@
 import { useState, useRef, useEffect, useCallback } from 'react';
 import { useAuthState } from 'react-firebase-hooks/auth';
 import { auth, db } from '@/lib/firebase';
-import { doc, getDoc, collection, addDoc, query, where, getDocs, Timestamp, orderBy } from 'firebase/firestore';
+import { doc, getDoc, collection, addDoc, query, where, getDocs, Timestamp, orderBy, limit } from 'firebase/firestore';
 import { analyzeFood, FoodAnalysisOutput } from '@/ai/flows/food-analyzer';
 import { Button } from '@/components/ui/button';
 import {
@@ -36,11 +36,13 @@ export default function TrackCaloriePage() {
   const [error, setError] = useState<string | null>(null);
   const [dailyLog, setDailyLog] = useState<FoodLog[]>([]);
   const [profile, setProfile] = useState<any>(null);
+  const [latestHealthReport, setLatestHealthReport] = useState<any>(null);
 
   const fileInputRef = useRef<HTMLInputElement>(null);
 
-  const fetchUserProfile = useCallback(async () => {
+  const fetchUserData = useCallback(async () => {
     if (user) {
+      // Fetch profile
       const docRef = doc(db, 'profiles', user.uid);
       const docSnap = await getDoc(docRef);
       if (docSnap.exists()) {
@@ -48,9 +50,21 @@ export default function TrackCaloriePage() {
       } else {
         toast({
           title: 'Profile Not Found',
-          description: 'Please complete your profile to set a calorie target.',
+          description: 'Please complete your profile to use this feature.',
           variant: 'destructive',
         });
+      }
+
+      // Fetch latest health report
+      const reportsQuery = query(
+        collection(db, 'health-reports'),
+        where('userId', '==', user.uid),
+        orderBy('timestamp', 'desc'),
+        limit(1)
+      );
+      const reportSnapshot = await getDocs(reportsQuery);
+      if (!reportSnapshot.empty) {
+        setLatestHealthReport(reportSnapshot.docs[0].data());
       }
     }
   }, [user, toast]);
@@ -84,10 +98,10 @@ export default function TrackCaloriePage() {
 
   useEffect(() => {
     if (!authLoading && user) {
-      fetchUserProfile();
+      fetchUserData();
       fetchDailyLog();
     }
-  }, [user, authLoading, fetchUserProfile, fetchDailyLog]);
+  }, [user, authLoading, fetchUserData, fetchDailyLog]);
 
   const handleImageChange = (event: React.ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0];
@@ -119,6 +133,7 @@ export default function TrackCaloriePage() {
       const result = await analyzeFood({
         photoDataUri: imageDataUri,
         userProfile: JSON.stringify(profile),
+        latestHealthReport: latestHealthReport ? JSON.stringify(latestHealthReport) : undefined,
       });
       setAnalysisResult(result);
     } catch (e: any) {
