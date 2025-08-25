@@ -10,7 +10,7 @@
 import { ai } from '@/ai/genkit';
 import { z } from 'genkit';
 
-export const WorkoutPreferencesInputSchema = z.object({
+const WorkoutPreferencesInputSchema = z.object({
   userProfile: z.string().describe("A JSON string of the user's profile data, including health issues, age, and BMI."),
   latestHealthReport: z.string().optional().describe('A JSON string of the user\'s latest health report analysis for more detailed health context.'),
   workoutDuration: z.number().describe('The desired workout duration in minutes.'),
@@ -28,7 +28,7 @@ const ExerciseSchema = z.object({
     description: z.string().describe('A brief description of how to perform the exercise and its benefits for the user.'),
 });
 
-export const WorkoutPlanOutputSchema = z.object({
+const WorkoutPlanOutputSchema = z.object({
   planTitle: z.string().describe('A catchy and descriptive title for the workout plan.'),
   planSummary: z.string().describe('A brief summary of the workout plan and its goals.'),
   warmUp: z.array(ExerciseSchema).describe('A list of warm-up exercises.'),
