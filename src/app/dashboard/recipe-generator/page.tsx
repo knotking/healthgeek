@@ -93,7 +93,12 @@ export default function RecipeGeneratorPage() {
 
       } catch (e: any) {
          console.error("Failed to fetch user data or history:", e);
-         setHistory([]); // Clear history on error to show empty state
+         toast({
+            variant: "destructive",
+            title: "Could Not Fetch History",
+            description: "There was a problem fetching your recipe history. Please try again later.",
+          });
+         setHistory([]);
       } finally {
         setLoading(false);
         setIsFetchingHistory(false);
@@ -141,13 +146,13 @@ export default function RecipeGeneratorPage() {
             ...recipeResult
         });
         toast({ title: "Recipe Saved", description: "This recipe has been saved to your history." });
+        await fetchUserDataAndHistory();
         saved = true;
     } catch(e: any) {
         toast({ title: "Save Failed", description: e.message, variant: "destructive" });
     } finally {
         setIsSaving(false);
         if (saved) {
-            await fetchUserDataAndHistory();
             resetFlow();
         }
     }
