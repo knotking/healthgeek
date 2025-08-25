@@ -1,13 +1,14 @@
 'use client';
 import { useEffect, useState } from 'react';
 import { onAuthStateChanged } from 'firebase/auth';
-import { auth } from '@/lib/firebase';
+import { auth, db } from '@/lib/firebase';
 import { useRouter } from 'next/navigation';
 import Header from '@/components/landing/header';
 import Hero from '@/components/landing/hero';
 import InteractiveDemo from '@/components/landing/interactive-demo';
 import Footer from '@/components/landing/footer';
 import { Loader2 } from 'lucide-react';
+import PublicRecommendations from '@/components/landing/public-recommendations';
 
 export default function Home() {
   const router = useRouter();
@@ -39,6 +40,7 @@ export default function Home() {
       <Header />
       <main className="flex-1">
         <Hero />
+        <PublicRecommendations />
         <InteractiveDemo />
       </main>
       <Footer />

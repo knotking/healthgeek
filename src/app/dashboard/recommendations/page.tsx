@@ -3,17 +3,20 @@
 
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription, CardFooter } from '@/components/ui/card';
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from '@/components/ui/accordion';
+
 
 // Common History Imports
 import { useState, useEffect, useCallback, useMemo } from 'react';
 import { useAuthState } from 'react-firebase-hooks/auth';
 import { auth, db } from '@/lib/firebase';
-import { collection, addDoc, query, where, orderBy, getDocs, Timestamp } from 'firebase/firestore';
+import { collection, addDoc, query, where, orderBy, getDocs, Timestamp, doc, updateDoc, limit, startAfter, getCountFromServer } from 'firebase/firestore';
 import { useToast } from '@/hooks/use-toast';
-import { BrainCircuit, ChefHat, Dumbbell, History, Loader2, Save, Eye } from 'lucide-react';
+import { BrainCircuit, ChefHat, Dumbbell, History, Loader2, Save, Eye, Star, ChevronLeft, ChevronRight } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
+import { Switch } from '@/components/ui/switch';
 
 
 // Recipe Generator Imports
@@ -87,6 +90,8 @@ type RecommendationHistoryItem = {
     timestamp: Date;
     type: RecommendationType;
     data: any;
+    isPublic?: boolean;
+    rating?: number;
 };
 
 // --- Recipe Component ---
@@ -117,12 +122,12 @@ function RecipeGeneratorTab({ onSave, initialData, isVisible }: { onSave: () => 
   }, [initialData]);
 
   useEffectRecipe(() => {
-    if (!isVisible) {
+    if (!isVisible && !initialData) {
       setRecipeResult(null);
       setCurrentStep(RecipeSteps.PREFERENCES);
       form.reset();
     }
-  }, [isVisible]);
+  }, [isVisible, initialData]);
 
   const form = useFormRecipe<RecipeFormData>({
     resolver: zodResolverRecipe(recipeSchema),
@@ -175,7 +180,9 @@ function RecipeGeneratorTab({ onSave, initialData, isVisible }: { onSave: () => 
             userId: user.uid,
             timestamp: new Date(),
             type: 'recipe',
-            data: recipeResult
+            data: recipeResult,
+            isPublic: false,
+            rating: 0
         });
         toast({ title: 'Recipe Saved', description: 'This recipe has been saved to your history.'});
         onSave();
@@ -342,12 +349,12 @@ function WorkoutGeneratorTab({ onSave, initialData, isVisible }: { onSave: () =>
   }, [initialData]);
 
    useEffectWorkout(() => {
-    if (!isVisible) {
+    if (!isVisible && !initialData) {
       setWorkoutResult(null);
       setCurrentStep(WorkoutSteps.PREFERENCES);
       form.reset();
     }
-  }, [isVisible]);
+  }, [isVisible, initialData]);
 
   const form = useFormWorkout<WorkoutFormData>({
     resolver: zodResolverWorkout(workoutSchema),
@@ -404,6 +411,8 @@ function WorkoutGeneratorTab({ onSave, initialData, isVisible }: { onSave: () =>
         timestamp: new Date(),
         type: 'workout',
         data: workoutResult,
+        isPublic: false,
+        rating: 0,
       });
       toast({ title: 'Workout Saved', description: 'This workout has been saved to your history.' });
       onSave();
@@ -592,12 +601,12 @@ function MeditationGeneratorTab({ onSave, initialData, isVisible }: { onSave: ()
     }, [initialData]);
 
     useEffectMeditation(() => {
-        if (!isVisible) {
+        if (!isVisible && !initialData) {
           setMeditationResult(null);
           setCurrentStep(MeditationSteps.PREFERENCES);
           form.reset();
         }
-    }, [isVisible]);
+    }, [isVisible, initialData]);
 
     const form = useFormMeditation<MeditationFormData>({
         resolver: zodResolverMeditation(meditationSchema),
@@ -650,6 +659,8 @@ function MeditationGeneratorTab({ onSave, initialData, isVisible }: { onSave: ()
             timestamp: new Date(),
             type: 'meditation',
             data: meditationResult,
+            isPublic: false,
+            rating: 0
           });
           toast({ title: 'Meditation Saved', description: 'This practice has been saved to your history.' });
           onSave();
@@ -808,22 +819,36 @@ function MeditationGeneratorTab({ onSave, initialData, isVisible }: { onSave: ()
     );
 }
 
-const HistorySection = ({ history, loading, onView }: { history: RecommendationHistoryItem[], loading: boolean, onView: (item: RecommendationHistoryItem) => void }) => {
-    
-    const getSummary = (item: RecommendationHistoryItem) => {
-        switch(item.type) {
-            case 'workout': return item.data.planSummary;
-            case 'meditation': return item.data.summary;
-            case 'recipe': return item.data.description;
-            default: return "No summary available.";
-        }
-    }
+const StarRating = ({ rating, onRate, disabled }: { rating: number, onRate: (rating: number) => void, disabled?: boolean }) => {
+    return (
+        <div className="flex items-center">
+            {[1, 2, 3, 4, 5].map((star) => (
+                <Star
+                    key={star}
+                    className={`h-5 w-5 cursor-pointer ${rating >= star ? 'text-yellow-400 fill-yellow-400' : 'text-gray-400'}`}
+                    onClick={() => !disabled && onRate(star)}
+                />
+            ))}
+        </div>
+    );
+};
 
+const HistorySection = ({ 
+    history, 
+    loading, 
+    onView, 
+    onTogglePublic, 
+    onRate,
+    onNextPage,
+    onPrevPage,
+    hasMore,
+    isFirstPage
+}) => {
     const getIcon = (type: string) => {
         switch(type) {
-            case 'workout': return <Dumbbell className="h-8 w-8 text-primary" />;
-            case 'meditation': return <BrainCircuit className="h-8 w-8 text-primary" />;
-            case 'recipe': return <ChefHat className="h-8 w-8 text-primary" />;
+            case 'workout': return <Dumbbell className="h-5 w-5 text-primary" />;
+            case 'meditation': return <BrainCircuit className="h-5 w-5 text-primary" />;
+            case 'recipe': return <ChefHat className="h-5 w-5 text-primary" />;
             default: return null;
         }
     }
@@ -841,35 +866,60 @@ const HistorySection = ({ history, loading, onView }: { history: RecommendationH
         <Card>
             <CardHeader>
                 <CardTitle className="flex items-center gap-2"><History/> Recommendation History</CardTitle>
-                <CardDescription>Your saved recommendations. Click a card to view the full details.</CardDescription>
+                <CardDescription>Your saved recommendations. Click a row to view the full details.</CardDescription>
             </CardHeader>
             <CardContent>
                 {loading ? <div className="flex justify-center"><Loader2 className="h-6 w-6 animate-spin"/></div> :
                     history.length === 0 ? <p className="text-muted-foreground text-center">No history saved yet.</p> :
-                    <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
-                       {history.map(item => (
-                           <Card key={item.id} className="flex flex-col">
-                               <CardHeader className="flex flex-row items-start gap-4 space-y-0 pb-4">
-                                   {getIcon(item.type)}
-                                   <div className="flex-1">
-                                       <p className="text-xs text-muted-foreground">{item.timestamp.toLocaleDateString()}</p>
-                                       <CardTitle className="text-lg">{getTitle(item)}</CardTitle>
-                                   </div>
-                               </CardHeader>
-                               <CardContent className="flex-1 space-y-4">
-                                   <p className="text-sm text-muted-foreground line-clamp-3">{getSummary(item)}</p>
-                                   <div className="flex flex-wrap gap-1">
-                                       {(item.data.tags || []).map((tag:string) => <Badge key={tag} variant="secondary">{tag}</Badge>)}
-                                   </div>
-                               </CardContent>
-                               <CardFooter className="p-6 pt-0">
-                                   <Button className="w-full" variant="outline" onClick={() => onView(item)}>
-                                       <Eye className="mr-2"/> View
-                                   </Button>
-                               </CardFooter>
-                           </Card>
-                       ))}
-                    </div>
+                    <>
+                        <div className="border rounded-md">
+                            <Table>
+                                <TableHeader>
+                                    <TableRow>
+                                        <TableHead>Type</TableHead>
+                                        <TableHead>Title</TableHead>
+                                        <TableHead>Date</TableHead>
+                                        <TableHead>Rating</TableHead>
+                                        <TableHead>Public</TableHead>
+                                        <TableHead className="text-right">Actions</TableHead>
+                                    </TableRow>
+                                </TableHeader>
+                                <TableBody>
+                                    {history.map(item => (
+                                        <TableRow key={item.id}>
+                                            <TableCell className="capitalize flex items-center gap-2">
+                                                {getIcon(item.type)} {item.type}
+                                            </TableCell>
+                                            <TableCell className="font-medium">{getTitle(item)}</TableCell>
+                                            <TableCell>{item.timestamp.toLocaleDateString()}</TableCell>
+                                            <TableCell>
+                                                <StarRating rating={item.rating || 0} onRate={(rating) => onRate(item.id, rating)} />
+                                            </TableCell>
+                                            <TableCell>
+                                                <Switch
+                                                    checked={item.isPublic}
+                                                    onCheckedChange={(checked) => onTogglePublic(item.id, checked)}
+                                                />
+                                            </TableCell>
+                                            <TableCell className="text-right">
+                                                <Button size="sm" variant="outline" onClick={() => onView(item)}>
+                                                    <Eye className="mr-2 h-4 w-4"/> View
+                                                </Button>
+                                            </TableCell>
+                                        </TableRow>
+                                    ))}
+                                </TableBody>
+                            </Table>
+                        </div>
+                        <div className="flex items-center justify-end space-x-2 pt-4">
+                            <Button variant="outline" size="sm" onClick={onPrevPage} disabled={isFirstPage}>
+                                <ChevronLeft className="h-4 w-4 mr-1"/> Previous
+                            </Button>
+                            <Button variant="outline" size="sm" onClick={onNextPage} disabled={!hasMore}>
+                                Next <ChevronRight className="h-4 w-4 ml-1"/>
+                            </Button>
+                        </div>
+                    </>
                 }
             </CardContent>
         </Card>
@@ -880,45 +930,73 @@ const HistorySection = ({ history, loading, onView }: { history: RecommendationH
 // --- Main Component ---
 export default function RecommendationsPage() {
     const [user, authLoading] = useAuthState(auth);
+    const { toast } = useToast();
     const [history, setHistory] = useState<RecommendationHistoryItem[]>([]);
     const [loadingHistory, setLoadingHistory] = useState(true);
+    const [lastVisible, setLastVisible] = useState<any>(null);
+    const [pageStack, setPageStack] = useState<any[]>([]);
+    const [hasMore, setHasMore] = useState(true);
 
     const [activeTab, setActiveTab] = useState<RecommendationType>('workout');
     const [viewData, setViewData] = useState<any>(null);
+    
+    const ITEMS_PER_PAGE = 5;
 
-    const fetchHistory = useCallback(async () => {
-        if (user) {
-            setLoadingHistory(true);
-            try {
-                const q = query(
-                    collection(db, 'recommendation-history'),
-                    where('userId', '==', user.uid),
-                    orderBy('timestamp', 'desc')
-                );
-                const querySnapshot = await getDocs(q);
-                const historyItems = querySnapshot.docs.map(doc => ({
-                    id: doc.id,
-                    ...doc.data(),
-                    timestamp: (doc.data().timestamp as Timestamp).toDate()
-                })) as RecommendationHistoryItem[];
-                setHistory(historyItems);
-            } catch (e: any) {
-                console.error("Failed to fetch history:", e);
-                // Fail silently and show an empty history
-                setHistory([]);
-            } finally {
-                setLoadingHistory(false);
+    const fetchHistory = useCallback(async (direction: 'next' | 'prev' = 'next') => {
+        if (!user) return;
+
+        setLoadingHistory(true);
+
+        let newLastVisible = lastVisible;
+        if (direction === 'prev') {
+            const newStack = [...pageStack];
+            newStack.pop(); // remove current page
+            newLastVisible = newStack.pop() || null; // get previous page start
+            setPageStack(newStack);
+        }
+
+        const q = query(
+            collection(db, 'recommendation-history'),
+            where('userId', '==', user.uid),
+            orderBy('timestamp', 'desc'),
+            ...(newLastVisible ? [startAfter(newLastVisible)] : []),
+            limit(ITEMS_PER_PAGE)
+        );
+
+        try {
+            const documentSnapshots = await getDocs(q);
+            
+            const historyItems = documentSnapshots.docs.map(doc => ({
+                id: doc.id,
+                ...doc.data(),
+                timestamp: (doc.data().timestamp as Timestamp).toDate()
+            })) as RecommendationHistoryItem[];
+
+            const lastDoc = documentSnapshots.docs[documentSnapshots.docs.length - 1];
+            setLastVisible(lastDoc);
+            
+            if (direction === 'next') {
+                setPageStack(prev => [...prev, lastVisible]);
             }
-        } else {
+
+            setHistory(historyItems);
+            setHasMore(historyItems.length === ITEMS_PER_PAGE);
+
+        } catch (e: any) {
+            console.error("Failed to fetch history:", e);
+            toast({ title: "Error fetching history", description: e.message, variant: "destructive"});
+            setHistory([]);
+        } finally {
             setLoadingHistory(false);
         }
-    }, [user]);
+    }, [user, lastVisible, toast, pageStack]);
+
 
     useEffect(() => {
-        if (!authLoading) {
+        if (!authLoading && user) {
             fetchHistory();
         }
-    }, [user, authLoading, fetchHistory]);
+    }, [user, authLoading]);
 
     const handleViewHistoryItem = (item: RecommendationHistoryItem) => {
         setViewData(null); 
@@ -936,24 +1014,65 @@ export default function RecommendationsPage() {
     
   const CurrentCreator = useMemo(() => {
     if (viewData) return null; // Don't show creator if viewing history item
-    if (activeTab === 'workout') return <WorkoutGeneratorTab onSave={fetchHistory} initialData={null} isVisible={!viewData} />;
-    if (activeTab === 'meditation') return <MeditationGeneratorTab onSave={fetchHistory} initialData={null} isVisible={!viewData} />;
-    if (activeTab === 'recipe') return <RecipeGeneratorTab onSave={fetchHistory} initialData={null} isVisible={!viewData} />;
+    if (activeTab === 'workout') return <WorkoutGeneratorTab onSave={() => fetchHistory()} initialData={null} isVisible={!viewData} />;
+    if (activeTab === 'meditation') return <MeditationGeneratorTab onSave={() => fetchHistory()} initialData={null} isVisible={!viewData} />;
+    if (activeTab === 'recipe') return <RecipeGeneratorTab onSave={() => fetchHistory()} initialData={null} isVisible={!viewData} />;
     return null;
   }, [activeTab, viewData, fetchHistory]);
   
   const ViewedItem = useMemo(() => {
       if(!viewData) return null;
-      if(activeTab === 'workout') return <WorkoutGeneratorTab onSave={fetchHistory} initialData={viewData} isVisible={true} />;
-      if(activeTab === 'meditation') return <MeditationGeneratorTab onSave={fetchHistory} initialData={viewData} isVisible={true} />;
-      if(activeTab === 'recipe') return <RecipeGeneratorTab onSave={fetchHistory} initialData={viewData} isVisible={true} />;
+      if(activeTab === 'workout') return <WorkoutGeneratorTab onSave={() => fetchHistory()} initialData={viewData} isVisible={true} />;
+      if(activeTab === 'meditation') return <MeditationGeneratorTab onSave={() => fetchHistory()} initialData={viewData} isVisible={true} />;
+      if(activeTab === 'recipe') return <RecipeGeneratorTab onSave={() => fetchHistory()} initialData={viewData} isVisible={true} />;
       return null;
   }, [viewData, activeTab, fetchHistory])
 
+    const handleTogglePublic = async (id: string, isPublic: boolean) => {
+        try {
+            const docRef = doc(db, 'recommendation-history', id);
+            await updateDoc(docRef, { isPublic });
+            setHistory(history.map(item => item.id === id ? { ...item, isPublic } : item));
+            toast({ title: 'Visibility Updated' });
+        } catch (e: any) {
+            toast({ title: 'Update Failed', description: e.message, variant: 'destructive' });
+        }
+    };
+
+    const handleRate = async (id: string, rating: number) => {
+        try {
+            const docRef = doc(db, 'recommendation-history', id);
+            await updateDoc(docRef, { rating });
+            setHistory(history.map(item => item.id === id ? { ...item, rating } : item));
+            toast({ title: 'Rating Submitted' });
+        } catch (e: any) {
+            toast({ title: 'Update Failed', description: e.message, variant: 'destructive' });
+        }
+    };
+
+    const handleNextPage = () => {
+        if (hasMore) {
+            fetchHistory('next');
+        }
+    };
+
+    const handlePrevPage = () => {
+       fetchHistory('prev');
+    };
 
   return (
     <div className="space-y-6">
-        <HistorySection history={history} loading={loadingHistory} onView={handleViewHistoryItem} />
+        <HistorySection 
+            history={history} 
+            loading={loadingHistory} 
+            onView={handleViewHistoryItem}
+            onTogglePublic={handleTogglePublic}
+            onRate={handleRate}
+            onNextPage={handleNextPage}
+            onPrevPage={handlePrevPage}
+            hasMore={hasMore}
+            isFirstPage={pageStack.length <= 1}
+        />
         <Tabs value={activeTab} onValueChange={handleTabChange} className="w-full">
         <TabsList className="grid w-full grid-cols-3">
             <TabsTrigger value="workout">Workout</TabsTrigger>
@@ -963,19 +1082,23 @@ export default function RecommendationsPage() {
         <TabsContent value="workout" forceMount className="mt-4">
              <div className="max-w-4xl mx-auto space-y-6" key={viewData ? 'workout-view' : 'workout-new'}>
                 {viewData && activeTab === 'workout' ? ViewedItem : CurrentCreator}
+                 {!viewData && activeTab === 'workout' && <WorkoutGeneratorTab onSave={() => fetchHistory()} initialData={null} isVisible={true} />}
             </div>
         </TabsContent>
         <TabsContent value="meditation" forceMount className="mt-4">
             <div className="max-w-4xl mx-auto space-y-6" key={viewData ? 'meditation-view' : 'meditation-new'}>
                 {viewData && activeTab === 'meditation' ? ViewedItem : CurrentCreator}
+                {!viewData && activeTab === 'meditation' && <MeditationGeneratorTab onSave={() => fetchHistory()} initialData={null} isVisible={true} />}
             </div>
         </TabsContent>
         <TabsContent value="recipe" forceMount className="mt-4">
             <div className="max-w-4xl mx-auto space-y-6" key={viewData ? 'recipe-view' : 'recipe-new'}>
                 {viewData && activeTab === 'recipe' ? ViewedItem : CurrentCreator}
+                {!viewData && activeTab === 'recipe' && <RecipeGeneratorTab onSave={() => fetchHistory()} initialData={null} isVisible={true} />}
             </div>
         </TabsContent>
         </Tabs>
     </div>
   );
 }
+

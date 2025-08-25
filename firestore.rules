@@ -1,24 +1,50 @@
 rules_version = '2';
+
 service cloud.firestore {
   match /databases/{database}/documents {
-    // Users can read and write to their own profile
+    
+    // Helper function to check if a user is authenticated
+    function isAuthenticated() {
+      return request.auth != null;
+    }
+    
+    // Helper function to check if the user is the owner of the document
+    function isOwner(userId) {
+      return request.auth.uid == userId;
+    }
+
+    // Profiles: Users can read and write their own profile
     match /profiles/{userId} {
-      allow read, write: if request.auth != null && request.auth.uid == userId;
+      allow read, write: if isAuthenticated() && isOwner(userId);
     }
-
-    // Users can create and read their own food logs
+    
+    // Food Log: Users can CRUD their own food logs
     match /food-log/{logId} {
-      allow read, create: if request.auth != null && request.resource.data.userId == request.auth.uid;
+      allow read, create, update, delete: if isAuthenticated() && isOwner(request.resource.data.userId);
+      allow list: if isAuthenticated();
     }
-
-    // Users can create and read their own health reports
+    
+    // Health Reports: Users can CRUD their own health reports
     match /health-reports/{reportId} {
-      allow read, create: if request.auth != null && request.resource.data.userId == request.auth.uid;
+       allow read, create, update, delete: if isAuthenticated() && isOwner(request.resource.data.userId);
+       allow list: if isAuthenticated();
     }
 
-    // Users can create and read their own recommendation history
-    match /recommendation-history/{historyId} {
-      allow read, create: if request.auth != null && request.resource.data.userId == request.auth.uid;
+    // Recommendation History
+    match /recommendation-history/{recommendationId} {
+      // Allow read for public recommendations
+      allow get: if resource.data.isPublic == true;
+      // Allow list for queries targeting public recommendations
+      allow list: if request.query.resource.data.isPublic == true;
+      
+      // Allow authenticated users to manage their own recommendations
+      allow read, create, delete: if isAuthenticated() && isOwner(request.resource.data.userId);
+      allow update: if isAuthenticated() && isOwner(request.resource.data.userId) &&
+                       (request.resource.data.keys().hasOnly(['isPublic', 'rating']) ||
+                        request.resource.data.diff(resource.data).affectedKeys().hasOnly(['isPublic', 'rating']));
+      
+      // Allow list for owner's own history
+      allow list: if isAuthenticated() && request.query.resource.data.userId == request.auth.uid;
     }
   }
 }
