@@ -6,12 +6,12 @@ import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/com
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from '@/components/ui/accordion';
 
 // Common History Imports
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useMemo } from 'react';
 import { useAuthState } from 'react-firebase-hooks/auth';
 import { auth, db } from '@/lib/firebase';
 import { collection, addDoc, query, where, orderBy, getDocs, Timestamp } from 'firebase/firestore';
 import { useToast } from '@/hooks/use-toast';
-import { BrainCircuit, ChefHat, Dumbbell, History, Loader2 as Loader2History, Save, Eye } from 'lucide-react';
+import { BrainCircuit, ChefHat, Dumbbell, History, Loader2 as Loader2History, Save, Eye, PlusCircle } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 
@@ -79,6 +79,7 @@ import { Slider as SliderMeditation } from '@/components/ui/slider';
 import { Checkbox as CheckboxMeditation } from '@/components/ui/checkbox';
 import { AnimatePresence as AnimatePresenceMeditation, motion as motionMeditation } from 'framer-motion';
 import { Alert as AlertMeditation, AlertDescription as AlertDescriptionMeditation, AlertTitle as AlertTitleMeditation } from '@/components/ui/alert';
+import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
 
 type RecommendationType = 'recipe' | 'workout' | 'meditation';
 
@@ -100,7 +101,7 @@ const recipeSchema = zRecipe.object({
 type RecipeFormData = zRecipe.infer<typeof recipeSchema>;
 const RecipeSteps = { PREFERENCES: 1, GENERATING: 2, RESULT: 3 };
 
-function RecipeGeneratorTab({ onSave, initialData }: { onSave: () => void; initialData?: SingleRecipeOutput | null }) {
+function RecipeGeneratorTab({ onSave, initialData, isVisible }: { onSave: () => void; initialData?: SingleRecipeOutput | null; isVisible: boolean }) {
   const [user, authLoading] = useAuthStateRecipe(authRecipe);
   const { toast } = useToastRecipe();
   const [loading, setLoading] = useStateRecipe(true);
@@ -115,6 +116,14 @@ function RecipeGeneratorTab({ onSave, initialData }: { onSave: () => void; initi
       setCurrentStep(RecipeSteps.RESULT);
     }
   }, [initialData]);
+
+  useEffectRecipe(() => {
+    if (!isVisible) {
+      setRecipeResult(null);
+      setCurrentStep(RecipeSteps.PREFERENCES);
+      form.reset();
+    }
+  }, [isVisible]);
 
   const form = useFormRecipe<RecipeFormData>({
     resolver: zodResolverRecipe(recipeSchema),
@@ -224,6 +233,10 @@ function RecipeGeneratorTab({ onSave, initialData }: { onSave: () => void; initi
     setCurrentStep(RecipeSteps.PREFERENCES);
   }
 
+  if (!isVisible && !recipeResult) {
+      return null;
+  }
+
   const pageVariants = { initial: { opacity: 0, x: 50 }, in: { opacity: 1, x: 0 }, out: { opacity: 0, x: -50 } };
   const pageTransition = { type: "tween", ease: "anticipate", duration: 0.5 };
 
@@ -312,7 +325,7 @@ const workoutSchema = zWorkout.object({
 type WorkoutFormData = zWorkout.infer<typeof workoutSchema>;
 const WorkoutSteps = { PREFERENCES: 1, GENERATING: 2, RESULT: 3 };
 
-function WorkoutGeneratorTab({ onSave, initialData }: { onSave: () => void; initialData?: WorkoutPlanOutput | null }) {
+function WorkoutGeneratorTab({ onSave, initialData, isVisible }: { onSave: () => void; initialData?: WorkoutPlanOutput | null, isVisible: boolean }) {
   const [user, authLoading] = useAuthStateWorkout(authWorkout);
   const { toast } = useToastWorkout();
   const [initialLoading, setInitialLoading] = useStateWorkout(true);
@@ -328,6 +341,14 @@ function WorkoutGeneratorTab({ onSave, initialData }: { onSave: () => void; init
       setCurrentStep(WorkoutSteps.RESULT);
     }
   }, [initialData]);
+
+   useEffectWorkout(() => {
+    if (!isVisible) {
+      setWorkoutResult(null);
+      setCurrentStep(WorkoutSteps.PREFERENCES);
+      form.reset();
+    }
+  }, [isVisible]);
 
   const form = useFormWorkout<WorkoutFormData>({
     resolver: zodResolverWorkout(workoutSchema),
@@ -453,6 +474,10 @@ function WorkoutGeneratorTab({ onSave, initialData }: { onSave: () => void; init
     setCurrentStep(WorkoutSteps.PREFERENCES);
   }
 
+  if (!isVisible && !workoutResult) {
+      return null;
+  }
+
   const pageVariants = { initial: { opacity: 0, x: 50 }, in: { opacity: 1, x: 0 }, out: { opacity: 0, x: -50 } };
   const pageTransition = { type: "tween", ease: "anticipate", duration: 0.5 };
 
@@ -551,7 +576,7 @@ const meditationSchema = zMeditation.object({
 type MeditationFormData = zMeditation.infer<typeof meditationSchema>;
 const MeditationSteps = { PREFERENCES: 1, GENERATING: 2, RESULT: 3 };
 
-function MeditationGeneratorTab({ onSave, initialData }: { onSave: () => void; initialData?: MeditationPracticeOutput | null }) {
+function MeditationGeneratorTab({ onSave, initialData, isVisible }: { onSave: () => void; initialData?: MeditationPracticeOutput | null, isVisible: boolean }) {
     const [user, authLoading] = useAuthStateMeditation(authMeditation);
     const { toast } = useToastMeditation();
     const [initialLoading, setInitialLoading] = useStateMeditation(true);
@@ -566,6 +591,14 @@ function MeditationGeneratorTab({ onSave, initialData }: { onSave: () => void; i
           setCurrentStep(MeditationSteps.RESULT);
         }
     }, [initialData]);
+
+    useEffectMeditation(() => {
+        if (!isVisible) {
+          setMeditationResult(null);
+          setCurrentStep(MeditationSteps.PREFERENCES);
+          form.reset();
+        }
+    }, [isVisible]);
 
     const form = useFormMeditation<MeditationFormData>({
         resolver: zodResolverMeditation(meditationSchema),
@@ -677,6 +710,10 @@ function MeditationGeneratorTab({ onSave, initialData }: { onSave: () => void; i
         form.reset({ duration: 10, timeOfDay: 'morning', goals: [] });
         setMeditationResult(null);
         setCurrentStep(MeditationSteps.PREFERENCES);
+    }
+    
+    if (!isVisible && !meditationResult) {
+      return null;
     }
 
     const pageVariants = { initial: { opacity: 0, x: 50 }, in: { opacity: 1, x: 0 }, out: { opacity: 0, x: -50 } };
@@ -850,6 +887,7 @@ export default function RecommendationsPage() {
 
     const [activeTab, setActiveTab] = useState<RecommendationType>('workout');
     const [viewData, setViewData] = useState<any>(null);
+    const [creatorOpen, setCreatorOpen] = useState(false);
 
     const fetchHistory = useCallback(async () => {
         if (user) {
@@ -886,40 +924,76 @@ export default function RecommendationsPage() {
     }, [user, authLoading, fetchHistory]);
 
     const handleViewHistoryItem = (item: RecommendationHistoryItem) => {
-        setViewData(null); // Clear previous view data
+        setViewData(null); 
+        setActiveTab(item.type);
+        setCreatorOpen(false);
         setTimeout(() => {
-            setActiveTab(item.type);
             setViewData(item.data);
-        }, 50); // Small delay to ensure state updates
+        }, 50); 
     };
+
+    const handleTabChange = (val: string) => {
+        const newTab = val as RecommendationType;
+        setActiveTab(newTab);
+        setViewData(null);
+        setCreatorOpen(false);
+    }
     
+  const CurrentCreator = useMemo(() => {
+    if (viewData) return null; // Don't show creator if viewing history item
+
+    return (
+         <Collapsible open={creatorOpen} onOpenChange={setCreatorOpen}>
+            <CollapsibleTrigger asChild>
+                <div className="flex justify-center py-4">
+                     <Button variant="outline">
+                        <PlusCircle className="mr-2"/> Create New {activeTab.charAt(0).toUpperCase() + activeTab.slice(1)}
+                    </Button>
+                </div>
+            </CollapsibleTrigger>
+            <CollapsibleContent>
+                 {activeTab === 'workout' && <WorkoutGeneratorTab onSave={fetchHistory} initialData={null} isVisible={creatorOpen} />}
+                 {activeTab === 'meditation' && <MeditationGeneratorTab onSave={fetchHistory} initialData={null} isVisible={creatorOpen} />}
+                 {activeTab === 'recipe' && <RecipeGeneratorTab onSave={fetchHistory} initialData={null} isVisible={creatorOpen} />}
+            </CollapsibleContent>
+        </Collapsible>
+    )
+  }, [activeTab, creatorOpen, viewData, fetchHistory]);
+  
+  const ViewedItem = useMemo(() => {
+      if(!viewData) return null;
+      if(activeTab === 'workout') return <WorkoutGeneratorTab onSave={fetchHistory} initialData={viewData} isVisible={true} />;
+      if(activeTab === 'meditation') return <MeditationGeneratorTab onSave={fetchHistory} initialData={viewData} isVisible={true} />;
+      if(activeTab === 'recipe') return <RecipeGeneratorTab onSave={fetchHistory} initialData={viewData} isVisible={true} />;
+      return null;
+  }, [viewData, activeTab, fetchHistory])
+
+
   return (
     <div className="space-y-6">
         <HistorySection history={history} loading={loadingHistory} onView={handleViewHistoryItem} />
-        <Tabs value={activeTab} onValueChange={(val) => { setActiveTab(val as RecommendationType); setViewData(null); }} className="w-full">
+        <Tabs value={activeTab} onValueChange={handleTabChange} className="w-full">
         <TabsList className="grid w-full grid-cols-3">
             <TabsTrigger value="workout">Workout</TabsTrigger>
             <TabsTrigger value="meditation">Meditation</TabsTrigger>
             <TabsTrigger value="recipe">Recipe</TabsTrigger>
         </TabsList>
-        <TabsContent value="workout" forceMount>
+        <TabsContent value="workout" forceMount className="mt-4">
              <div className="max-w-4xl mx-auto space-y-6" key={viewData ? 'workout-view' : 'workout-new'}>
-                <WorkoutGeneratorTab onSave={fetchHistory} initialData={activeTab === 'workout' ? viewData : null} />
+                {viewData && activeTab === 'workout' ? ViewedItem : CurrentCreator}
             </div>
         </TabsContent>
-        <TabsContent value="meditation" forceMount>
+        <TabsContent value="meditation" forceMount className="mt-4">
             <div className="max-w-4xl mx-auto space-y-6" key={viewData ? 'meditation-view' : 'meditation-new'}>
-                <MeditationGeneratorTab onSave={fetchHistory} initialData={activeTab === 'meditation' ? viewData : null} />
+                {viewData && activeTab === 'meditation' ? ViewedItem : CurrentCreator}
             </div>
         </TabsContent>
-        <TabsContent value="recipe" forceMount>
+        <TabsContent value="recipe" forceMount className="mt-4">
             <div className="max-w-4xl mx-auto space-y-6" key={viewData ? 'recipe-view' : 'recipe-new'}>
-                <RecipeGeneratorTab onSave={fetchHistory} initialData={activeTab === 'recipe' ? viewData : null} />
+                {viewData && activeTab === 'recipe' ? ViewedItem : CurrentCreator}
             </div>
         </TabsContent>
         </Tabs>
     </div>
   );
 }
-
-    
