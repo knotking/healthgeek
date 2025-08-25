@@ -7,11 +7,11 @@ import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
 import { useAuthState } from 'react-firebase-hooks/auth';
 import { auth, db } from '@/lib/firebase';
-import { doc, getDoc, collection, query, orderBy, getDocs, where, limit, addDoc, Timestamp } from 'firebase/firestore';
+import { doc, getDoc, collection, query, orderBy, where, limit } from 'firebase/firestore';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription, CardFooter } from '@/components/ui/card';
 import { useToast } from '@/hooks/use-toast';
-import { Loader2, Dumbbell, FileDown, Activity, Users, Clock, Flame, Shield, MoveRight, MoveLeft, History } from 'lucide-react';
+import { Loader2, Dumbbell, FileDown, Activity, Users, Clock, Flame, Shield, MoveRight, MoveLeft } from 'lucide-react';
 import { generateWorkoutPlan, type WorkoutPlanOutput } from '@/ai/flows/workout-recommender';
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from '@/components/ui/form';
 import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
@@ -20,12 +20,6 @@ import { Checkbox } from '@/components/ui/checkbox';
 import { AnimatePresence, motion } from 'framer-motion';
 import jsPDF from 'jspdf';
 import 'jspdf-autotable';
-import {
-  Accordion,
-  AccordionContent,
-  AccordionItem,
-  AccordionTrigger,
-} from "@/components/ui/accordion"
 
 
 const focusAreas = [
@@ -46,11 +40,6 @@ const workoutSchema = z.object({
 
 type WorkoutFormData = z.infer<typeof workoutSchema>;
 
-interface WorkoutLog extends WorkoutPlanOutput {
-    id: string;
-    timestamp: Date;
-}
-
 const Steps = {
   PREFERENCES: 1,
   GENERATING: 2,
@@ -65,8 +54,6 @@ export default function WorkoutPage() {
   const [latestHealthReport, setLatestHealthReport] = useState<any>(null);
   const [workoutResult, setWorkoutResult] = useState<WorkoutPlanOutput | null>(null);
   const [currentStep, setCurrentStep] = useState(Steps.PREFERENCES);
-  const [workoutHistory, setWorkoutHistory] = useState<WorkoutLog[]>([]);
-  const [isFetchingHistory, setIsFetchingHistory] = useState(true);
 
   const form = useForm<WorkoutFormData>({
     resolver: zodResolver(workoutSchema),
@@ -77,10 +64,9 @@ export default function WorkoutPage() {
     },
   });
 
-  const fetchUserDataAndHistory = useCallback(async () => {
+  const fetchUserData = useCallback(async () => {
     if (user) {
       setInitialLoading(true);
-      setIsFetchingHistory(true);
       try {
         const profileRef = doc(db, 'profiles', user.uid);
         const profileSnap = await getDoc(profileRef);
@@ -105,53 +91,19 @@ export default function WorkoutPage() {
           setLatestHealthReport(reportSnapshot.docs[0].data());
         }
         
-        const historyQuery = query(
-            collection(db, 'workout-plans'),
-            where('userId', '==', user.uid),
-            orderBy('timestamp', 'desc'),
-            limit(10)
-        );
-        const historySnapshot = await getDocs(historyQuery);
-        const history = historySnapshot.docs.map(doc => ({
-            id: doc.id,
-            ...doc.data(),
-            timestamp: (doc.data().timestamp as Timestamp).toDate(),
-        })) as WorkoutLog[];
-        setWorkoutHistory(history);
-
       } catch (e:any) {
         toast({ title: 'Error', description: 'Failed to fetch user data.', variant: 'destructive' });
       } finally {
         setInitialLoading(false);
-        setIsFetchingHistory(false);
       }
     }
   }, [user, toast]);
 
   useEffect(() => {
     if (!authLoading && user) {
-      fetchUserDataAndHistory();
+      fetchUserData();
     }
-  }, [user, authLoading, fetchUserDataAndHistory]);
-
-  async function saveWorkoutToHistory(result: WorkoutPlanOutput) {
-    if(!user) return;
-    try {
-        const docRef = await addDoc(collection(db, 'workout-plans'), {
-            userId: user.uid,
-            timestamp: new Date(),
-            ...result,
-        });
-        const newHistoryItem: WorkoutLog = {
-            id: docRef.id,
-            ...result,
-            timestamp: new Date()
-        };
-        setWorkoutHistory(prev => [newHistoryItem, ...prev]);
-    } catch(e:any) {
-        toast({ title: 'History Error', description: 'Failed to save workout to your history.', variant: 'destructive'});
-    }
-  }
+  }, [user, authLoading, fetchUserData]);
 
   async function onSubmit(values: WorkoutFormData) {
     if (!profile) {
@@ -166,7 +118,6 @@ export default function WorkoutPage() {
         latestHealthReport: latestHealthReport ? JSON.stringify(latestHealthReport) : undefined,
       });
       setWorkoutResult(result);
-      await saveWorkoutToHistory(result);
       setCurrentStep(Steps.RESULT);
     } catch (e: any) {
       console.error(e);
@@ -410,57 +361,6 @@ export default function WorkoutPage() {
            </motion.div>
         )}
       </AnimatePresence>
-
-       <Card>
-        <CardHeader>
-            <CardTitle className="flex items-center gap-2"><History /> Workout History</CardTitle>
-            <CardDescription>Your recently generated workout plans.</CardDescription>
-        </CardHeader>
-        <CardContent>
-             {isFetchingHistory ? (
-                <div className="flex justify-center py-8"><Loader2 className="h-8 w-8 animate-spin text-primary"/></div>
-            ) : workoutHistory.length > 0 ? (
-                <Accordion type="single" collapsible className="w-full">
-                    {workoutHistory.map(plan => (
-                        <AccordionItem value={plan.id} key={plan.id}>
-                            <AccordionTrigger>
-                                <div className="flex flex-col items-start">
-                                    <span className="font-semibold">{plan.planTitle}</span>
-                                    <span className="text-xs text-muted-foreground">{plan.timestamp.toLocaleDateString()}</span>
-                                </div>
-                            </AccordionTrigger>
-                            <AccordionContent className="space-y-6 p-2">
-                                <p className="text-sm text-muted-foreground">{plan.planSummary}</p>
-                                <div className="bg-yellow-50 dark:bg-yellow-900/20 border-l-4 border-yellow-400 p-4 rounded-md">
-                                    <h4 className="font-bold text-yellow-800 dark:text-yellow-300 flex items-center gap-2"><Shield /> Safety Notes</h4>
-                                    <p className="text-sm text-yellow-700 dark:text-yellow-400 mt-1">{plan.notes}</p>
-                                </div>
-                                {[
-                                    {title: 'Warm-Up', exercises: plan.warmUp},
-                                    {title: 'Main Workout', exercises: plan.mainWorkout},
-                                    {title: 'Cool-Down', exercises: plan.coolDown}
-                                ].map(section => (
-                                section.exercises.length > 0 && <div key={section.title}>
-                                        <h3 className="font-bold text-lg mb-2">{section.title}</h3>
-                                        <div className="space-y-3">
-                                            {section.exercises.map((ex, i) => (
-                                                <div key={i} className="p-3 bg-muted/50 rounded-lg text-xs">
-                                                    <h4 className="font-semibold">{ex.name} ({ex.sets}x{ex.reps}, {ex.rest} rest)</h4>
-                                                    <p className="text-muted-foreground mt-1">{ex.description}</p>
-                                                </div>
-                                            ))}
-                                        </div>
-                                    </div>
-                                ))}
-                            </AccordionContent>
-                        </AccordionItem>
-                    ))}
-                </Accordion>
-            ) : (
-                <p className="text-center text-muted-foreground py-8">No workout plans in your history yet.</p>
-            )}
-        </CardContent>
-       </Card>
     </div>
   );
 }

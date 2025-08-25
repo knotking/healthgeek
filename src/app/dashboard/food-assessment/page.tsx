@@ -4,7 +4,7 @@
 import { useState, useRef, useEffect, useCallback } from 'react';
 import { useAuthState } from 'react-firebase-hooks/auth';
 import { auth, db } from '@/lib/firebase';
-import { doc, getDoc, collection, query, orderBy, getDocs, Timestamp, where, limit, addDoc } from 'firebase/firestore';
+import { doc, getDoc, collection, query, orderBy, where, limit } from 'firebase/firestore';
 import { assessFood, FoodAssessorOutput } from '@/ai/flows/food-assessor';
 import { Button } from '@/components/ui/button';
 import {
@@ -15,16 +15,10 @@ import {
   CardDescription,
 } from '@/components/ui/card';
 import { useToast } from '@/hooks/use-toast';
-import { Loader2, Camera, Upload, Utensils, HeartPulse, ChefHat, CheckCircle, XCircle, VideoOff, History } from 'lucide-react';
+import { Loader2, Camera, Upload, Utensils, HeartPulse, ChefHat, CheckCircle, XCircle, VideoOff } from 'lucide-react';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import Image from 'next/image';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from '@/components/ui/dialog';
-
-interface AssessmentLog extends FoodAssessorOutput {
-  id: string;
-  timestamp: Date;
-  photoDataUri: string;
-}
 
 
 export default function FoodAssessmentPage() {
@@ -36,8 +30,6 @@ export default function FoodAssessmentPage() {
   const [error, setError] = useState<string | null>(null);
   const [profile, setProfile] = useState<any>(null);
   const [latestHealthReport, setLatestHealthReport] = useState<any>(null);
-  const [assessmentHistory, setAssessmentHistory] = useState<AssessmentLog[]>([]);
-  const [isFetchingHistory, setIsFetchingHistory] = useState(true);
 
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [isCameraOpen, setIsCameraOpen] = useState(false);
@@ -88,9 +80,8 @@ export default function FoodAssessmentPage() {
     }
   }, [isCameraOpen, toast]);
 
-  const fetchUserDataAndHistory = useCallback(async () => {
+  const fetchUserData = useCallback(async () => {
     if (user) {
-      setIsFetchingHistory(true);
       try {
         // Fetch profile
         const docRef = doc(db, 'profiles', user.uid);
@@ -117,35 +108,18 @@ export default function FoodAssessmentPage() {
           setLatestHealthReport(reportSnapshot.docs[0].data());
         }
 
-        // Fetch assessment history
-        const historyQuery = query(
-            collection(db, 'food-assessments'),
-            where('userId', '==', user.uid),
-            orderBy('timestamp', 'desc'),
-            limit(10)
-        );
-        const historySnapshot = await getDocs(historyQuery);
-        const history = historySnapshot.docs.map(doc => ({
-            id: doc.id,
-            ...doc.data(),
-            timestamp: (doc.data().timestamp as Timestamp).toDate(),
-        })) as AssessmentLog[];
-        setAssessmentHistory(history);
-
       } catch (e: any) {
-        toast({ title: 'Error', description: 'Failed to fetch user data or history.', variant: 'destructive' });
+        toast({ title: 'Error', description: 'Failed to fetch user data.', variant: 'destructive' });
         console.error(e);
-      } finally {
-        setIsFetchingHistory(false);
       }
     }
   }, [user, toast]);
 
   useEffect(() => {
     if (!authLoading && user) {
-      fetchUserDataAndHistory();
+      fetchUserData();
     }
-  }, [user, authLoading, fetchUserDataAndHistory]);
+  }, [user, authLoading, fetchUserData]);
 
   const handleImageChange = (event: React.ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0];
@@ -177,28 +151,6 @@ export default function FoodAssessmentPage() {
     }
   };
 
-  const saveAssessment = async (result: FoodAssessorOutput, imageDataUri: string) => {
-      if(!user) return;
-      try {
-          const docRef = await addDoc(collection(db, 'food-assessments'), {
-              userId: user.uid,
-              timestamp: new Date(),
-              photoDataUri: imageDataUri, // Saving image with the assessment
-              ...result
-          });
-          const newHistoryItem: AssessmentLog = {
-              id: docRef.id,
-              ...result,
-              photoDataUri: imageDataUri,
-              timestamp: new Date()
-          }
-          setAssessmentHistory(prev => [newHistoryItem, ...prev]);
-      } catch (e: any) {
-          toast({ title: 'History Error', description: 'Failed to save assessment to your history.', variant: 'destructive'});
-      }
-  }
-
-
   const handleAssessment = async (imageDataUri: string) => {
     if (!profile) {
       toast({
@@ -219,7 +171,6 @@ export default function FoodAssessmentPage() {
         latestHealthReport: latestHealthReport ? JSON.stringify(latestHealthReport) : undefined,
       });
       setAssessmentResult(result);
-      await saveAssessment(result, imageDataUri);
     } catch (e: any) {
       setError('Failed to assess food. Please try again.');
       console.error(e);
@@ -315,42 +266,6 @@ export default function FoodAssessmentPage() {
       </CardContent>
     </Card>
 
-    <Card>
-      <CardHeader>
-        <CardTitle className="flex items-center gap-2"><History /> Assessment History</CardTitle>
-        <CardDescription>View your recently assessed food items.</CardDescription>
-      </CardHeader>
-      <CardContent>
-        {isFetchingHistory ? (
-          <div className="flex justify-center py-8"><Loader2 className="h-8 w-8 animate-spin text-primary"/></div>
-        ) : assessmentHistory.length > 0 ? (
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
-            {assessmentHistory.map(item => (
-              <Card key={item.id} className="bg-muted/30 flex flex-col">
-                <CardHeader className="flex-row gap-4 items-center space-y-0">
-                    <Image src={item.photoDataUri} alt={item.foodName} width={64} height={64} className="rounded-lg object-cover aspect-square"/>
-                    <div className="flex-1">
-                        <CardTitle className="text-lg flex items-center justify-between">
-                            {item.foodName}
-                        </CardTitle>
-                        <CardDescription>{item.timestamp.toLocaleDateString()}</CardDescription>
-                    </div>
-                </CardHeader>
-                <CardContent className="flex-grow">
-                  <p className="text-sm text-muted-foreground line-clamp-2">{item.healthAssessment}</p>
-                   <span className={`mt-2 inline-flex items-center gap-1.5 text-sm font-semibold ${item.isHealthyChoice ? 'text-green-500' : 'text-red-500'}`}>
-                      {item.isHealthyChoice ? <CheckCircle className="h-4 w-4" /> : <XCircle className="h-4 w-4" />}
-                      {item.isHealthyChoice ? 'Healthy' : 'Not Ideal'}
-                    </span>
-                </CardContent>
-              </Card>
-            ))}
-          </div>
-        ) : (
-          <p className="text-center text-muted-foreground py-8">No assessments in your history yet.</p>
-        )}
-      </CardContent>
-    </Card>
     </div>
 
     <Dialog open={isCameraOpen} onOpenChange={setIsCameraOpen}>
