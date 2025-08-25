@@ -1,3 +1,4 @@
+
 'use client';
 
 import { useState } from 'react';
@@ -120,7 +121,7 @@ export default function SignupPage() {
         description: `Your daily calorie target has been set to ${dailyCalorieTarget} kcal.`
       });
 
-      router.push('/dashboard');
+      router.push('/dashboard/insights');
     } catch (error: any) {
       console.error('Signup error:', error);
       toast({
