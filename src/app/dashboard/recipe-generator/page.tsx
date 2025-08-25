@@ -47,7 +47,7 @@ const Steps = {
 export default function RecipeGeneratorPage() {
   const [user, authLoading] = useAuthState(auth);
   const { toast } = useToast();
-  const [loading, setLoading] = useState(false);
+  const [loading, setLoading] = useState(true);
   const [isSaving, setIsSaving] = useState(false);
   const [profile, setProfile] = useState<any>(null);
   const [recipeResult, setRecipeResult] = useState<SingleRecipeOutput | null>(null);
@@ -136,8 +136,7 @@ export default function RecipeGeneratorPage() {
             ...recipeResult
         });
         toast({ title: "Recipe Saved", description: "This recipe has been saved to your history." });
-        fetchUserDataAndHistory(); // Refresh history
-        resetFlow();
+        await fetchUserDataAndHistory(); // Refresh history
     } catch(e: any) {
         toast({ title: "Save Failed", description: e.message, variant: "destructive" });
     } finally {
@@ -416,3 +415,5 @@ export default function RecipeGeneratorPage() {
     </div>
   );
 }
+
+    
