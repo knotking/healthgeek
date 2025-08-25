@@ -132,6 +132,8 @@ function RecipeGeneratorTab() {
 
   function handleDownloadPdf(recipeData: SingleRecipeOutput) {
     const doc = new jsPDF();
+    const pageHeight = doc.internal.pageSize.height;
+
     doc.setFontSize(22);
     doc.text(recipeData.name, 105, 20, { align: 'center' });
     doc.setFontSize(11);
@@ -151,6 +153,21 @@ function RecipeGeneratorTab() {
         head: [['Instructions']], body: recipeData.instructions.map((step, i) => [`${i + 1}. ${step}`]),
         startY: finalY2 + 10, theme: 'striped',
     });
+
+    // Add footer
+    const pageCount = (doc as any).internal.getNumberOfPages();
+    for (let i = 1; i <= pageCount; i++) {
+        doc.setPage(i);
+        doc.setFontSize(8);
+        doc.setTextColor(150);
+        doc.text(
+            `Powered by HealthGeek - © ${new Date().getFullYear()} HealthGeek. All rights reserved.`,
+            105,
+            pageHeight - 10,
+            { align: 'center' }
+        );
+    }
+
     doc.save(`${recipeData.name.replace(/\s+/g, '_')}.pdf`);
   }
 
@@ -301,17 +318,21 @@ function WorkoutGeneratorTab() {
     const doc = new jsPDF();
     const pageHeight = doc.internal.pageSize.height;
     let finalY = 0;
+    
     doc.setFontSize(22);
     doc.text(workoutResult.planTitle, 105, 20, { align: 'center' });
     doc.setFontSize(11);
     const summaryLines = doc.splitTextToSize(workoutResult.planSummary, 180);
     doc.text(summaryLines, 105, 30, { align: 'center' });
+    
     (doc as any).autoTable({
         head: [['Important Notes & Safety Considerations']], body: [[workoutResult.notes]],
         startY: 45, theme: 'grid', styles: { fillColor: [255, 251, 235] }
     });
     finalY = (doc as any).lastAutoTable.finalY;
+
     const addSection = (title: string, exercises: any[]) => {
+      if (exercises.length === 0) return;
       if (finalY > pageHeight - 40) doc.addPage();
       (doc as any).autoTable({
         head: [[title]], startY: finalY + 10, theme: 'grid',
@@ -324,9 +345,25 @@ function WorkoutGeneratorTab() {
       });
        finalY = (doc as any).lastAutoTable.finalY;
     }
+    
     addSection('Warm-Up', workoutResult.warmUp);
     addSection('Main Workout', workoutResult.mainWorkout);
     addSection('Cool-Down', workoutResult.coolDown);
+    
+    // Add footer
+    const pageCount = (doc as any).internal.getNumberOfPages();
+    for (let i = 1; i <= pageCount; i++) {
+        doc.setPage(i);
+        doc.setFontSize(8);
+        doc.setTextColor(150);
+        doc.text(
+            `Powered by HealthGeek - © ${new Date().getFullYear()} HealthGeek. All rights reserved.`,
+            105,
+            pageHeight - 10,
+            { align: 'center' }
+        );
+    }
+    
     doc.save(`${workoutResult.planTitle.replace(/\s+/g, '_')}.pdf`);
   }
 
@@ -480,16 +517,21 @@ function MeditationGeneratorTab() {
     function handleDownloadPdf() {
         if (!meditationResult) return;
         const doc = new jsPDF();
+        const pageHeight = doc.internal.pageSize.height;
+        let finalY = 0;
+        
         doc.setFontSize(22);
         doc.text(meditationResult.title, 105, 20, { align: 'center' });
         doc.setFontSize(11);
         const summaryLines = doc.splitTextToSize(meditationResult.summary, 180);
         doc.text(summaryLines, 105, 30, { align: 'center' });
+        
         (doc as any).autoTable({
             head: [['Benefits']], body: [[meditationResult.benefits]],
             startY: 45, theme: 'grid'
         });
-        let finalY = (doc as any).lastAutoTable.finalY;
+        finalY = (doc as any).lastAutoTable.finalY;
+
         meditationResult.steps.forEach(step => {
             (doc as any).autoTable({
                 head: [[`Step ${step.step}: ${step.title} (${step.duration})`]],
@@ -499,6 +541,21 @@ function MeditationGeneratorTab() {
             });
             finalY = (doc as any).lastAutoTable.finalY;
         });
+
+        // Add footer
+        const pageCount = (doc as any).internal.getNumberOfPages();
+        for (let i = 1; i <= pageCount; i++) {
+            doc.setPage(i);
+            doc.setFontSize(8);
+            doc.setTextColor(150);
+            doc.text(
+                `Powered by HealthGeek - © ${new Date().getFullYear()} HealthGeek. All rights reserved.`,
+                105,
+                pageHeight - 10,
+                { align: 'center' }
+            );
+        }
+
         doc.save(`${meditationResult.title.replace(/\s+/g, '_')}.pdf`);
     }
 
@@ -622,5 +679,3 @@ export default function RecommendationsPage() {
     </Tabs>
   );
 }
-
-    
