@@ -111,7 +111,7 @@ export default function WorkoutPage() {
         setHistory(historyLogs);
         
       } catch (e:any) {
-        toast({ title: 'Error', description: 'Failed to fetch user data or history.', variant: 'destructive' });
+        console.error("Failed to fetch user data or history:", e);
         setHistory([]); // Clear history on error to show empty state
       } finally {
         setInitialLoading(false);
@@ -123,6 +123,9 @@ export default function WorkoutPage() {
   useEffect(() => {
     if (!authLoading && user) {
       fetchUserDataAndHistory();
+    } else if (!authLoading && !user) {
+      setInitialLoading(false);
+      setIsFetchingHistory(false);
     }
   }, [user, authLoading, fetchUserDataAndHistory]);
 
@@ -447,7 +450,5 @@ export default function WorkoutPage() {
     </div>
   );
 }
-
-    
 
     

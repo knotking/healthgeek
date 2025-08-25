@@ -92,7 +92,7 @@ export default function RecipeGeneratorPage() {
         setHistory(historyLogs);
 
       } catch (e: any) {
-         toast({ title: 'Error', description: 'Failed to fetch user data or history.', variant: 'destructive' });
+         console.error("Failed to fetch user data or history:", e);
          setHistory([]);
       } finally {
         setLoading(false);
@@ -104,6 +104,9 @@ export default function RecipeGeneratorPage() {
   useEffect(() => {
     if (!authLoading && user) {
       fetchUserDataAndHistory();
+    } else if (!authLoading && !user) {
+      setLoading(false);
+      setIsFetchingHistory(false);
     }
   }, [user, authLoading, fetchUserDataAndHistory]);
 
@@ -416,3 +419,5 @@ export default function RecipeGeneratorPage() {
     </div>
   );
 }
+
+    
