@@ -5,7 +5,6 @@ import { auth } from '@/lib/firebase';
 import { useRouter } from 'next/navigation';
 import Header from '@/components/landing/header';
 import Hero from '@/components/landing/hero';
-import ConversionOptimizer from '@/components/landing/conversion-optimizer';
 import InteractiveDemo from '@/components/landing/interactive-demo';
 import ContactForm from '@/components/landing/contact-form';
 import Footer from '@/components/landing/footer';
@@ -41,7 +40,6 @@ export default function Home() {
       <Header />
       <main className="flex-1">
         <Hero />
-        <ConversionOptimizer />
         <InteractiveDemo />
         <ContactForm />
       </main>
