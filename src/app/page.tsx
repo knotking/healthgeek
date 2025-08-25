@@ -6,7 +6,6 @@ import { useRouter } from 'next/navigation';
 import Header from '@/components/landing/header';
 import Hero from '@/components/landing/hero';
 import InteractiveDemo from '@/components/landing/interactive-demo';
-import ContactForm from '@/components/landing/contact-form';
 import Footer from '@/components/landing/footer';
 import { Loader2 } from 'lucide-react';
 
@@ -41,7 +40,6 @@ export default function Home() {
       <main className="flex-1">
         <Hero />
         <InteractiveDemo />
-        <ContactForm />
       </main>
       <Footer />
     </div>
