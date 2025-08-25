@@ -24,6 +24,7 @@ import { Select as SelectRecipe, SelectContent as SelectContentRecipe, SelectIte
 import { AnimatePresence as AnimatePresenceRecipe, motion as motionRecipe } from 'framer-motion';
 import jsPDF from 'jspdf';
 import 'jspdf-autotable';
+import { CardFooter as CardFooterRecipe } from '@/components/ui/card';
 
 // Workout Generator Imports
 import { useState as useStateWorkout, useEffect as useEffectWorkout, useCallback as useCallbackWorkout } from 'react';
@@ -44,6 +45,7 @@ import { Slider as SliderWorkout } from '@/components/ui/slider';
 import { Checkbox as CheckboxWorkout } from '@/components/ui/checkbox';
 import { AnimatePresence as AnimatePresenceWorkout, motion as motionWorkout } from 'framer-motion';
 import { Alert as AlertWorkout, AlertDescription as AlertDescriptionWorkout, AlertTitle as AlertTitleWorkout } from '@/components/ui/alert';
+import { CardFooter as CardFooterWorkout } from '@/components/ui/card';
 
 // Meditation Generator Imports
 import { useState as useStateMeditation, useEffect as useEffectMeditation, useCallback as useCallbackMeditation } from 'react';
@@ -64,6 +66,7 @@ import { Slider as SliderMeditation } from '@/components/ui/slider';
 import { Checkbox as CheckboxMeditation } from '@/components/ui/checkbox';
 import { AnimatePresence as AnimatePresenceMeditation, motion as motionMeditation } from 'framer-motion';
 import { Alert as AlertMeditation, AlertDescription as AlertDescriptionMeditation, AlertTitle as AlertTitleMeditation } from '@/components/ui/alert';
+import { CardFooter as CardFooterMeditation } from '@/components/ui/card';
 
 // --- Recipe Component ---
 const recipeSchema = zRecipe.object({
@@ -220,7 +223,7 @@ function RecipeGeneratorTab() {
                       <div className="md:col-span-3"><h3 className="font-bold text-xl mb-4 flex items-center gap-2"><CookingPot /> Instructions</h3><ol className="space-y-4 text-muted-foreground">{recipeResult.instructions.map((step, i) => <li key={i} className="flex items-start"><span className="font-bold text-primary mr-3">{i + 1}.</span><span>{step}</span></li>)}</ol></div>
                   </div>
                </CardContent>
-               <CardFooter className="flex-col sm:flex-row gap-2"><ButtonRecipe onClick={resetFlow} variant="outline"><MoveLeftRecipe className="mr-2"/> Generate Another</ButtonRecipe><ButtonRecipe onClick={() => handleDownloadPdf(recipeResult)}><FileDownRecipe className="mr-2"/> Download PDF</ButtonRecipe></CardFooter>
+               <CardFooterRecipe className="flex-col sm:flex-row gap-2"><ButtonRecipe onClick={resetFlow} variant="outline"><MoveLeftRecipe className="mr-2"/> Generate Another</ButtonRecipe><ButtonRecipe onClick={() => handleDownloadPdf(recipeResult)}><FileDownRecipe className="mr-2"/> Download PDF</ButtonRecipe></CardFooterRecipe>
           </Card>
          </motionRecipe.div>
       )}
@@ -406,7 +409,7 @@ function WorkoutGeneratorTab() {
                       </div>
                   ))}
                </CardContent>
-               <CardFooter className="flex-col sm:flex-row gap-2"><ButtonWorkout onClick={resetFlow} variant="outline"><MoveLeftWorkout className="mr-2"/> New Workout</ButtonWorkout><ButtonWorkout onClick={handleDownloadPdf}><FileDownWorkout className="mr-2"/> Download PDF</ButtonWorkout></CardFooter>
+               <CardFooterWorkout className="flex-col sm:flex-row gap-2"><ButtonWorkout onClick={resetFlow} variant="outline"><MoveLeftWorkout className="mr-2"/> New Workout</ButtonWorkout><ButtonWorkout onClick={handleDownloadPdf}><FileDownWorkout className="mr-2"/> Download PDF</ButtonWorkout></CardFooterWorkout>
           </Card>
          </motionWorkout.div>
       )}
@@ -583,7 +586,7 @@ function MeditationGeneratorTab() {
                                 </div>
                             </div>
                         </CardContent>
-                        <CardFooter className="flex-col sm:flex-row gap-2"><ButtonMeditation onClick={resetFlow} variant="outline"><MoveLeftMeditation className="mr-2"/> New Practice</ButtonMeditation><ButtonMeditation onClick={handleDownloadPdf}><FileDownMeditation className="mr-2"/> Download PDF</ButtonMeditation></CardFooter>
+                        <CardFooterMeditation className="flex-col sm:flex-row gap-2"><ButtonMeditation onClick={resetFlow} variant="outline"><MoveLeftMeditation className="mr-2"/> New Practice</ButtonMeditation><ButtonMeditation onClick={handleDownloadPdf}><FileDownMeditation className="mr-2"/> Download PDF</ButtonMeditation></CardFooterMeditation>
                     </Card>
                 </motionMeditation.div>
             )}
@@ -619,3 +622,5 @@ export default function RecommendationsPage() {
     </Tabs>
   );
 }
+
+    
