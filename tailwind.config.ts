@@ -3,9 +3,12 @@ import type {Config} from 'tailwindcss';
 export default {
   darkMode: ['class'],
   content: [
-    './src/pages/**/*.{js,ts,jsx,tsx,mdx}',
-    './src/components/**/*.{js,ts,jsx,tsx,mdx}',
     './src/app/**/*.{js,ts,jsx,tsx,mdx}',
+    './src/components/ui/*.{js,ts,jsx,tsx,mdx}',
+    './src/components/landing/footer.tsx',
+    './src/components/landing/header.tsx',
+    './src/components/landing/hero.tsx',
+    './src/components/landing/interactive-demo.tsx'
   ],
   theme: {
     container: {
