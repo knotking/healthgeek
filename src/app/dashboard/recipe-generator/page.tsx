@@ -93,6 +93,7 @@ export default function RecipeGeneratorPage() {
 
       } catch (e: any) {
          console.error("Failed to fetch user data or history:", e);
+         toast({ title: "History Fetch Failed", description: "Could not load your recipe history. You can still generate new recipes.", variant: "destructive" });
          setHistory([]);
       } finally {
         setLoading(false);
@@ -110,8 +111,26 @@ export default function RecipeGeneratorPage() {
     }
   }, [user, authLoading, fetchUserDataAndHistory]);
 
+  async function handleSaveRecipe(recipeToSave: SingleRecipeOutput) {
+    if (!user) return;
+    setIsSaving(true);
+    try {
+        await addDoc(collection(db, 'recipe-history'), {
+            userId: user.uid,
+            timestamp: new Date(),
+            ...recipeToSave
+        });
+        toast({ title: "Recipe Saved", description: "This recipe has been saved to your history." });
+        await fetchUserDataAndHistory();
+    } catch(e: any) {
+        toast({ title: "Save Failed", description: e.message, variant: "destructive" });
+    } finally {
+        setIsSaving(false);
+    }
+  }
+
   async function onSubmit(values: RecipeFormData) {
-    if (!profile) {
+    if (!profile || !user) {
       toast({ title: 'Error', description: 'User profile is not loaded.', variant: 'destructive' });
       return;
     }
@@ -122,30 +141,12 @@ export default function RecipeGeneratorPage() {
         userProfile: JSON.stringify(profile),
       });
       setRecipeResult(result);
+      await handleSaveRecipe(result);
       setCurrentStep(Steps.RESULT);
     } catch (e: any) {
       console.error(e);
       toast({ title: 'Generation Failed', description: e.message || 'An error occurred.', variant: 'destructive' });
       setCurrentStep(Steps.PREFERENCES);
-    }
-  }
-
-  async function handleSaveRecipe() {
-    if (!user || !recipeResult) return;
-    setIsSaving(true);
-    try {
-        await addDoc(collection(db, 'recipe-history'), {
-            userId: user.uid,
-            timestamp: new Date(),
-            ...recipeResult
-        });
-        toast({ title: "Recipe Saved", description: "This recipe has been saved to your history." });
-        await fetchUserDataAndHistory(); // Refresh the history list
-        resetFlow(); // Reset the UI only after a successful save and refresh
-    } catch(e: any) {
-        toast({ title: "Save Failed", description: e.message, variant: "destructive" });
-    } finally {
-        setIsSaving(false);
     }
   }
 
@@ -218,38 +219,6 @@ export default function RecipeGeneratorPage() {
 
   return (
     <div className="max-w-4xl mx-auto space-y-6">
-       <Card>
-        <CardHeader>
-          <CardTitle className="flex items-center gap-2"><History /> Recipe History</CardTitle>
-          <CardDescription>View your previously saved recipes.</CardDescription>
-        </CardHeader>
-        <CardContent>
-            {isFetchingHistory ? (
-              <div className="flex justify-center py-8">
-                <Loader2 className="h-8 w-8 animate-spin text-primary"/>
-              </div>
-            ) : history.length > 0 ? (
-                <div className="space-y-4 max-h-[600px] overflow-y-auto pr-4">
-                    {history.map(item => (
-                        <Card key={item.id} className="bg-muted/30">
-                           <CardHeader>
-                                <CardTitle className="text-lg">{item.name}</CardTitle>
-                                <CardDescription>Saved on {item.timestamp.toLocaleDateString()}</CardDescription>
-                            </CardHeader>
-                            <CardContent>
-                                <p className="text-sm text-muted-foreground mb-4">{item.description}</p>
-                                <div className="flex gap-2 flex-wrap">
-                                    {item.tags.map(tag => <Badge key={tag} variant="secondary">{tag}</Badge>)}
-                                </div>
-                            </CardContent>
-                        </Card>
-                    ))}
-                </div>
-            ) : (
-               <p className="text-muted-foreground text-center py-8">No saved recipes yet.</p>
-            )}
-        </CardContent>
-      </Card>
       <AnimatePresence mode="wait">
         {currentStep === Steps.PREFERENCES && (
           <motion.div key="preferences" initial="initial" animate="in" exit="out" variants={pageVariants} transition={pageTransition}>
@@ -355,7 +324,7 @@ export default function RecipeGeneratorPage() {
             <Card className="flex flex-col items-center justify-center py-24">
               <Loader2 className="h-16 w-16 animate-spin text-primary" />
               <CardTitle className="mt-6">Crafting your recipe...</CardTitle>
-              <CardDescription className="mt-2">Our AI chef is at work!</CardDescription>
+              <CardDescription className="mt-2">Our AI chef is at work and saving it to your history!</CardDescription>
             </Card>
           </motion.div>
         )}
@@ -406,16 +375,46 @@ export default function RecipeGeneratorPage() {
                  </CardContent>
                  <CardFooter className="flex-col sm:flex-row gap-2">
                     <Button onClick={resetFlow} variant="outline"><MoveLeft className="mr-2"/> Generate Another</Button>
-                    <Button onClick={handleSaveRecipe} disabled={isSaving}>
-                        {isSaving ? <Loader2 className="mr-2 h-4 w-4 animate-spin"/> : <Bookmark className="mr-2 h-4 w-4"/>}
-                        Save to History
-                    </Button>
                     <Button onClick={() => handleDownloadPdf(recipeResult)}><FileDown className="mr-2"/> Download PDF</Button>
                  </CardFooter>
             </Card>
            </motion.div>
         )}
       </AnimatePresence>
+       <Card>
+        <CardHeader>
+          <CardTitle className="flex items-center gap-2"><History /> Recipe History</CardTitle>
+          <CardDescription>View your previously generated and saved recipes.</CardDescription>
+        </CardHeader>
+        <CardContent>
+            {isFetchingHistory ? (
+              <div className="flex justify-center py-8">
+                <Loader2 className="h-8 w-8 animate-spin text-primary"/>
+              </div>
+            ) : history.length > 0 ? (
+                <div className="space-y-4 max-h-[600px] overflow-y-auto pr-4">
+                    {history.map(item => (
+                        <Card key={item.id} className="bg-muted/30">
+                           <CardHeader>
+                                <CardTitle className="text-lg">{item.name}</CardTitle>
+                                <CardDescription>Saved on {item.timestamp.toLocaleDateString()}</CardDescription>
+                            </CardHeader>
+                            <CardContent>
+                                <p className="text-sm text-muted-foreground mb-4">{item.description}</p>
+                                <div className="flex gap-2 flex-wrap">
+                                    {item.tags.map(tag => <Badge key={tag} variant="secondary">{tag}</Badge>)}
+                                </div>
+                            </CardContent>
+                        </Card>
+                    ))}
+                </div>
+            ) : (
+               <p className="text-muted-foreground text-center py-8">No saved recipes yet. Generate one above to get started!</p>
+            )}
+        </CardContent>
+      </Card>
     </div>
   );
 }
+
+    

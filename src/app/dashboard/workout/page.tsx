@@ -127,9 +127,27 @@ export default function WorkoutPage() {
       setIsFetchingHistory(false);
     }
   }, [user, authLoading, fetchUserDataAndHistory]);
+  
+  async function handleSaveWorkout(workoutToSave: WorkoutPlanOutput) {
+      if (!user) return;
+      setIsSaving(true);
+      try {
+          await addDoc(collection(db, 'workout-plans'), {
+              userId: user.uid,
+              timestamp: new Date(),
+              ...workoutToSave
+          });
+          toast({ title: "Workout Saved", description: "This plan has been saved to your history." });
+          await fetchUserDataAndHistory();
+      } catch(e: any) {
+          toast({ title: "Save Failed", description: e.message, variant: "destructive" });
+      } finally {
+          setIsSaving(false);
+      }
+  }
 
   async function onSubmit(values: WorkoutFormData) {
-    if (!profile) {
+    if (!profile || !user) {
       toast({ title: 'Error', description: 'User profile is not loaded.', variant: 'destructive' });
       return;
     }
@@ -141,31 +159,13 @@ export default function WorkoutPage() {
         latestHealthReport: latestHealthReport ? JSON.stringify(latestHealthReport) : undefined,
       });
       setWorkoutResult(result);
+      await handleSaveWorkout(result);
       setCurrentStep(Steps.RESULT);
     } catch (e: any) {
       console.error(e);
       toast({ title: 'Generation Failed', description: e.message || 'An error occurred.', variant: 'destructive' });
       setCurrentStep(Steps.PREFERENCES);
     }
-  }
-
-  async function handleSaveWorkout() {
-      if (!user || !workoutResult) return;
-      setIsSaving(true);
-      try {
-          await addDoc(collection(db, 'workout-plans'), {
-              userId: user.uid,
-              timestamp: new Date(),
-              ...workoutResult
-          });
-          toast({ title: "Workout Saved", description: "This plan has been saved to your history." });
-          await fetchUserDataAndHistory();
-          resetFlow();
-      } catch(e: any) {
-          toast({ title: "Save Failed", description: e.message, variant: "destructive" });
-      } finally {
-          setIsSaving(false);
-      }
   }
 
   function handleDownloadPdf() {
@@ -249,38 +249,6 @@ export default function WorkoutPage() {
 
   return (
     <div className="max-w-4xl mx-auto space-y-6">
-       <Card>
-        <CardHeader>
-          <CardTitle className="flex items-center gap-2"><History /> Workout History</CardTitle>
-          <CardDescription>View your previously saved workout plans.</CardDescription>
-        </CardHeader>
-        <CardContent>
-            {isFetchingHistory ? (
-              <div className="flex justify-center py-8">
-                <Loader2 className="h-8 w-8 animate-spin text-primary"/>
-              </div>
-            ) : history.length > 0 ? (
-                <div className="space-y-4 max-h-[600px] overflow-y-auto pr-4">
-                    {history.map(item => (
-                        <Card key={item.id} className="bg-muted/30">
-                           <CardHeader>
-                                <CardTitle className="text-lg">{item.planTitle}</CardTitle>
-                                <CardDescription>Saved on {item.timestamp.toLocaleDateString()}</CardDescription>
-                            </CardHeader>
-                            <CardContent>
-                                <p className="text-sm text-muted-foreground mb-4">{item.planSummary}</p>
-                                <div className="flex gap-2 flex-wrap">
-                                    {item.tags.map(tag => <Badge key={tag} variant="secondary">{tag}</Badge>)}
-                                </div>
-                            </CardContent>
-                        </Card>
-                    ))}
-                </div>
-            ) : (
-               <p className="text-muted-foreground text-center py-8">No saved workout plans yet.</p>
-            )}
-        </CardContent>
-      </Card>
       <AnimatePresence mode="wait">
         {currentStep === Steps.PREFERENCES && (
           <motion.div key="preferences" initial="initial" animate="in" exit="out" variants={pageVariants} transition={pageTransition}>
@@ -390,7 +358,7 @@ export default function WorkoutPage() {
             <Card className="flex flex-col items-center justify-center py-24">
               <Loader2 className="h-16 w-16 animate-spin text-primary" />
               <CardTitle className="mt-6">Building your workout plan...</CardTitle>
-              <CardDescription className="mt-2">Our AI coach is personalizing your session!</CardDescription>
+              <CardDescription className="mt-2">Our AI coach is personalizing your session and saving it!</CardDescription>
             </Card>
           </motion.div>
         )}
@@ -439,16 +407,44 @@ export default function WorkoutPage() {
                  </CardContent>
                  <CardFooter className="flex-col sm:flex-row gap-2">
                     <Button onClick={resetFlow} variant="outline"><MoveLeft className="mr-2"/> New Workout</Button>
-                    <Button onClick={handleSaveWorkout} disabled={isSaving}>
-                        {isSaving ? <Loader2 className="mr-2 h-4 w-4 animate-spin"/> : <Bookmark className="mr-2 h-4 w-4"/>}
-                        Save to History
-                    </Button>
                     <Button onClick={handleDownloadPdf}><FileDown className="mr-2"/> Download PDF</Button>
                  </CardFooter>
             </Card>
            </motion.div>
         )}
       </AnimatePresence>
+      <Card>
+        <CardHeader>
+          <CardTitle className="flex items-center gap-2"><History /> Workout History</CardTitle>
+          <CardDescription>View your previously generated and saved workout plans.</CardDescription>
+        </CardHeader>
+        <CardContent>
+            {isFetchingHistory ? (
+              <div className="flex justify-center py-8">
+                <Loader2 className="h-8 w-8 animate-spin text-primary"/>
+              </div>
+            ) : history.length > 0 ? (
+                <div className="space-y-4 max-h-[600px] overflow-y-auto pr-4">
+                    {history.map(item => (
+                        <Card key={item.id} className="bg-muted/30">
+                           <CardHeader>
+                                <CardTitle className="text-lg">{item.planTitle}</CardTitle>
+                                <CardDescription>Saved on {item.timestamp.toLocaleDateString()}</CardDescription>
+                            </CardHeader>
+                            <CardContent>
+                                <p className="text-sm text-muted-foreground mb-4">{item.planSummary}</p>
+                                <div className="flex gap-2 flex-wrap">
+                                    {item.tags.map(tag => <Badge key={tag} variant="secondary">{tag}</Badge>)}
+                                </div>
+                            </CardContent>
+                        </Card>
+                    ))}
+                </div>
+            ) : (
+               <p className="text-muted-foreground text-center py-8">No saved workout plans yet. Generate one to get started!</p>
+            )}
+        </CardContent>
+      </Card>
     </div>
   );
 }
