@@ -176,7 +176,7 @@ export default function AnalysisPage() {
     <div className="space-y-6">
       <Card>
         <CardHeader>
-          <CardTitle>Health Report Analysis</CardTitle>
+          <CardTitle>Health Report Number Analysis</CardTitle>
           <CardDescription>Upload a photo or document of your health report (e.g., blood work) for an AI-powered analysis.</CardDescription>
         </CardHeader>
         <CardContent>

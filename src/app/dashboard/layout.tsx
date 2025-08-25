@@ -120,7 +120,7 @@ export default function DashboardLayout({
               <SidebarMenuButton asChild isActive={pathname.startsWith('/dashboard/analysis')}>
                 <Link href="/dashboard/analysis">
                   <ClipboardList />
-                  Analysis
+                  Number Analysis
                 </Link>
               </SidebarMenuButton>
             </SidebarMenuItem>
