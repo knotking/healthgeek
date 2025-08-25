@@ -972,25 +972,34 @@ export default function RecommendationsPage() {
     
     const ITEMS_PER_PAGE = 5;
 
-    const fetchMyHistory = useCallback(async (direction: 'next' | 'prev' = 'next') => {
+    const fetchMyHistory = useCallback(async (direction: 'next' | 'prev' | 'current' = 'next') => {
         if (!user) return;
         setLoadingMyHistory(true);
+        
         let newLastVisible = myHistoryLastVisible;
+        const newPageStack = [...myHistoryPageStack];
+
         if (direction === 'prev') {
-            const newStack = [...myHistoryPageStack];
-            newStack.pop(); 
-            newLastVisible = newStack.pop() || null; 
-            setMyHistoryPageStack(newStack);
+            newPageStack.pop(); 
+            newLastVisible = newPageStack.pop() || null; 
+        } else if (direction === 'current') {
+            newLastVisible = newPageStack.length > 0 ? newPageStack[newPageStack.length -1] : null;
         }
+
         const q = query(collection(db, 'recommendation-history'), where('userId', '==', user.uid), orderBy('timestamp', 'desc'), ...(newLastVisible ? [startAfter(newLastVisible)] : []), limit(ITEMS_PER_PAGE));
+        
         try {
             const snap = await getDocs(q);
             const items = snap.docs.map(doc => ({ id: doc.id, ...doc.data(), timestamp: (doc.data().timestamp as Timestamp).toDate() })) as RecommendationHistoryItem[];
             const lastDoc = snap.docs[snap.docs.length - 1];
-            setMyHistoryLastVisible(lastDoc);
-            if (direction === 'next' && myHistoryLastVisible) {
-                setMyHistoryPageStack(prev => [...prev, myHistoryLastVisible]);
+
+            if (direction === 'next') {
+                setMyHistoryPageStack(prev => [...prev, lastDoc]);
+            } else if (direction === 'prev') {
+                setMyHistoryPageStack(newPageStack);
             }
+            
+            setMyHistoryLastVisible(lastDoc);
             setMyHistory(items);
             setMyHistoryHasMore(items.length === ITEMS_PER_PAGE);
         } catch (e: any) { toast({ title: "Error fetching history", description: e.message, variant: "destructive"}); } 
@@ -1085,8 +1094,9 @@ export default function RecommendationsPage() {
         if (!window.confirm("Are you sure you want to delete this item? This action cannot be undone.")) return;
         try {
             await deleteDoc(doc(db, 'recommendation-history', id));
-            setMyHistory(myHistory.filter(item => item.id !== id));
             toast({ title: 'Item Deleted' });
+            // Instead of just filtering, we need to re-fetch to handle pagination correctly
+            fetchMyHistory('current');
         } catch(e: any) {
             toast({ title: "Delete failed", description: e.message, variant: 'destructive' });
         }
