@@ -7,18 +7,20 @@ import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
 import { useAuthState } from 'react-firebase-hooks/auth';
 import { auth, db } from '@/lib/firebase';
-import { collection, addDoc, query, where, getDocs, orderBy, serverTimestamp, Timestamp, doc, updateDoc } from 'firebase/firestore';
+import { collection, addDoc, query, where, getDocs, orderBy, serverTimestamp, Timestamp, doc, updateDoc, deleteDoc } from 'firebase/firestore';
 import { generateQuiz, QuizGeneratorOutput } from '@/ai/flows/quiz-generator';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription, CardFooter } from '@/components/ui/card';
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from '@/components/ui/form';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { useToast } from '@/hooks/use-toast';
-import { Loader2, BrainCircuit, CheckCircle, XCircle, RotateCw, Trophy, Target, Lightbulb, Save, Play, BookOpen, Star } from 'lucide-react';
+import { Loader2, BrainCircuit, CheckCircle, XCircle, RotateCw, Trophy, Target, Lightbulb, Save, Play, BookOpen, Star, MoreHorizontal, Trash2 } from 'lucide-react';
 import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
 import { AnimatePresence, motion } from 'framer-motion';
 import { Slider } from '@/components/ui/slider';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
+import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from '@/components/ui/alert-dialog';
 
 
 const healthTopics = [
@@ -240,6 +242,12 @@ export default function HealthQuizPage() {
     setQuizSettings(null);
     setActiveTab('generator');
   };
+  
+  const handleQuit = () => {
+    setQuizState('setup');
+    setQuizData(null);
+    setQuizSettings(null);
+  };
 
   const handleSaveQuiz = async () => {
     if (!user || !quizData || !quizSettings) return;
@@ -273,6 +281,16 @@ export default function HealthQuizPage() {
           toast({ title: "Rating failed", description: e.message, variant: "destructive" });
       }
   };
+  
+  const handleDeleteQuiz = async (quizId: string) => {
+      try {
+        await deleteDoc(doc(db, 'saved-quizzes', quizId));
+        toast({ title: "Quiz Deleted", description: "The quiz has been removed from your saved list." });
+        setSavedQuizzes(prevQuizzes => prevQuizzes.filter(quiz => quiz.id !== quizId));
+      } catch (e: any) {
+        toast({ title: "Delete failed", description: e.message, variant: "destructive" });
+      }
+  }
   
   const pageVariants = { initial: { opacity: 0, y: 20 }, in: { opacity: 1, y: 0 }, out: { opacity: 0, y: -20 } };
   const pageTransition = { type: "tween", ease: "anticipate", duration: 0.5 };
@@ -323,12 +341,37 @@ export default function HealthQuizPage() {
                                         <div className="flex-grow">
                                             <p className="font-semibold">{quiz.title}</p>
                                             <p className="text-sm text-muted-foreground">{quiz.questions.length} questions &bull; Saved on {quiz.timestamp.toLocaleDateString()}</p>
+                                            <div className="mt-2 sm:hidden">{renderRating(quiz)}</div>
                                         </div>
-                                        <div className="flex items-center gap-4 w-full sm:w-auto">
-                                            {renderRating(quiz)}
-                                            <Button size="sm" onClick={() => startQuiz(quiz, { topic: quiz.topic, difficulty: quiz.difficulty, numberOfQuestions: quiz.questions.length } as QuizSetupFormData)} className="flex-grow sm:flex-grow-0">
-                                                <Play className="mr-2 h-4 w-4"/> Replay
-                                            </Button>
+                                        <div className="flex items-center gap-2">
+                                            <div className="hidden sm:flex">{renderRating(quiz)}</div>
+                                            <DropdownMenu>
+                                                <DropdownMenuTrigger asChild>
+                                                    <Button variant="ghost" size="icon"><MoreHorizontal className="h-4 w-4" /></Button>
+                                                </DropdownMenuTrigger>
+                                                <DropdownMenuContent>
+                                                     <DropdownMenuItem onClick={() => startQuiz(quiz, { topic: quiz.topic, difficulty: quiz.difficulty, numberOfQuestions: quiz.questions.length } as QuizSetupFormData)}>
+                                                        <Play className="mr-2 h-4 w-4"/> Replay
+                                                     </DropdownMenuItem>
+                                                     <AlertDialog>
+                                                        <AlertDialogTrigger asChild>
+                                                            <DropdownMenuItem onSelect={(e) => e.preventDefault()} className="text-red-600 focus:text-red-600">
+                                                                <Trash2 className="mr-2 h-4 w-4"/> Delete
+                                                            </DropdownMenuItem>
+                                                        </AlertDialogTrigger>
+                                                        <AlertDialogContent>
+                                                            <AlertDialogHeader>
+                                                                <AlertDialogTitle>Are you sure?</AlertDialogTitle>
+                                                                <AlertDialogDescription>This action cannot be undone. This will permanently delete this quiz.</AlertDialogDescription>
+                                                            </AlertDialogHeader>
+                                                            <AlertDialogFooter>
+                                                                <AlertDialogCancel>Cancel</AlertDialogCancel>
+                                                                <AlertDialogAction onClick={() => handleDeleteQuiz(quiz.id)}>Delete</AlertDialogAction>
+                                                            </AlertDialogFooter>
+                                                        </AlertDialogContent>
+                                                     </AlertDialog>
+                                                </DropdownMenuContent>
+                                            </DropdownMenu>
                                         </div>
                                     </Card>
                                 ))}
@@ -365,7 +408,7 @@ export default function HealthQuizPage() {
                         </RadioGroup>
                     </CardContent>
                     <CardFooter className="flex justify-between">
-                        <Button onClick={handleRestart} variant="outline">
+                        <Button onClick={handleQuit} variant="outline">
                             <XCircle className="mr-2 h-4 w-4" /> Quit
                         </Button>
                         <Button onClick={handleNextQuestion} disabled={userAnswers[currentQuestionIndex] === undefined}>
