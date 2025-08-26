@@ -972,9 +972,9 @@ export default function RecommendationsPage() {
     // State for personal history
     const [myHistory, setMyHistory] = useState<RecommendationHistoryItem[]>([]);
     const [loadingMyHistory, setLoadingMyHistory] = useState(true);
-    const [myHistoryPage, setMyHistoryPage] = useState(1);
     const [myHistoryPageDocs, setMyHistoryPageDocs] = useState<any[]>([null]);
     const [myHistoryHasMore, setMyHistoryHasMore] = useState(true);
+    const [myHistoryCurrentPage, setMyHistoryCurrentPage] = useState(1);
     
     // State for community recommendations
     const [communityRecs, setCommunityRecs] = useState<RecommendationHistoryItem[]>([]);
@@ -1015,7 +1015,7 @@ export default function RecommendationsPage() {
             
             setMyHistory(items);
             setMyHistoryHasMore(items.length === ITEMS_PER_PAGE);
-            setMyHistoryPage(page);
+            setMyHistoryCurrentPage(page);
         } catch (e: any) { 
             toast({ title: "Error fetching history", description: e.message, variant: "destructive"}); 
         } finally { 
@@ -1056,7 +1056,7 @@ export default function RecommendationsPage() {
         } else if (!authLoading && !user) {
             setLoadingMyHistory(false);
         }
-    }, [user, authLoading]);
+    }, [user, authLoading, fetchMyHistory]);
 
     useEffect(() => {
         fetchCommunityRecs();
@@ -1077,7 +1077,6 @@ export default function RecommendationsPage() {
         setViewData(null);
         setViewDataType(null);
         if (newTab === 'history') {
-            setMyHistoryPage(1);
             setMyHistoryPageDocs([null]);
             fetchMyHistory(1);
         }
@@ -1117,18 +1116,8 @@ export default function RecommendationsPage() {
         try {
             await deleteDoc(doc(db, 'recommendation-history', id));
             toast({ title: 'Item Deleted' });
-            
-            const remainingItemsOnPage = myHistory.filter(item => item.id !== id);
-
-            if (remainingItemsOnPage.length === 0 && myHistoryPage > 1) {
-                const newPageDocs = [...myHistoryPageDocs];
-                newPageDocs.pop(); // Remove current page's last doc
-                newPageDocs.pop(); // Remove previous page's last doc to re-fetch it
-                setMyHistoryPageDocs(newPageDocs);
-                fetchMyHistory(myHistoryPage - 1);
-            } else {
-                fetchMyHistory(myHistoryPage);
-            }
+            // Reset to the first page and re-fetch. This is a simpler and more reliable approach.
+            handleTabChange('history');
         } catch(e: any) {
             toast({ title: "Delete failed", description: e.message, variant: 'destructive' });
         }
@@ -1153,10 +1142,10 @@ export default function RecommendationsPage() {
                 onTogglePublic={handleTogglePublic}
                 onRate={handleRate}
                 onDelete={handleDelete}
-                onNextPage={() => fetchMyHistory(myHistoryPage + 1)}
-                onPrevPage={() => fetchMyHistory(myHistoryPage - 1)}
+                onNextPage={() => fetchMyHistory(myHistoryCurrentPage + 1)}
+                onPrevPage={() => fetchMyHistory(myHistoryCurrentPage - 1)}
                 hasMore={myHistoryHasMore}
-                isFirstPage={myHistoryPage === 1}
+                isFirstPage={myHistoryCurrentPage === 1}
                 currentUser={user}
             />
         </TabsContent>
@@ -1201,5 +1190,3 @@ export default function RecommendationsPage() {
     </div>
   );
 }
-
-    
