@@ -19,6 +19,12 @@ import { Loader2, Upload, FileScan, Beaker, PlusCircle, History, Lightbulb } fro
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import Image from 'next/image';
 import { Separator } from '@/components/ui/separator';
+import {
+  Accordion,
+  AccordionContent,
+  AccordionItem,
+  AccordionTrigger,
+} from "@/components/ui/accordion";
 
 interface HealthReportLog extends HealthReportAnalysisOutput {
   id: string;
@@ -277,34 +283,38 @@ export default function AnalysisPage() {
                 <Loader2 className="h-8 w-8 animate-spin text-primary"/>
               </div>
             ) : reportHistory.length > 0 ? (
-                <div className="space-y-4 max-h-[500px] overflow-y-auto pr-4">
+                <Accordion type="single" collapsible className="w-full">
                     {reportHistory.map(report => (
-                        <Card key={report.id} className="bg-muted/30">
-                            <CardHeader>
-                                <CardTitle className="text-lg">Report from {report.timestamp.toLocaleDateString()}</CardTitle>
-                                <CardDescription>{report.timestamp.toLocaleTimeString()}</CardDescription>
-                            </CardHeader>
-                            <CardContent>
-                                <div>
-                                  <h4 className="font-semibold text-sm mb-2">Summary</h4>
-                                  <p className="text-sm text-muted-foreground mb-4">{report.summary}</p>
+                        <AccordionItem value={report.id} key={report.id}>
+                            <AccordionTrigger>
+                                <div className="flex justify-between w-full pr-4">
+                                  <span>Report from {report.timestamp.toLocaleDateString()}</span>
+                                  <span className="text-muted-foreground text-sm">{report.timestamp.toLocaleTimeString()}</span>
                                 </div>
-                                <Separator className="my-4"/>
-                                <div>
-                                   <h4 className="font-semibold text-sm mb-2">Extracted Metrics</h4>
-                                    <ul className="space-y-2">
-                                        {report.extractedMetrics.map((metric, index) => (
-                                            <li key={`${metric.name}-${index}`} className="flex justify-between text-xs p-2 bg-background/50 rounded-md">
-                                              <span><strong>{metric.name}:</strong> {metric.value}</span>
-                                              <span className="font-medium">{metric.interpretation}</span>
-                                            </li>
-                                        ))}
-                                    </ul>
+                            </AccordionTrigger>
+                            <AccordionContent>
+                                <div className="px-4 py-2 space-y-4">
+                                    <div>
+                                      <h4 className="font-semibold text-sm mb-2">Summary</h4>
+                                      <p className="text-sm text-muted-foreground mb-4">{report.summary}</p>
+                                    </div>
+                                    <Separator className="my-4"/>
+                                    <div>
+                                       <h4 className="font-semibold text-sm mb-2">Extracted Metrics</h4>
+                                        <ul className="space-y-2">
+                                            {report.extractedMetrics.map((metric, index) => (
+                                                <li key={`${metric.name}-${index}`} className="flex justify-between text-xs p-2 bg-background/50 rounded-md">
+                                                  <span><strong>{metric.name}:</strong> {metric.value}</span>
+                                                  <span className="font-medium">{metric.interpretation}</span>
+                                                </li>
+                                            ))}
+                                        </ul>
+                                    </div>
                                 </div>
-                            </CardContent>
-                        </Card>
+                            </AccordionContent>
+                        </AccordionItem>
                     ))}
-                </div>
+                </Accordion>
             ) : (
                <p className="text-muted-foreground text-center py-8">No reports analyzed yet.</p>
             )}
