@@ -16,7 +16,7 @@ import jsPDF from 'jspdf';
 import 'jspdf-autotable';
 import { AnimatePresence, motion } from 'framer-motion';
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from '@/components/ui/accordion';
-import { BrainCircuit, ChefHat, Dumbbell, User, Trash2, Heart, Star, Eye, Users } from 'lucide-react';
+import { BrainCircuit, ChefHat, Dumbbell, User, Trash2, Heart, Star, Eye } from 'lucide-react';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter, DialogTrigger } from '@/components/ui/dialog';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
@@ -906,107 +906,6 @@ const MyHistory = ({ history, loading, onDelete, onView, onRate }: { history: an
     )
 }
 
-const CommunityFeed = ({ onView }: { onView: (item: any) => void }) => {
-  const [feed, setFeed] = useState<any[]>([]);
-  const [loading, setLoading] = useState(true);
-  const { toast } = useToast();
-
-  const fetchCommunityFeed = useCallback(async () => {
-    setLoading(true);
-    try {
-      const q = query(
-        collection(db, 'recommendation-history'),
-        where('isPublic', '==', true),
-        orderBy('rating', 'desc'),
-        orderBy('timestamp', 'desc'),
-        limit(50)
-      );
-      const querySnapshot = await getDocs(q);
-      setFeed(querySnapshot.docs.map(d => ({ id: d.id, ...d.data() })));
-    } catch (e: any) {
-      console.error(e);
-      toast({
-        title: "Error fetching community feed",
-        description: "There was an issue loading community recommendations. It might be a permissions issue.",
-        variant: "destructive"
-      });
-    } finally {
-      setLoading(false);
-    }
-  }, [toast]);
-
-  useEffect(() => {
-    fetchCommunityFeed();
-  }, [fetchCommunityFeed]);
-
-  const typeIcon = (type: string) => {
-    switch (type) {
-      case 'workout': return <Dumbbell className="h-5 w-5 text-primary" />;
-      case 'meditation': return <BrainCircuit className="h-5 w-5 text-primary" />;
-      case 'recipe': return <ChefHat className="h-5 w-5 text-primary" />;
-      default: return null;
-    }
-  };
-
-  const renderRating = (item: any) => (
-    <div className="flex items-center">
-      {[...Array(5)].map((_, i) => (
-        <Star key={i} className={`h-4 w-4 ${i < item.rating ? 'text-yellow-400 fill-yellow-400' : 'text-gray-300'}`} />
-      ))}
-    </div>
-  );
-
-  const getItemName = (item: any) => {
-    switch (item.type) {
-      case 'workout': return item.data.planTitle;
-      case 'meditation': return item.data.title;
-      case 'recipe': return item.data.name;
-      default: return 'Unknown';
-    }
-  };
-
-  if (loading) {
-    return <div className="flex justify-center py-12"><Loader2Common className="h-8 w-8 animate-spin" /></div>;
-  }
-
-  if (feed.length === 0) {
-    return <div className="text-center py-12 text-muted-foreground">No community recommendations have been shared yet.</div>
-  }
-
-  return (
-    <Card>
-      <CardHeader>
-        <CardTitle>Community Recommendations</CardTitle>
-        <CardDescription>Discover workouts, meditations, and recipes shared by other HealthGeek users.</CardDescription>
-      </CardHeader>
-      <CardContent>
-        <div className="space-y-4">
-          {feed.map((item) => (
-            <Card key={item.id} className="flex items-center justify-between p-4">
-              <div className="flex items-center gap-4">
-                {typeIcon(item.type)}
-                <div>
-                  <p className="font-semibold">{getItemName(item)}</p>
-                  <p className="text-sm text-muted-foreground capitalize">
-                    Shared by {item.userName || 'Anonymous'} &bull; {item.type}
-                  </p>
-                </div>
-              </div>
-              <div className="flex items-center gap-4">
-                {renderRating(item)}
-                <ButtonCommon variant="outline" size="sm" onClick={() => onView(item)}>
-                  <Eye className="mr-2 h-4 w-4"/>View
-                </ButtonCommon>
-              </div>
-            </Card>
-          ))}
-        </div>
-      </CardContent>
-    </Card>
-  );
-};
-
-
 const DetailedView = ({ item }: { item: any }) => {
     if (!item) return null;
 
@@ -1149,16 +1048,12 @@ export default function RecommendationsPage() {
   return (
     <>
       <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
-        <TabsList className="grid w-full grid-cols-3">
+        <TabsList className="grid w-full grid-cols-2">
           <TabsTrigger value="history">My History</TabsTrigger>
-          <TabsTrigger value="community">Community</TabsTrigger>
           <TabsTrigger value="generators">Generators</TabsTrigger>
         </TabsList>
         <TabsContent value="history">
             <MyHistory history={myHistory} loading={historyLoading} onDelete={handleDelete} onView={handleView} onRate={handleRate} />
-        </TabsContent>
-        <TabsContent value="community">
-            <CommunityFeed onView={handleView} />
         </TabsContent>
         <TabsContent value="generators">
             <Generators onGenerate={handleGenerated} />

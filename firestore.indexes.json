@@ -2,24 +2,6 @@
 {
   "indexes": [
     {
-      "collectionGroup": "recommendation-history",
-      "queryScope": "COLLECTION",
-      "fields": [
-        {
-          "fieldPath": "isPublic",
-          "order": "ASCENDING"
-        },
-        {
-          "fieldPath": "rating",
-          "order": "DESCENDING"
-        },
-        {
-          "fieldPath": "timestamp",
-          "order": "DESCENDING"
-        }
-      ]
-    },
-    {
       "collectionGroup": "food-log",
       "queryScope": "COLLECTION",
       "fields": [
