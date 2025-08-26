@@ -16,7 +16,7 @@ import jsPDF from 'jspdf';
 import 'jspdf-autotable';
 import { AnimatePresence, motion } from 'framer-motion';
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from '@/components/ui/accordion';
-import { BrainCircuit, ChefHat, Dumbbell, User, Trash2, Heart, Star, Eye } from 'lucide-react';
+import { BrainCircuit, ChefHat, Dumbbell, User, Trash2, Heart, Star, Eye, Sparkles } from 'lucide-react';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter, DialogTrigger } from '@/components/ui/dialog';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
@@ -60,6 +60,17 @@ import { Slider as SliderMeditation } from '@/components/ui/slider';
 import { Checkbox as CheckboxMeditation } from '@/components/ui/checkbox';
 import { FileDown as FileDownMeditation, MoveRight as MoveRightMeditation, MoveLeft as MoveLeftMeditation, Sparkles as SparklesMeditation, Timer as TimerMeditation } from 'lucide-react';
 import { Textarea as TextareaMeditation } from '@/components/ui/textarea';
+
+
+// Habit Generator Imports
+import { useForm as useFormHabit } from 'react-hook-form';
+import { zodResolver as zodResolverHabit } from '@hookform/resolvers/zod';
+import { z as zHabit } from 'zod';
+import { generateHabitPlan, HabitRecommendationOutput } from '@/ai/flows/habit-recommender';
+import { Form as FormHabit, FormControl as FormControlHabit, FormField as FormFieldHabit, FormItem as FormItemHabit, FormLabel as FormLabelHabit, FormMessage as FormMessageHabit } from '@/components/ui/form';
+import { Checkbox as CheckboxHabit } from '@/components/ui/checkbox';
+import { Textarea as TextareaHabit } from '@/components/ui/textarea';
+import { FileDown as FileDownHabit, MoveRight as MoveRightHabit, MoveLeft as MoveLeftHabit, Star as StarHabit, Repeat as RepeatHabit, Lightbulb, Target as TargetHabit } from 'lucide-react';
 
 
 // --- Recipe Component ---
@@ -786,6 +797,268 @@ function MeditationGenerator({ onSave }: { onSave: () => void }) {
     );
 }
 
+
+// --- Habit Component ---
+const habitGoals = [
+    { id: 'weight-management', label: 'Weight Management' },
+    { id: 'stress-reduction', label: 'Stress Reduction' },
+    { id: 'increase-energy', label: 'Increase Energy' },
+    { id: 'improve-sleep', label: 'Improve Sleep Quality' },
+    { id: 'mindful-eating', label: 'Practice Mindful Eating' },
+    { id: 'stay-active', label: 'Stay Consistently Active' },
+    { id: 'mental-clarity', label: 'Enhance Mental Clarity' },
+    { id: 'better-hydration', label: 'Improve Hydration' },
+] as const;
+
+const habitSchema = zHabit.object({
+  goals: zHabit.array(zHabit.string()).refine((value) => value.some((item) => item), { message: 'You have to select at least one goal.' }),
+  customInstructions: zHabit.string().optional(),
+});
+type HabitFormData = zHabit.infer<typeof habitSchema>;
+const HabitSteps = { PREFERENCES: 1, GENERATING: 2, RESULT: 3 };
+
+function HabitGenerator({ onSave }: { onSave: () => void }) {
+    const [user, authLoading] = useAuthState(auth);
+    const { toast } = useToast();
+    const [initialLoading, setInitialLoading] = useState(true);
+    const [profile, setProfile] = useState<any>(null);
+    const [habitResult, setHabitResult] = useState<HabitRecommendationOutput | null>(null);
+    const [currentStep, setCurrentStep] = useState(HabitSteps.PREFERENCES);
+    const [isSaving, setIsSaving] = useState(false);
+    const [isPublic, setIsPublic] = useState(false);
+
+    const form = useFormHabit<HabitFormData>({
+        resolver: zodResolverHabit(habitSchema),
+        defaultValues: { goals: [], customInstructions: '' },
+    });
+
+    const fetchUserData = useCallback(async () => {
+        if (user) {
+            try {
+                const profileRef = doc(db, 'profiles', user.uid);
+                const profileSnap = await getDoc(profileRef);
+                if (profileSnap.exists()) setProfile(profileSnap.data());
+                else toast({ variant: 'destructive', title: 'Profile Required', description: 'Please complete your user profile first.' });
+            } catch (e: any) {
+                toast({ title: "Data Fetch Failed", description: "Could not load your user data.", variant: "destructive" });
+            } finally {
+                setInitialLoading(false);
+            }
+        }
+    }, [user, toast]);
+
+    useEffect(() => {
+        if (!authLoading && user) fetchUserData();
+        else if (!authLoading && !user) setInitialLoading(false);
+    }, [user, authLoading, fetchUserData]);
+    
+    async function onSubmit(values: HabitFormData) {
+        if (!profile || !user) {
+            toast({ title: 'Error', description: 'User profile is not loaded.', variant: 'destructive' });
+            return;
+        }
+        setCurrentStep(HabitSteps.GENERATING);
+        try {
+            const result = await generateHabitPlan({
+              ...values,
+              userProfile: JSON.stringify(profile),
+            });
+            setHabitResult(result);
+            setCurrentStep(HabitSteps.RESULT);
+        } catch (e: any) {
+            console.error(e);
+            toast({ title: 'Generation Failed', description: e.message || 'An error occurred.', variant: 'destructive' });
+            setCurrentStep(HabitSteps.PREFERENCES);
+        }
+    }
+
+    async function handleSave() {
+        if (!user || !habitResult) return;
+        setIsSaving(true);
+        try {
+            await addDoc(collection(db, 'recommendation-history'), {
+                userId: user.uid,
+                userName: profile?.name || 'Anonymous',
+                type: 'habit',
+                data: habitResult,
+                isPublic,
+                timestamp: serverTimestamp(),
+                rating: 0,
+            });
+            toast({ title: 'Success', description: 'Habit plan saved to your history.' });
+            onSave();
+        } catch (e: any) {
+            toast({ title: 'Save Failed', description: e.message, variant: 'destructive' });
+        } finally {
+            setIsSaving(false);
+        }
+    }
+
+    function handleDownloadPdf() {
+        if (!habitResult) return;
+        const doc = new jsPDF();
+        const pageHeight = doc.internal.pageSize.height;
+        let finalY = 0;
+        
+        doc.setFontSize(22);
+        doc.text(habitResult.planTitle, 105, 20, { align: 'center' });
+        doc.setFontSize(11);
+        const summaryLines = doc.splitTextToSize(habitResult.summary, 180);
+        doc.text(summaryLines, 105, 30, { align: 'center' });
+        
+        (doc as any).autoTable({
+            head: [['Long-Term Benefits']], body: [[habitResult.benefits]],
+            startY: 45, theme: 'grid'
+        });
+        finalY = (doc as any).lastAutoTable.finalY;
+
+        habitResult.habits.forEach(habit => {
+            if (finalY > pageHeight - 50) doc.addPage();
+            (doc as any).autoTable({
+                head: [[`${habit.name} (${habit.frequency})`]],
+                body: [
+                    ['Description', habit.description],
+                    ['Implementation Tip', habit.implementationTip],
+                ],
+                startY: finalY + 10,
+                theme: 'striped',
+                headStyles: { fillColor: '#f3f4f6', textColor: '#111827' }
+            });
+            finalY = (doc as any).lastAutoTable.finalY;
+        });
+
+        const pageCount = (doc as any).internal.getNumberOfPages();
+        for (let i = 1; i <= pageCount; i++) {
+            doc.setPage(i);
+            doc.setFontSize(8);
+            doc.setTextColor(150);
+            doc.text(
+                `Powered by HealthGeek - © ${new Date().getFullYear()} HealthGeek. All rights reserved.`,
+                105,
+                pageHeight - 10,
+                { align: 'center' }
+            );
+        }
+
+        doc.save(`${habitResult.planTitle.replace(/\s+/g, '_')}.pdf`);
+    }
+
+    const resetFlow = () => {
+        form.reset({ goals: [], customInstructions: '' });
+        setHabitResult(null);
+        setCurrentStep(HabitSteps.PREFERENCES);
+        setIsPublic(false);
+    }
+
+    const pageVariants = { initial: { opacity: 0, x: 50 }, in: { opacity: 1, x: 0 }, out: { opacity: 0, x: -50 } };
+    const pageTransition = { type: "tween", ease: "anticipate", duration: 0.5 };
+
+    if (authLoading || initialLoading) return <div className="flex justify-center py-6"><Loader2Common className="h-8 w-8 animate-spin" /></div>;
+
+    return (
+        <AnimatePresence mode="wait">
+            {currentStep === HabitSteps.PREFERENCES && (
+                <motion.div key="preferences" initial="initial" animate="in" exit="out" variants={pageVariants} transition={pageTransition}>
+                    <Card>
+                        <CardHeader>
+                            <CardTitle className="flex items-center gap-2"><TargetHabit /> AI Habit Builder</CardTitle>
+                            <CardDescription>Select your goals, and our AI will craft a personalized plan of actionable habits to help you succeed.</CardDescription>
+                        </CardHeader>
+                        <CardContent>
+                            <FormHabit {...form}>
+                                <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-8">
+                                    <FormFieldHabit control={form.control} name="goals" render={() => (
+                                        <FormItemHabit>
+                                            <div className="mb-4"><FormLabelHabit className="text-base">What are your primary goals?</FormLabelHabit><p className="text-sm text-muted-foreground">Select one or more.</p></div>
+                                            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                                                {habitGoals.map((item) => (
+                                                    <FormFieldHabit key={item.id} control={form.control} name="goals" render={({ field }) => (
+                                                        <FormItemHabit key={item.id} className="flex flex-row items-start space-x-3 space-y-0">
+                                                            <FormControlHabit><CheckboxHabit checked={field.value?.includes(item.id)} onCheckedChange={(checked) => { const currentGoals = field.value || []; return checked ? field.onChange([...currentGoals, item.id]) : field.onChange(currentGoals?.filter((value) => value !== item.id)); }} /></FormControlHabit>
+                                                            <FormLabelHabit className="font-normal">{item.label}</FormLabelHabit>
+                                                        </FormItemHabit>
+                                                    )} />
+                                                ))}
+                                            </div><FormMessageHabit />
+                                        </FormItemHabit>
+                                    )} />
+                                    <FormFieldHabit
+                                      control={form.control}
+                                      name="customInstructions"
+                                      render={({ field }) => (
+                                        <FormItemHabit>
+                                          <FormLabelHabit>Specific Instructions (Optional)</FormLabelHabit>
+                                          <FormControlHabit>
+                                            <TextareaHabit
+                                              placeholder="e.g., 'I only have 15 minutes in the morning', 'I work night shifts'"
+                                              {...field}
+                                            />
+                                          </FormControlHabit>
+                                          <FormMessageHabit />
+                                        </FormItemHabit>
+                                      )}
+                                    />
+                                    <ButtonCommon type="submit" disabled={!profile}>Generate Habit Plan <MoveRightHabit className="ml-2" /></ButtonCommon>
+                                </form>
+                            </FormHabit>
+                        </CardContent>
+                    </Card>
+                </motion.div>
+            )}
+            {currentStep === HabitSteps.GENERATING && (
+                <motion.div key="generating" initial="initial" animate="in" exit="out" variants={pageVariants} transition={pageTransition}>
+                    <Card className="flex flex-col items-center justify-center py-24"><Loader2Common className="h-16 w-16 animate-spin text-primary" /><CardTitle className="mt-6">Building your habit plan...</CardTitle><CardDescription className="mt-2">Our AI coach is designing your path to success.</CardDescription></Card>
+                </motion.div>
+            )}
+            {currentStep === HabitSteps.RESULT && habitResult && (
+                <motion.div key="result" initial="initial" animate="in" exit="out" variants={pageVariants} transition={pageTransition}>
+                    <Card>
+                        <CardHeader><CardTitle className="text-3xl font-bold text-center">{habitResult.planTitle}</CardTitle><CardDescription className="text-center text-md pt-2">{habitResult.summary}</CardDescription></CardHeader>
+                        <CardContent className="space-y-8">
+                            <div className="flex gap-2 justify-center flex-wrap">{habitResult.tags.map(tag => <BadgeCommon key={tag} variant="secondary">{tag}</BadgeCommon>)}</div>
+                            <Alert variant="default"><StarHabit className="h-4 w-4"/><AlertTitle>Long-Term Benefits</AlertTitle><AlertDescription>{habitResult.benefits}</AlertDescription></Alert>
+                            <div>
+                                <h3 className="font-bold text-xl mb-4 flex items-center gap-2"><TargetHabit className="text-primary"/> Your New Habits</h3>
+                                <div className="space-y-4">
+                                    {habitResult.habits.map((habit, i) => (
+                                        <Card key={i} className="p-4 bg-muted/50">
+                                            <CardTitle className="text-lg flex justify-between items-center">
+                                                <span>{habit.name}</span>
+                                                <span className="text-sm font-medium text-muted-foreground flex items-center gap-1.5"><RepeatHabit size={16}/>{habit.frequency}</span>
+                                            </CardTitle>
+                                            <CardDescription className="pt-3">{habit.description}</CardDescription>
+                                            <div className="mt-3 text-xs bg-background p-2 rounded-md flex items-start gap-2">
+                                              <Lightbulb className="h-4 w-4 text-primary flex-shrink-0 mt-0.5" />
+                                              <p className="text-muted-foreground"><strong>Tip:</strong> {habit.implementationTip}</p>
+                                          </div>
+                                        </Card>
+                                    ))}
+                                </div>
+                            </div>
+                        </CardContent>
+                        <CardFooter className="flex-col sm:flex-row gap-4 justify-center">
+                            <ButtonCommon onClick={resetFlow} variant="outline"><MoveLeftHabit className="mr-2"/> New Plan</ButtonCommon>
+                            <ButtonCommon onClick={handleDownloadPdf}><FileDownHabit className="mr-2"/> Download PDF</ButtonCommon>
+                            <div className="flex items-center space-x-2">
+                                <Checkbox id="publish-habit" checked={isPublic} onCheckedChange={(checked) => setIsPublic(Boolean(checked))} />
+                                <label htmlFor="publish-habit" className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70">
+                                    Share with community
+                                </label>
+                            </div>
+                            <ButtonCommon onClick={handleSave} disabled={isSaving}>
+                                {isSaving ? <Loader2Common className="mr-2 h-4 w-4 animate-spin" /> : <Heart className="mr-2 h-4 w-4" />}
+                                Save to History
+                            </ButtonCommon>
+                        </CardFooter>
+                    </Card>
+                </motion.div>
+            )}
+        </AnimatePresence>
+    );
+}
+
+
+
 const Generators = ({ onGenerate }: { onGenerate: () => void }) => (
     <div className="space-y-6 max-w-4xl mx-auto">
         <Accordion type="single" collapsible className="w-full" defaultValue="workout">
@@ -822,6 +1095,17 @@ const Generators = ({ onGenerate }: { onGenerate: () => void }) => (
                     <RecipeGenerator onSave={onGenerate} />
                 </AccordionContent>
             </AccordionItem>
+            <AccordionItem value="habit">
+                <AccordionTrigger className="text-xl font-semibold">
+                     <div className="flex items-center gap-3">
+                        <Sparkles className="h-6 w-6 text-primary"/>
+                        Habit Builder
+                    </div>
+                </AccordionTrigger>
+                <AccordionContent className="pt-4">
+                    <HabitGenerator onSave={onGenerate} />
+                </AccordionContent>
+            </AccordionItem>
         </Accordion>
     </div>
 );
@@ -834,6 +1118,7 @@ const MyHistory = ({ history, loading, onDelete, onView, onRate }: { history: an
             case 'workout': return <Dumbbell className="h-5 w-5 text-primary" />;
             case 'meditation': return <BrainCircuit className="h-5 w-5 text-primary" />;
             case 'recipe': return <ChefHat className="h-5 w-5 text-primary" />;
+            case 'habit': return <Sparkles className="h-5 w-5 text-primary" />;
             default: return null;
         }
     };
@@ -857,6 +1142,7 @@ const MyHistory = ({ history, loading, onDelete, onView, onRate }: { history: an
             case 'workout': return item.data.planTitle;
             case 'meditation': return item.data.title;
             case 'recipe': return item.data.name;
+            case 'habit': return item.data.planTitle;
             default: return 'Unknown';
         }
     }
@@ -973,6 +1259,31 @@ const DetailedView = ({ item }: { item: any }) => {
                       <div className="md:col-span-3"><h3 className="font-bold text-xl mb-4 flex items-center gap-2"><CookingPot /> Instructions</h3><ol className="space-y-4 text-muted-foreground">{data.instructions.map((step: string, i: number) => <li key={i} className="flex items-start"><span className="font-bold text-primary mr-3">{i + 1}.</span><span>{step}</span></li>)}</ol></div>
                   </div>
                </div>
+            );
+        case 'habit':
+            return (
+                <div className="space-y-8">
+                    <div className="flex gap-2 justify-center flex-wrap">{data.tags.map((tag: string) => <BadgeCommon key={tag} variant="secondary">{tag}</BadgeCommon>)}</div>
+                    <Alert variant="default"><StarHabit className="h-4 w-4"/><AlertTitle>Long-Term Benefits</AlertTitle><AlertDescription>{data.benefits}</AlertDescription></Alert>
+                    <div>
+                        <h3 className="font-bold text-xl mb-4 flex items-center gap-2"><TargetHabit className="text-primary"/> Your New Habits</h3>
+                        <div className="space-y-4">
+                            {data.habits.map((habit: any, i: number) => (
+                                <Card key={i} className="p-4 bg-muted/50">
+                                    <CardTitle className="text-lg flex justify-between items-center">
+                                        <span>{habit.name}</span>
+                                        <span className="text-sm font-medium text-muted-foreground flex items-center gap-1.5"><RepeatHabit size={16}/>{habit.frequency}</span>
+                                    </CardTitle>
+                                    <CardDescription className="pt-3">{habit.description}</CardDescription>
+                                    <div className="mt-3 text-xs bg-background p-2 rounded-md flex items-start gap-2">
+                                      <Lightbulb className="h-4 w-4 text-primary flex-shrink-0 mt-0.5" />
+                                      <p className="text-muted-foreground"><strong>Tip:</strong> {habit.implementationTip}</p>
+                                  </div>
+                                </Card>
+                            ))}
+                        </div>
+                    </div>
+                </div>
             );
         default:
             return <p>This recommendation type cannot be displayed.</p>;
