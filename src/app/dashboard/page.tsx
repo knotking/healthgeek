@@ -102,9 +102,7 @@ const profileSchema = z.object({
   targetWeight: z.coerce.number().min(1, 'Target weight is required.'),
   weightUnit: z.enum(['KG', 'LB']),
   healthIssues: z.array(z.string()).optional(),
-  diets: z.array(z.string()).refine((value) => value.some((item) => item), {
-    message: 'You have to select at least one diet preference.',
-  }),
+  diets: z.array(z.string()).optional(),
   dailyCalorieTarget: z.coerce.number().optional(),
   bmi: z.coerce.number().optional(),
 });
@@ -187,7 +185,7 @@ export default function ProfilePage() {
             targetWeight: profileData.weight.target,
             weightUnit: profileData.weight.unit,
             healthIssues: profileData.healthIssues || [],
-            diets: profileData.diets,
+            diets: profileData.diets || [],
             dailyCalorieTarget: profileData.dailyCalorieTarget,
             bmi: profileData.bmi,
           });
@@ -221,7 +219,7 @@ export default function ProfilePage() {
         targetWeight: values.targetWeight,
         weightUnit: values.weightUnit,
         healthIssues: values.healthIssues || [],
-        diets: values.diets,
+        diets: values.diets || [],
       });
 
       const profileData = {
@@ -473,5 +471,7 @@ export default function ProfilePage() {
     </Card>
   );
 }
+
+    
 
     

@@ -104,9 +104,7 @@ const formSchema = z.object({
   targetWeight: z.coerce.number().min(1, 'Target weight is required.'),
   weightUnit: z.enum(['KG', 'LB']),
   healthIssues: z.array(z.string()).optional(),
-  diets: z.array(z.string()).refine((value) => value.some((item) => item), {
-    message: 'You have to select at least one diet preference.',
-  }),
+  diets: z.array(z.string()).optional(),
   bmi: z.coerce.number().optional(),
 });
 
@@ -192,7 +190,7 @@ export default function SignupPage() {
         targetWeight: values.targetWeight,
         weightUnit: values.weightUnit,
         healthIssues: values.healthIssues || [],
-        diets: values.diets,
+        diets: values.diets || [],
       });
 
       const profileData = {
@@ -455,5 +453,7 @@ export default function SignupPage() {
     </div>
   );
 }
+
+    
 
     
