@@ -905,6 +905,79 @@ const MyHistory = ({ history, loading, onDelete, onView, onRate }: { history: an
     )
 }
 
+const DetailedView = ({ item }: { item: any }) => {
+    if (!item) return null;
+
+    const data = item.data;
+
+    switch (item.type) {
+        case 'workout':
+            return (
+                <div className="space-y-6">
+                    <div className="flex gap-2 justify-center flex-wrap">{data.tags.map((tag: string) => <BadgeCommon key={tag} variant="secondary">{tag}</BadgeCommon>)}</div>
+                    <Alert variant="destructive"><Shield className="h-4 w-4"/><AlertTitle>Safety First!</AlertTitle><AlertDescription>{data.notes}</AlertDescription></Alert>
+                    {[{title: 'Warm-Up', icon: Activity, exercises: data.warmUp}, {title: 'Main Workout', icon: Dumbbell, exercises: data.mainWorkout}, {title: 'Cool-Down', icon: HeartPulse, exercises: data.coolDown}].map(section => (
+                        section.exercises.length > 0 && <div key={section.title}>
+                            <h3 className="font-bold text-xl mb-4 flex items-center gap-2"><section.icon className="text-primary"/> {section.title}</h3>
+                            <div className="space-y-4">
+                                {section.exercises.map((ex: any, i: number) => (
+                                    <Card key={i} className="p-4 bg-muted/50">
+                                        <CardTitle className="text-lg">{ex.name}</CardTitle>
+                                        <div className="flex flex-wrap gap-x-6 gap-y-2 text-sm text-muted-foreground mt-3 mb-3">
+                                            <div className="flex items-center gap-1.5"><Repeat/> <strong>Sets:</strong> {ex.sets}</div>
+                                            <div className="flex items-center gap-1.5"><Target/> <strong>Reps:</strong> {ex.reps}</div>
+                                            <div className="flex items-center gap-1.5"><TimerWorkout/> <strong>Rest:</strong> {ex.rest}</div>
+                                        </div>
+                                        <CardDescription>{ex.description}</CardDescription>
+                                    </Card>
+                                ))}
+                            </div>
+                        </div>
+                    ))}
+                </div>
+            );
+        case 'meditation':
+            return (
+                 <div className="space-y-8">
+                    <div className="flex gap-2 justify-center flex-wrap">{data.tags.map((tag: string) => <BadgeCommon key={tag} variant="secondary">{tag}</BadgeCommon>)}</div>
+                    <Alert variant="default"><SparklesMeditation className="h-4 w-4"/><AlertTitle>Benefits for You</AlertTitle><AlertDescription>{data.benefits}</AlertDescription></Alert>
+                    <div>
+                        <h3 className="font-bold text-xl mb-4 flex items-center gap-2"><BrainCircuit className="text-primary"/> Guided Practice</h3>
+                        <div className="space-y-4">
+                            {data.steps.map((step: any, i: number) => (
+                                <Card key={i} className="p-4 bg-muted/50">
+                                    <CardTitle className="text-lg flex justify-between items-center">
+                                        <span>Step {step.step}: {step.title}</span>
+                                        <span className="text-sm font-medium text-muted-foreground flex items-center gap-1.5"><TimerMeditation size={16}/>{step.duration}</span>
+                                    </CardTitle>
+                                    <CardDescription className="pt-3">{step.instruction}</CardDescription>
+                                </Card>
+                            ))}
+                        </div>
+                    </div>
+                </div>
+            );
+        case 'recipe':
+            return (
+                <div className="space-y-8">
+                   <div className="flex gap-2 justify-center flex-wrap">{data.tags.map((tag: string) => <BadgeCommon key={tag} variant="secondary">{tag}</BadgeCommon>)}</div>
+                  <div className="grid grid-cols-2 md:grid-cols-4 gap-4 text-center">
+                      <div className="bg-muted p-3 rounded-lg"><h4 className="font-semibold text-sm">Prep Time</h4><p className="text-lg flex items-center justify-center gap-1"><Clock className="h-4 w-4"/> {data.prepTime}</p></div>
+                      <div className="bg-muted p-3 rounded-lg"><h4 className="font-semibold text-sm">Cook Time</h4><p className="text-lg flex items-center justify-center gap-1"><Clock className="h-4 w-4"/> {data.cookTime}</p></div>
+                      <div className="bg-muted p-3 rounded-lg"><h4 className="font-semibold text-sm">Servings</h4><p className="text-lg flex items-center justify-center gap-1"><User className="h-4 w-4"/>{data.servings}</p></div>
+                      <div className="bg-muted p-3 rounded-lg"><h4 className="font-semibold text-sm">Health Focus</h4><p className="text-md flex items-center justify-center gap-1"><SparklesRecipe className="h-4 w-4 text-primary"/>{data.healthFocus}</p></div>
+                  </div>
+                  <div className="grid md:grid-cols-5 gap-8">
+                      <div className="md:col-span-2"><h3 className="font-bold text-xl mb-4 flex items-center gap-2"><Utensils /> Ingredients</h3><ul className="space-y-2 text-muted-foreground">{data.ingredients.map((item: string, i: number) => <li key={i} className="flex items-start"><span className="mr-2 mt-1.5">&#8226;</span><span>{item}</span></li>)}</ul></div>
+                      <div className="md:col-span-3"><h3 className="font-bold text-xl mb-4 flex items-center gap-2"><CookingPot /> Instructions</h3><ol className="space-y-4 text-muted-foreground">{data.instructions.map((step: string, i: number) => <li key={i} className="flex items-start"><span className="font-bold text-primary mr-3">{i + 1}.</span><span>{step}</span></li>)}</ol></div>
+                  </div>
+               </div>
+            );
+        default:
+            return <p>This recommendation type cannot be displayed.</p>;
+    }
+}
+
 // --- Main Component ---
 export default function RecommendationsPage() {
   const [user, authLoading] = useAuthState(auth);
@@ -987,19 +1060,15 @@ export default function RecommendationsPage() {
       </Tabs>
 
       <Dialog open={isViewModalOpen} onOpenChange={setIsViewModalOpen}>
-        <DialogContent className="max-w-3xl">
+        <DialogContent className="max-w-3xl max-h-[90vh] overflow-y-auto">
           <DialogHeader>
             <DialogTitle>{selectedItem?.data?.planTitle || selectedItem?.data?.title || selectedItem?.data?.name}</DialogTitle>
             <DialogDescription>
                 {selectedItem?.data?.planSummary || selectedItem?.data?.summary || selectedItem?.data?.description}
             </DialogDescription>
           </DialogHeader>
-          {/* TODO: Add detailed views for each type */}
           <div className="py-4">
-            <p>Full view is not implemented yet.</p>
-            <pre className="mt-4 p-4 rounded-md bg-muted text-xs overflow-auto max-h-96">
-                {JSON.stringify(selectedItem?.data, null, 2)}
-            </pre>
+            <DetailedView item={selectedItem} />
           </div>
           <DialogFooter>
             <ButtonCommon variant="outline" onClick={() => setIsViewModalOpen(false)}>Close</ButtonCommon>
