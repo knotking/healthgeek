@@ -1,24 +1,29 @@
-
 rules_version = '2';
 
 service cloud.firestore {
   match /databases/{database}/documents {
+
     match /profiles/{userId} {
-      allow read: if request.auth.uid == userId;
-      allow write: if request.auth.uid == userId;
+      allow read, update: if request.auth.uid == userId;
+      allow create: if request.auth.uid != null;
     }
+
     match /food-log/{logId} {
-      allow read, write: if request.auth.uid == request.resource.data.userId;
+      allow read, create: if request.auth.uid == request.resource.data.userId;
     }
+    
     match /health-reports/{reportId} {
-        allow read, write: if request.auth.uid == request.resource.data.userId;
+      allow read, create: if request.auth.uid == request.resource.data.userId;
     }
-    match /recommendation-history/{recommendationId} {
-        allow read, write: if request.auth.uid == request.resource.data.userId;
-    }
+
     match /saved-quizzes/{quizId} {
-        allow read, create: if request.auth != null && request.resource.data.userId == request.auth.uid;
-        allow update, delete: if request.auth != null && resource.data.userId == request.auth.uid;
+      allow read, delete, update: if request.auth.uid == resource.data.userId;
+      allow create: if request.auth.uid != null && request.resource.data.userId == request.auth.uid;
+    }
+    
+    match /recommendation-history/{recommendationId} {
+        allow read, update, delete: if request.auth.uid == resource.data.userId;
+        allow create: if request.auth.uid != null && request.resource.data.userId == request.auth.uid;
     }
   }
 }
