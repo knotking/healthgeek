@@ -586,8 +586,6 @@ function MeditationGenerator() {
             const result = await generateMeditationPractice({
               ...values,
               userProfile: JSON.stringify(profile),
-              // Pass custom instructions to the flow if needed.
-              // This requires the flow to be updated to accept it.
             });
             setMeditationResult(result);
             setCurrentStep(MeditationSteps.RESULT);
@@ -665,7 +663,7 @@ function MeditationGenerator() {
     }
 
     const resetFlow = () => {
-        form.reset({ duration: 10, timeOfDay: 'morning', goals: [] });
+        form.reset({ duration: 10, timeOfDay: 'morning', goals: [], customInstructions: '' });
         setMeditationResult(null);
         setCurrentStep(MeditationSteps.PREFERENCES);
         setIsPublic(false);
@@ -786,17 +784,6 @@ function MeditationGenerator() {
     );
 }
 
-type Recommendation = {
-  id: string;
-  userId: string;
-  userName: string;
-  type: 'workout' | 'meditation' | 'recipe';
-  data: any;
-  isPublic: boolean;
-  timestamp: Timestamp;
-  rating: number;
-}
-
 const Generators = () => (
     <div className="space-y-6 max-w-4xl mx-auto">
         <Accordion type="single" collapsible className="w-full" defaultValue="workout">
@@ -837,278 +824,10 @@ const Generators = () => (
     </div>
 );
 
-const ViewDetailsDialog = ({ recommendation }: { recommendation: Recommendation }) => {
-    let content;
-    switch(recommendation.type) {
-        case 'workout':
-            const workout: WorkoutPlanOutput = recommendation.data;
-            content = (
-                <div className="space-y-4 max-h-[70vh] overflow-y-auto pr-6">
-                    <Alert variant="destructive"><Shield className="h-4 w-4"/><AlertTitle>Safety First!</AlertTitle><AlertDescription>{workout.notes}</AlertDescription></Alert>
-                    {[{title: 'Warm-Up', icon: Activity, exercises: workout.warmUp}, {title: 'Main Workout', icon: Dumbbell, exercises: workout.mainWorkout}, {title: 'Cool-Down', icon: HeartPulse, exercises: workout.coolDown}].map(section => (
-                        section.exercises.length > 0 && <div key={section.title}>
-                            <h4 className="font-bold text-lg mb-2 flex items-center gap-2"><section.icon className="text-primary"/> {section.title}</h4>
-                            <div className="space-y-3">
-                                {section.exercises.map((ex, i) => (
-                                    <Card key={i} className="p-3 bg-muted/50">
-                                        <p className="font-semibold">{ex.name}</p>
-                                        <div className="flex flex-wrap gap-x-4 gap-y-1 text-xs text-muted-foreground mt-2">
-                                            <span><strong>Sets:</strong> {ex.sets}</span>
-                                            <span><strong>Reps:</strong> {ex.reps}</span>
-                                            <span><strong>Rest:</strong> {ex.rest}</span>
-                                        </div>
-                                        <p className="text-xs mt-2">{ex.description}</p>
-                                    </Card>
-                                ))}
-                            </div>
-                        </div>
-                    ))}
-                </div>
-            );
-            break;
-        case 'meditation':
-            const meditation: MeditationPracticeOutput = recommendation.data;
-            content = (
-                <div className="space-y-4 max-h-[70vh] overflow-y-auto pr-6">
-                     <Alert><SparklesMeditation className="h-4 w-4"/><AlertTitle>Benefits for You</AlertTitle><AlertDescription>{meditation.benefits}</AlertDescription></Alert>
-                     <div>
-                        <h4 className="font-bold text-lg mb-2 flex items-center gap-2"><BrainCircuit className="text-primary"/> Guided Practice</h4>
-                        <div className="space-y-3">
-                            {meditation.steps.map((step, i) => (
-                                <Card key={i} className="p-3 bg-muted/50">
-                                    <div className="flex justify-between items-center">
-                                        <p className="font-semibold">Step {step.step}: {step.title}</p>
-                                        <span className="text-xs font-medium text-muted-foreground">{step.duration}</span>
-                                    </div>
-                                    <p className="text-xs mt-2">{step.instruction}</p>
-                                </Card>
-                            ))}
-                        </div>
-                    </div>
-                </div>
-            );
-            break;
-        case 'recipe':
-             const recipe: SingleRecipeOutput = recommendation.data;
-             content = (
-                <div className="space-y-4 max-h-[70vh] overflow-y-auto pr-6">
-                    <div className="grid grid-cols-2 md:grid-cols-4 gap-2 text-center text-xs">
-                      <div className="bg-muted p-2 rounded-lg"><p className="font-semibold">Prep Time</p><p>{recipe.prepTime}</p></div>
-                      <div className="bg-muted p-2 rounded-lg"><p className="font-semibold">Cook Time</p><p>{recipe.cookTime}</p></div>
-                      <div className="bg-muted p-2 rounded-lg"><p className="font-semibold">Servings</p><p>{recipe.servings}</p></div>
-                      <div className="bg-muted p-2 rounded-lg"><p className="font-semibold">Health Focus</p><p>{recipe.healthFocus}</p></div>
-                  </div>
-                   <div className="grid md:grid-cols-2 gap-6">
-                        <div><h4 className="font-bold text-lg mb-2">Ingredients</h4><ul className="space-y-1 text-sm list-disc pl-5">{recipe.ingredients.map((item, i) => <li key={i}>{item}</li>)}</ul></div>
-                        <div><h4 className="font-bold text-lg mb-2">Instructions</h4><ol className="space-y-2 text-sm list-decimal pl-5">{recipe.instructions.map((step, i) => <li key={i}>{step}</li>)}</ol></div>
-                    </div>
-                </div>
-             );
-            break;
-    }
-    
-    return (
-        <DialogContent className="max-w-2xl">
-            <DialogHeader>
-                <DialogTitle>{recommendation.type === 'workout' ? recommendation.data.planTitle : recommendation.data.name}</DialogTitle>
-                <DialogDescription>{recommendation.type === 'workout' ? recommendation.data.planSummary : recommendation.data.description}</DialogDescription>
-                <div className="flex gap-2 justify-center flex-wrap pt-2">{recommendation.data.tags.map((tag:string) => <BadgeCommon key={tag} variant="secondary" className="text-xs">{tag}</BadgeCommon>)}</div>
-            </DialogHeader>
-            {content}
-            <DialogFooter>
-                <DialogTrigger asChild><ButtonCommon variant="outline">Close</ButtonCommon></DialogTrigger>
-            </DialogFooter>
-        </DialogContent>
-    )
-}
-
-const RecommendationCard = ({ recommendation, isOwner, onDelete }: { recommendation: Recommendation, isOwner: boolean, onDelete?: (id: string) => void }) => {
-    const { toast } = useToast();
-    const [user] = useAuthState(auth);
-
-    const title = recommendation.type === 'workout' ? recommendation.data.planTitle : recommendation.data.name;
-    const description = recommendation.type === 'workout' ? recommendation.data.planSummary : recommendation.data.description;
-
-    const typeDetails = useMemo(() => {
-        switch (recommendation.type) {
-            case 'workout': return { icon: Dumbbell, color: 'text-red-400' };
-            case 'meditation': return { icon: BrainCircuit, color: 'text-blue-400' };
-            case 'recipe': return { icon: ChefHat, color: 'text-green-400' };
-            default: return { icon: Star, color: 'text-yellow-400' };
-        }
-    }, [recommendation.type]);
-    
-    const handleDelete = async () => {
-        if (!onDelete || !user || user.uid !== recommendation.userId) return;
-
-        try {
-            await deleteDoc(doc(db, 'recommendation-history', recommendation.id));
-            toast({ title: 'Success', description: 'Recommendation deleted.' });
-            onDelete(recommendation.id);
-        } catch (e: any) {
-            toast({ title: 'Error', description: 'Could not delete recommendation.', variant: 'destructive' });
-        }
-    };
-
-    return (
-        <Card>
-            <CardHeader>
-                <CardTitle className="flex items-start justify-between">
-                    <div className="flex items-center gap-2">
-                        <typeDetails.icon className={`h-5 w-5 ${typeDetails.color}`} />
-                        <span>{title}</span>
-                    </div>
-                    <Dialog>
-                        <DropdownMenu>
-                            <DropdownMenuTrigger asChild>
-                                <ButtonCommon variant="ghost" size="icon" className="h-8 w-8">
-                                    <MoreHorizontal className="h-4 w-4" />
-                                </ButtonCommon>
-                            </DropdownMenuTrigger>
-                            <DropdownMenuContent align="end">
-                                 <DialogTrigger asChild>
-                                    <DropdownMenuItem><Eye className="mr-2 h-4 w-4" /> View Details</DropdownMenuItem>
-                                </DialogTrigger>
-                                {isOwner && onDelete && (
-                                    <DropdownMenuItem onClick={handleDelete} className="text-red-500 focus:text-red-500 focus:bg-red-50">
-                                        <Trash2 className="mr-2 h-4 w-4" /> Delete
-                                    </DropdownMenuItem>
-                                )}
-                            </DropdownMenuContent>
-                        </DropdownMenu>
-                        <ViewDetailsDialog recommendation={recommendation} />
-                    </Dialog>
-                </CardTitle>
-                <CardDescription className="line-clamp-2 pt-1">{description}</CardDescription>
-            </CardHeader>
-            <CardFooter className="flex justify-between text-xs text-muted-foreground">
-                <div>
-                  <p>By: {recommendation.userName}</p>
-                  <p>On: {recommendation.timestamp.toDate().toLocaleDateString()}</p>
-                </div>
-                <div className="flex items-center gap-2">
-                    <ThumbsUp className="h-4 w-4"/> {recommendation.rating}
-                </div>
-            </CardFooter>
-        </Card>
-    );
-}
-
-const MyHistory = () => {
-    const [user] = useAuthState(auth);
-    const { toast } = useToast();
-    const [history, setHistory] = useState<Recommendation[]>([]);
-    const [isLoading, setIsLoading] = useState(true);
-    const [lastDoc, setLastDoc] = useState<any>(null);
-    const [firstDoc, setFirstDoc] = useState<any>(null);
-    const [isFetchingMore, setIsFetchingMore] = useState(false);
-    const [isEnd, setIsEnd] = useState(false);
-    const [page, setPage] = useState(1);
-
-    const fetchHistory = useCallback(async (direction: 'next' | 'prev' | 'initial' = 'initial') => {
-        if (!user) {
-            setIsLoading(false);
-            return;
-        }
-
-        let currentIsLoading = direction === 'initial';
-        if (currentIsLoading) setIsLoading(true);
-        
-        setIsFetchingMore(true);
-
-        try {
-            let q;
-            const baseQuery = [
-                collection(db, 'recommendation-history'),
-                where('userId', '==', user.uid),
-                orderBy('timestamp', 'desc')
-            ];
-
-            if (direction === 'next' && lastDoc) {
-                q = query(...baseQuery, startAfter(lastDoc), limit(ITEMS_PER_PAGE));
-            } else if (direction === 'prev' && firstDoc) {
-                q = query(...baseQuery, endBefore(firstDoc), limitToLast(ITEMS_PER_PAGE));
-            } else {
-                q = query(...baseQuery, limit(ITEMS_PER_PAGE));
-            }
-
-            const docSnap = await getDocs(q);
-            const newHistory = docSnap.docs.map(d => ({ id: d.id, ...d.data() } as Recommendation));
-            
-            if (newHistory.length > 0) {
-                setHistory(newHistory);
-                setLastDoc(docSnap.docs[docSnap.docs.length - 1]);
-                setFirstDoc(docSnap.docs[0]);
-                 if(direction === 'next') setPage(p => p + 1);
-                 if(direction === 'prev' && page > 1) setPage(p => p - 1);
-            } else if(direction === 'next') {
-                setIsEnd(true);
-                toast({title: "That's all!", description: "You've reached the end of your history."});
-            }
-
-             if (docSnap.empty && direction === 'initial') {
-                setHistory([]);
-            }
-
-        } catch (error: any) {
-            console.error(error);
-            toast({ title: "Error", description: "Could not fetch your history.", variant: "destructive" });
-        } finally {
-            if(currentIsLoading) setIsLoading(false);
-            setIsFetchingMore(false);
-        }
-    }, [user, toast, lastDoc, firstDoc, page]);
-    
-    const fetchMyHistory = useCallback(() => {
-        if (user) {
-            fetchHistory('initial');
-        }
-    }, [user, fetchHistory]);
-
-    useEffect(() => {
-        fetchMyHistory();
-    }, [fetchMyHistory]);
-
-    const handleDelete = (id: string) => {
-        setHistory(prev => prev.filter(item => item.id !== id));
-        fetchMyHistory();
-    };
-
-    if (isLoading) {
-        return <div className="flex justify-center p-8"><Loader2Common className="h-8 w-8 animate-spin" /></div>;
-    }
-    
-    if (history.length === 0) {
-        return <div className="text-center py-16 text-muted-foreground">You have no saved recommendations yet.</div>
-    }
-
-    return (
-        <div className="space-y-4">
-            {history.map(item => <RecommendationCard key={item.id} recommendation={item} isOwner={item.userId === user?.uid} onDelete={handleDelete} />)}
-            <div className="flex justify-between items-center pt-4">
-                <ButtonCommon onClick={() => fetchHistory('prev')} disabled={page <= 1 || isFetchingMore}>Previous</ButtonCommon>
-                <span>Page {page}</span>
-                <ButtonCommon onClick={() => fetchHistory('next')} disabled={isEnd || isFetchingMore}>Next</ButtonCommon>
-            </div>
-        </div>
-    );
-}
-
 // --- Main Component ---
 export default function RecommendationsPage() {
   
   return (
-    <Tabs defaultValue="generators" className="w-full">
-        <TabsList className="grid w-full grid-cols-2">
-          <TabsTrigger value="generators"><SparklesRecipe className="mr-2 h-4 w-4"/>Generators</TabsTrigger>
-          <TabsTrigger value="my-history"><History className="mr-2 h-4 w-4"/>My History</TabsTrigger>
-        </TabsList>
-        <TabsContent value="generators" className="pt-6">
-            <Generators />
-        </TabsContent>
-        <TabsContent value="my-history" className="pt-6">
-            <MyHistory />
-        </TabsContent>
-      </Tabs>
+    <Generators />
   );
 }
