@@ -1,31 +1,28 @@
-
 rules_version = '2';
 
 service cloud.firestore {
   match /databases/{database}/documents {
-    // Users can only read/write their own profile
+    // Allow users to read and write their own profile
     match /profiles/{userId} {
-      allow read, write: if request.auth.uid == userId;
+      allow read, write: if request.auth != null && request.auth.uid == userId;
     }
 
-    // Users can only read/write their own food logs
+    // Allow users to manage their own food logs
     match /food-log/{logId} {
-      allow read, write, create: if request.auth.uid == request.resource.data.userId;
+      allow read, write, delete: if request.auth != null && request.auth.uid == resource.data.userId;
     }
 
-    // Users can only read/write their own health reports
+    // Allow users to manage their own health reports
     match /health-reports/{reportId} {
-       allow read, write, create: if request.auth.uid == request.resource.data.userId;
+      allow read, write, delete: if request.auth != null && request.auth.uid == resource.data.userId;
     }
-    
-    match /recommendation-history/{recommendationId} {
-      // Logged-in users can create recommendations for themselves
-      allow create: if request.auth != null && request.resource.data.userId == request.auth.uid;
-      // Users can read, update, or delete their own recommendations
-      allow read, update, delete: if request.auth != null && resource.data.userId == request.auth.uid;
-      
-      // Allow public read access for community recommendations
-      allow list: if request.query.where.isPublic == true;
+
+    // Allow users to manage their own recommendation history
+    match /recommendation-history/{recId} {
+      allow read, delete: if request.auth != null && request.auth.uid == resource.data.userId;
+      allow write: if request.auth != null && request.auth.uid == request.resource.data.userId;
+      // Allow any user to read public recommendations
+      allow list: if resource.data.isPublic == true;
     }
   }
 }
