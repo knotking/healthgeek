@@ -2,21 +2,31 @@ rules_version = '2';
 
 service cloud.firestore {
   match /databases/{database}/documents {
+
     match /profiles/{userId} {
       allow read, write: if request.auth.uid == userId;
     }
+
     match /food-log/{logId} {
       allow read, create: if request.auth.uid == request.resource.data.userId;
     }
+    
     match /health-reports/{reportId} {
       allow read, create: if request.auth.uid == request.resource.data.userId;
     }
-    match /recommendation-history/{recId} {
-      // Allow owner to do everything
-      allow read, write, delete: if resource.data.userId == request.auth.uid;
+
+    match /recommendation-history/{recommendationId} {
+      // Allow users to manage their own recommendations
+      allow read, create, update, delete: if request.auth.uid == resource.data.userId;
       
-      // Allow public read access to community recommendations
-      allow list: if request.query.get('isPublic') == true;
+      // Allow any authenticated user to read public recommendations
+      allow get, list: if request.auth != null && request.query.get('isPublic') == true;
+    }
+
+    // This rule is a bit of a placeholder. In a real app, you'd likely
+    // have more specific rules for different parts of the community section.
+    match /community/{docId} {
+      allow read: if request.auth != null;
     }
   }
 }
