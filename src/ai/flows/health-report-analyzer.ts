@@ -30,7 +30,7 @@ const HealthReportAnalysisOutputSchema = z.object({
   summary: z.string().describe('A concise, overall summary of the health report findings.'),
   extractedMetrics: z.array(MetricSchema).describe('An array of key metrics extracted from the report.'),
   profileUpdateSuggestions: z.object({
-    healthIssues: z.array(z.string()).describe("A list of potential 'healthIssues' to add to the user's profile based on the report (e.g., ['hypertension', 'cholesterol'])."),
+    healthIssues: z.array(z.string()).describe("A list of potential 'healthIssues' to add to the user's profile based on the report."),
   }).describe('Suggestions for updating the user profile based on the analysis.'),
 });
 export type HealthReportAnalysisOutput = z.infer<typeof HealthReportAnalysisOutputSchema>;
@@ -47,7 +47,9 @@ const prompt = ai.definePrompt({
 
 Analyze the provided health report image or document. Extract key metrics, provide a clear interpretation for each, and write an overall summary of the findings.
 
-Based on the analysis, suggest updates to the user's profile. Compare the findings with their existing profile to avoid suggesting issues they already have listed. The available 'healthIssues' IDs are: 'diabetes', 'hypertension', 'cholesterol', 'obesity', 'thyroid'. Only suggest IDs from this list.
+Based on the analysis, suggest updates to the user's profile. Compare the findings with their existing profile to avoid suggesting issues they already have listed. 
+
+The available 'healthIssues' IDs are: 'hypertension', 'cad', 'heart-failure', 'stroke', 'arrhythmia', 'diabetes', 'thyroid', 'obesity', 'asthma', 'copd', 'cystic-fibrosis', 'alzheimers', 'parkinsons', 'epilepsy', 'ms', 'arthritis', 'osteoporosis', 'fibromyalgia', 'depression', 'anxiety', 'bipolar', 'schizophrenia', 'hiv-aids', 'hepatitis', 'cancer-breast', 'cancer-lung', 'cancer-prostate', 'cancer-colorectal', 'leukemia', 'gerd', 'ibd', 'celiac', 'sickle-cell', 'down-syndrome'. Only suggest IDs from this list.
 
 Existing User Profile: {{{existingProfile}}}
 
