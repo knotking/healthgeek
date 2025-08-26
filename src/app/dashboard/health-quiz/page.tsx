@@ -7,14 +7,14 @@ import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
 import { useAuthState } from 'react-firebase-hooks/auth';
 import { auth, db } from '@/lib/firebase';
-import { collection, addDoc, query, where, getDocs, orderBy, serverTimestamp, Timestamp } from 'firebase/firestore';
+import { collection, addDoc, query, where, getDocs, orderBy, serverTimestamp, Timestamp, doc, updateDoc } from 'firebase/firestore';
 import { generateQuiz, QuizGeneratorOutput } from '@/ai/flows/quiz-generator';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription, CardFooter } from '@/components/ui/card';
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from '@/components/ui/form';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { useToast } from '@/hooks/use-toast';
-import { Loader2, BrainCircuit, CheckCircle, XCircle, RotateCw, Trophy, Target, Lightbulb, Save, Play, BookOpen } from 'lucide-react';
+import { Loader2, BrainCircuit, CheckCircle, XCircle, RotateCw, Trophy, Target, Lightbulb, Save, Play, BookOpen, Star } from 'lucide-react';
 import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
 import { AnimatePresence, motion } from 'framer-motion';
 import { Slider } from '@/components/ui/slider';
@@ -49,6 +49,7 @@ interface SavedQuiz extends QuizGeneratorOutput {
     topic: string;
     difficulty: string;
     timestamp: Date;
+    rating: number;
 }
 
 const QuizGenerator = ({ onQuizStart }: { onQuizStart: (quiz: QuizGeneratorOutput, settings: QuizSetupFormData) => void }) => {
@@ -250,6 +251,7 @@ export default function HealthQuizPage() {
             difficulty: quizSettings.difficulty,
             title: quizData.title,
             questions: quizData.questions,
+            rating: 0,
         });
         toast({ title: 'Quiz Saved!', description: 'You can replay this quiz anytime from the "Saved Quizzes" tab.' });
         setHasFetchedQuizzes(false); // Allow refetching
@@ -259,54 +261,86 @@ export default function HealthQuizPage() {
     }
   };
   
+  const handleRateQuiz = async (quizId: string, rating: number) => {
+      try {
+        const docRef = doc(db, 'saved-quizzes', quizId);
+        await updateDoc(docRef, { rating });
+        toast({ title: "Rating updated", description: "Your rating has been saved." });
+        setSavedQuizzes(prevQuizzes => 
+            prevQuizzes.map(quiz => quiz.id === quizId ? { ...quiz, rating } : quiz)
+        );
+      } catch (e: any) {
+          toast({ title: "Rating failed", description: e.message, variant: "destructive" });
+      }
+  };
+  
   const pageVariants = { initial: { opacity: 0, y: 20 }, in: { opacity: 1, y: 0 }, out: { opacity: 0, y: -20 } };
   const pageTransition = { type: "tween", ease: "anticipate", duration: 0.5 };
 
   const currentQuestion = quizData?.questions[currentQuestionIndex];
   const quizLength = quizData?.questions.length ?? 0;
+  
+    const renderRating = (quiz: SavedQuiz) => {
+        return (
+            <div className="flex items-center">
+                {[...Array(5)].map((_, i) => (
+                    <Star
+                        key={i}
+                        className={`h-5 w-5 cursor-pointer ${i < quiz.rating ? 'text-yellow-400 fill-yellow-400' : 'text-gray-300'}`}
+                        onClick={(e) => { e.stopPropagation(); handleRateQuiz(quiz.id, i + 1) }}
+                    />
+                ))}
+            </div>
+        );
+    };
 
   return (
     <div className="max-w-3xl mx-auto">
       <AnimatePresence mode="wait">
         {quizState === 'setup' && (
-          <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
-            <TabsList className="grid w-full grid-cols-2">
-              <TabsTrigger value="generator">New Quiz</TabsTrigger>
-              <TabsTrigger value="saved">Saved Quizzes</TabsTrigger>
-            </TabsList>
-            <TabsContent value="generator" className="mt-4">
-               <QuizGenerator onQuizStart={startQuiz} />
-            </TabsContent>
-            <TabsContent value="saved" className="mt-4">
-              <Card>
-                  <CardHeader>
-                      <CardTitle className="flex items-center gap-2"><BookOpen/> Saved Quizzes</CardTitle>
-                      <CardDescription>Replay any quiz you have saved previously.</CardDescription>
-                  </CardHeader>
-                  <CardContent>
-                      {loadingQuizzes ? (
-                           <div className="flex justify-center py-8"><Loader2 className="h-8 w-8 animate-spin text-primary"/></div>
-                      ) : savedQuizzes.length > 0 ? (
-                           <div className="space-y-3">
-                              {savedQuizzes.map(quiz => (
-                                  <Card key={quiz.id} className="p-4 flex justify-between items-center">
-                                      <div>
-                                          <p className="font-semibold">{quiz.title}</p>
-                                          <p className="text-sm text-muted-foreground">{quiz.questions.length} questions &bull; Saved on {quiz.timestamp.toLocaleDateString()}</p>
-                                      </div>
-                                      <Button size="sm" onClick={() => startQuiz(quiz, { topic: quiz.topic, difficulty: quiz.difficulty, numberOfQuestions: quiz.questions.length } as QuizSetupFormData)}>
-                                          <Play className="mr-2 h-4 w-4"/> Replay
-                                      </Button>
-                                  </Card>
-                              ))}
-                           </div>
-                      ) : (
-                          <p className="text-center py-8 text-muted-foreground">No saved quizzes yet.</p>
-                      )}
-                  </CardContent>
-              </Card>
-            </TabsContent>
-          </Tabs>
+          <motion.div initial="initial" animate="in" exit="out" variants={pageVariants} transition={pageTransition}>
+            <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
+              <TabsList className="grid w-full grid-cols-2">
+                <TabsTrigger value="generator">New Quiz</TabsTrigger>
+                <TabsTrigger value="saved">Saved Quizzes</TabsTrigger>
+              </TabsList>
+              <TabsContent value="generator" className="mt-4">
+                <QuizGenerator onQuizStart={startQuiz} />
+              </TabsContent>
+              <TabsContent value="saved" className="mt-4">
+                <Card>
+                    <CardHeader>
+                        <CardTitle className="flex items-center gap-2"><BookOpen/> Saved Quizzes</CardTitle>
+                        <CardDescription>Replay any quiz you have saved previously and rate them.</CardDescription>
+                    </CardHeader>
+                    <CardContent>
+                        {loadingQuizzes ? (
+                            <div className="flex justify-center py-8"><Loader2 className="h-8 w-8 animate-spin text-primary"/></div>
+                        ) : savedQuizzes.length > 0 ? (
+                            <div className="space-y-3">
+                                {savedQuizzes.map(quiz => (
+                                    <Card key={quiz.id} className="p-4 flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
+                                        <div className="flex-grow">
+                                            <p className="font-semibold">{quiz.title}</p>
+                                            <p className="text-sm text-muted-foreground">{quiz.questions.length} questions &bull; Saved on {quiz.timestamp.toLocaleDateString()}</p>
+                                        </div>
+                                        <div className="flex items-center gap-4 w-full sm:w-auto">
+                                            {renderRating(quiz)}
+                                            <Button size="sm" onClick={() => startQuiz(quiz, { topic: quiz.topic, difficulty: quiz.difficulty, numberOfQuestions: quiz.questions.length } as QuizSetupFormData)} className="flex-grow sm:flex-grow-0">
+                                                <Play className="mr-2 h-4 w-4"/> Replay
+                                            </Button>
+                                        </div>
+                                    </Card>
+                                ))}
+                            </div>
+                        ) : (
+                            <p className="text-center py-8 text-muted-foreground">No saved quizzes yet.</p>
+                        )}
+                    </CardContent>
+                </Card>
+              </TabsContent>
+            </Tabs>
+          </motion.div>
         )}
         
         {quizState === 'in_progress' && currentQuestion && (
