@@ -1,3 +1,4 @@
+
 'use client';
 
 import { useState } from 'react';
@@ -172,12 +173,10 @@ export default function HealthQuizPage() {
                                 className="space-y-4"
                             >
                                 {quiz[currentQuestionIndex].options.map((option, index) => (
-                                    <FormItem key={index} className="flex items-center space-x-3 p-4 border rounded-md has-[:checked]:bg-muted has-[:checked]:border-primary transition-all">
-                                        <FormControl>
-                                            <RadioGroupItem value={index.toString()} />
-                                        </FormControl>
-                                        <FormLabel className="font-normal text-base cursor-pointer flex-1">{option}</FormLabel>
-                                    </FormItem>
+                                    <div key={index} className="flex items-center space-x-3 p-4 border rounded-md has-[:checked]:bg-muted has-[:checked]:border-primary transition-all">
+                                        <RadioGroupItem value={index.toString()} id={`q${currentQuestionIndex}-o${index}`} />
+                                        <label htmlFor={`q${currentQuestionIndex}-o${index}`} className="font-normal text-base cursor-pointer flex-1">{option}</label>
+                                    </div>
                                 ))}
                             </RadioGroup>
                         </CardContent>
