@@ -955,8 +955,8 @@ export default function RecommendationsPage() {
     // State for personal history
     const [myHistory, setMyHistory] = useState<RecommendationHistoryItem[]>([]);
     const [loadingMyHistory, setLoadingMyHistory] = useState(true);
-    const [myHistoryLastVisible, setMyHistoryLastVisible] = useState<any>(null);
-    const [myHistoryPageStack, setMyHistoryPageStack] = useState<any[]>([]);
+    const [myHistoryPage, setMyHistoryPage] = useState(1);
+    const [myHistoryPageDocs, setMyHistoryPageDocs] = useState<any[]>([null]);
     const [myHistoryHasMore, setMyHistoryHasMore] = useState(true);
     
     // State for community recommendations
@@ -972,39 +972,39 @@ export default function RecommendationsPage() {
     
     const ITEMS_PER_PAGE = 5;
 
-    const fetchMyHistory = useCallback(async (direction: 'next' | 'prev' | 'current' = 'next') => {
+    const fetchMyHistory = useCallback(async (page = 1) => {
         if (!user) return;
         setLoadingMyHistory(true);
         
-        let newLastVisible = myHistoryLastVisible;
-        const newPageStack = [...myHistoryPageStack];
-
-        if (direction === 'prev') {
-            newPageStack.pop(); 
-            newLastVisible = newPageStack.pop() || null; 
-        } else if (direction === 'current') {
-            newLastVisible = newPageStack.length > 0 ? newPageStack[newPageStack.length -1] : null;
-        }
-
-        const q = query(collection(db, 'recommendation-history'), where('userId', '==', user.uid), orderBy('timestamp', 'desc'), ...(newLastVisible ? [startAfter(newLastVisible)] : []), limit(ITEMS_PER_PAGE));
+        const startAfterDoc = myHistoryPageDocs[page - 1];
+        const q = query(
+            collection(db, 'recommendation-history'), 
+            where('userId', '==', user.uid), 
+            orderBy('timestamp', 'desc'), 
+            ...(startAfterDoc ? [startAfter(startAfterDoc)] : []), 
+            limit(ITEMS_PER_PAGE)
+        );
         
         try {
             const snap = await getDocs(q);
             const items = snap.docs.map(doc => ({ id: doc.id, ...doc.data(), timestamp: (doc.data().timestamp as Timestamp).toDate() })) as RecommendationHistoryItem[];
             const lastDoc = snap.docs[snap.docs.length - 1];
 
-            if (direction === 'next') {
-                setMyHistoryPageStack(prev => [...prev, lastDoc]);
-            } else if (direction === 'prev') {
-                setMyHistoryPageStack(newPageStack);
+            if (lastDoc) {
+                const newPageDocs = [...myHistoryPageDocs];
+                newPageDocs[page] = lastDoc;
+                setMyHistoryPageDocs(newPageDocs);
             }
             
-            setMyHistoryLastVisible(lastDoc);
             setMyHistory(items);
             setMyHistoryHasMore(items.length === ITEMS_PER_PAGE);
-        } catch (e: any) { toast({ title: "Error fetching history", description: e.message, variant: "destructive"}); } 
-        finally { setLoadingMyHistory(false); }
-    }, [user, toast]); // Removed state setters from dependency array
+            setMyHistoryPage(page);
+        } catch (e: any) { 
+            toast({ title: "Error fetching history", description: e.message, variant: "destructive"}); 
+        } finally { 
+            setLoadingMyHistory(false); 
+        }
+    }, [user, toast]); 
     
     const fetchCommunityRecs = useCallback(async (direction: 'next' | 'prev' = 'next') => {
         setLoadingCommunityRecs(true);
@@ -1021,8 +1021,8 @@ export default function RecommendationsPage() {
             const items = snap.docs.map(doc => ({ id: doc.id, ...doc.data(), timestamp: (doc.data().timestamp as Timestamp).toDate() })) as RecommendationHistoryItem[];
             const lastDoc = snap.docs[snap.docs.length - 1];
             setCommunityLastVisible(lastDoc);
-            if (direction === 'next' && communityLastVisible) {
-                setCommunityPageStack(prev => [...prev, communityLastVisible]);
+            if (direction === 'next' && lastDoc) {
+                setCommunityPageStack(prev => [...prev, lastDoc]);
             }
             setCommunityRecs(items);
             setCommunityHasMore(items.length === ITEMS_PER_PAGE);
@@ -1030,12 +1030,12 @@ export default function RecommendationsPage() {
              console.error("Error fetching community data:", e);
         }
         finally { setLoadingCommunityRecs(false); }
-    }, [toast]); // Removed state setters from dependency array
+    }, [toast, communityLastVisible, communityPageStack]);
 
 
     useEffect(() => {
         if (!authLoading && user) {
-            fetchMyHistory();
+            fetchMyHistory(1);
         } else if (!authLoading && !user) {
             setLoadingMyHistory(false);
         }
@@ -1043,7 +1043,7 @@ export default function RecommendationsPage() {
 
     useEffect(() => {
         fetchCommunityRecs();
-    }, [fetchCommunityRecs]);
+    }, []);
 
     const handleViewHistoryItem = (item: RecommendationHistoryItem) => {
         setViewData(null); 
@@ -1059,15 +1059,18 @@ export default function RecommendationsPage() {
         setActiveTab(newTab);
         setViewData(null);
         setViewDataType(null);
+        if (newTab === 'history') {
+            fetchMyHistory(1);
+        }
     }
     
     const ViewedItem = useMemo(() => {
       if(!viewData || !viewDataType) return null;
-      if(viewDataType === 'workout') return <WorkoutGeneratorTab onSave={() => fetchMyHistory()} initialData={viewData} isVisible={true} />;
-      if(viewDataType === 'meditation') return <MeditationGeneratorTab onSave={() => fetchMyHistory()} initialData={viewData} isVisible={true} />;
-      if(viewDataType === 'recipe') return <RecipeGeneratorTab onSave={() => fetchMyHistory()} initialData={viewData} isVisible={true} />;
+      if(viewDataType === 'workout') return <WorkoutGeneratorTab onSave={() => handleTabChange('history')} initialData={viewData} isVisible={true} />;
+      if(viewDataType === 'meditation') return <MeditationGeneratorTab onSave={() => handleTabChange('history')} initialData={viewData} isVisible={true} />;
+      if(viewDataType === 'recipe') return <RecipeGeneratorTab onSave={() => handleTabChange('history')} initialData={viewData} isVisible={true} />;
       return null;
-  }, [viewData, viewDataType, fetchMyHistory]);
+    }, [viewData, viewDataType, fetchMyHistory]);
 
     const handleTogglePublic = async (id: string, isPublic: boolean) => {
         try {
@@ -1095,8 +1098,19 @@ export default function RecommendationsPage() {
         try {
             await deleteDoc(doc(db, 'recommendation-history', id));
             toast({ title: 'Item Deleted' });
-            // Instead of just filtering, we need to re-fetch to handle pagination correctly
-            fetchMyHistory('current');
+            // Re-fetch the current page. If the page becomes empty, go to the previous one.
+            const remainingItems = myHistory.filter(item => item.id !== id);
+            if (remainingItems.length === 0 && myHistoryPage > 1) {
+                // We deleted the last item on a page > 1, so go back a page
+                const newPageDocs = [...myHistoryPageDocs];
+                newPageDocs.pop(); // Remove last doc for current page
+                newPageDocs.pop(); // Remove last doc for previous page to re-fetch it
+                setMyHistoryPageDocs(newPageDocs);
+                fetchMyHistory(myHistoryPage - 1);
+            } else {
+                // Re-fetch the current page
+                fetchMyHistory(myHistoryPage);
+            }
         } catch(e: any) {
             toast({ title: "Delete failed", description: e.message, variant: 'destructive' });
         }
@@ -1121,10 +1135,10 @@ export default function RecommendationsPage() {
                 onTogglePublic={handleTogglePublic}
                 onRate={handleRate}
                 onDelete={handleDelete}
-                onNextPage={() => fetchMyHistory('next')}
-                onPrevPage={() => fetchMyHistory('prev')}
+                onNextPage={() => fetchMyHistory(myHistoryPage + 1)}
+                onPrevPage={() => fetchMyHistory(myHistoryPage - 1)}
                 hasMore={myHistoryHasMore}
-                isFirstPage={myHistoryPageStack.length <= 1}
+                isFirstPage={myHistoryPage === 1}
                 currentUser={user}
             />
         </TabsContent>
@@ -1145,7 +1159,7 @@ export default function RecommendationsPage() {
              <div className="max-w-4xl mx-auto space-y-6">
                 {viewData && viewDataType === 'workout' 
                     ? ViewedItem 
-                    : <WorkoutGeneratorTab onSave={() => fetchMyHistory()} initialData={null} isVisible={activeTab === 'workout' && !viewData} />
+                    : <WorkoutGeneratorTab onSave={() => handleTabChange('history')} initialData={null} isVisible={activeTab === 'workout' && !viewData} />
                 }
             </div>
         </TabsContent>
@@ -1153,7 +1167,7 @@ export default function RecommendationsPage() {
             <div className="max-w-4xl mx-auto space-y-6">
                  {viewData && viewDataType === 'meditation'
                     ? ViewedItem 
-                    : <MeditationGeneratorTab onSave={() => fetchMyHistory()} initialData={null} isVisible={activeTab === 'meditation' && !viewData} />
+                    : <MeditationGeneratorTab onSave={() => handleTabChange('history')} initialData={null} isVisible={activeTab === 'meditation' && !viewData} />
                  }
             </div>
         </TabsContent>
@@ -1161,7 +1175,7 @@ export default function RecommendationsPage() {
             <div className="max-w-4xl mx-auto space-y-6">
                 {viewData && viewDataType === 'recipe'
                     ? ViewedItem
-                    : <RecipeGeneratorTab onSave={() => fetchMyHistory()} initialData={null} isVisible={activeTab === 'recipe' && !viewData} />
+                    : <RecipeGeneratorTab onSave={() => handleTabChange('history')} initialData={null} isVisible={activeTab === 'recipe' && !viewData} />
                 }
             </div>
         </TabsContent>
