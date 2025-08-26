@@ -1004,7 +1004,7 @@ export default function RecommendationsPage() {
         } finally { 
             setLoadingMyHistory(false); 
         }
-    }, [user, toast]); 
+    }, [user, toast, myHistoryPageDocs]); 
     
     const fetchCommunityRecs = useCallback(async (direction: 'next' | 'prev' = 'next') => {
         setLoadingCommunityRecs(true);
@@ -1039,7 +1039,7 @@ export default function RecommendationsPage() {
         } else if (!authLoading && !user) {
             setLoadingMyHistory(false);
         }
-    }, [user, authLoading, fetchMyHistory]);
+    }, [user, authLoading]);
 
     useEffect(() => {
         fetchCommunityRecs();
@@ -1060,6 +1060,8 @@ export default function RecommendationsPage() {
         setViewData(null);
         setViewDataType(null);
         if (newTab === 'history') {
+            setMyHistoryPage(1);
+            setMyHistoryPageDocs([null]);
             fetchMyHistory(1);
         }
     }
@@ -1104,7 +1106,6 @@ export default function RecommendationsPage() {
                 // We deleted the last item on a page > 1, so go back a page
                 const newPageDocs = [...myHistoryPageDocs];
                 newPageDocs.pop(); // Remove last doc for current page
-                newPageDocs.pop(); // Remove last doc for previous page to re-fetch it
                 setMyHistoryPageDocs(newPageDocs);
                 fetchMyHistory(myHistoryPage - 1);
             } else {
