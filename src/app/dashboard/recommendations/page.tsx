@@ -1,10 +1,11 @@
+
 'use client';
 
 // Common Imports
 import { useState, useEffect, useCallback, useMemo } from 'react';
 import { useAuthState } from 'react-firebase-hooks/auth';
 import { auth, db } from '@/lib/firebase';
-import { collection, addDoc, doc, getDoc, query, where, orderBy, getDocs, deleteDoc, Timestamp, serverTimestamp, updateDoc } from 'firebase/firestore';
+import { collection, addDoc, doc, getDoc, query, where, orderBy, getDocs, deleteDoc, Timestamp, serverTimestamp, updateDoc, limit } from 'firebase/firestore';
 import { useToast } from '@/hooks/use-toast';
 import { Loader2 as Loader2Common, MoreHorizontal } from 'lucide-react';
 import { Button as ButtonCommon } from '@/components/ui/button';
@@ -825,7 +826,7 @@ const Generators = ({ onGenerate }: { onGenerate: () => void }) => (
 );
 
 
-const MyHistory = ({ history, loading, onDelete, onView }: { history: any[], loading: boolean, onDelete: (id: string) => void, onView: (item: any) => void }) => {
+const MyHistory = ({ history, loading, onDelete, onView, onRate }: { history: any[], loading: boolean, onDelete: (id: string) => void, onView: (item: any) => void, onRate: (id: string, rating: number) => void }) => {
     
     const typeIcon = (type: string) => {
         switch (type) {
@@ -836,11 +837,15 @@ const MyHistory = ({ history, loading, onDelete, onView }: { history: any[], loa
         }
     };
 
-    const renderRating = (rating: number) => {
+    const renderRating = (item: any) => {
         return (
             <div className="flex items-center">
                 {[...Array(5)].map((_, i) => (
-                    <Star key={i} className={`h-4 w-4 ${i < rating ? 'text-yellow-400 fill-yellow-400' : 'text-gray-300'}`} />
+                    <Star
+                        key={i}
+                        className={`h-5 w-5 cursor-pointer ${i < item.rating ? 'text-yellow-400 fill-yellow-400' : 'text-gray-300'}`}
+                        onClick={() => onRate(item.id, i + 1)}
+                    />
                 ))}
             </div>
         );
@@ -881,7 +886,7 @@ const MyHistory = ({ history, loading, onDelete, onView }: { history: any[], loa
                                 </div>
                             </div>
                              <div className="flex items-center gap-4">
-                                {renderRating(item.rating)}
+                                {renderRating(item)}
                                 <DropdownMenu>
                                     <DropdownMenuTrigger asChild>
                                         <ButtonCommon variant="ghost" size="icon"><MoreHorizontal /></ButtonCommon>
@@ -928,8 +933,10 @@ export default function RecommendationsPage() {
   useEffect(() => {
     if (user) {
         fetchMyHistory();
+    } else if (!authLoading && !user) {
+        setHistoryLoading(false);
     }
-  }, [user, fetchMyHistory]);
+  }, [user, authLoading, fetchMyHistory]);
 
   const handleDelete = async (id: string) => {
     try {
@@ -950,6 +957,19 @@ export default function RecommendationsPage() {
     fetchMyHistory();
     setActiveTab("history");
   };
+
+  const handleRate = async (id: string, rating: number) => {
+    try {
+        const docRef = doc(db, 'recommendation-history', id);
+        await updateDoc(docRef, { rating });
+        toast({ title: "Rating updated", description: "Your rating has been saved." });
+        setMyHistory(prevHistory => 
+            prevHistory.map(item => item.id === id ? { ...item, rating } : item)
+        );
+    } catch (e: any) {
+        toast({ title: "Rating failed", description: e.message, variant: "destructive" });
+    }
+  };
   
   return (
     <>
@@ -959,7 +979,7 @@ export default function RecommendationsPage() {
           <TabsTrigger value="generators">Generators</TabsTrigger>
         </TabsList>
         <TabsContent value="history">
-            <MyHistory history={myHistory} loading={historyLoading} onDelete={handleDelete} onView={handleView} />
+            <MyHistory history={myHistory} loading={historyLoading} onDelete={handleDelete} onView={handleView} onRate={handleRate} />
         </TabsContent>
         <TabsContent value="generators">
             <Generators onGenerate={handleGenerated} />
