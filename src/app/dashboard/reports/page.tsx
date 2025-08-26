@@ -25,6 +25,13 @@ interface FoodLog {
   calories: number;
 }
 
+interface Recommendation {
+    id: string;
+    timestamp: Timestamp;
+    type: 'workout' | 'meditation' | 'recipe';
+    data: any;
+}
+
 interface UserProfile {
   name: string;
   dailyCalorieTarget: number;
@@ -35,6 +42,7 @@ export default function ReportsPage() {
   const [user, authLoading] = useAuthState(auth);
   const { toast } = useToast();
   const [loading, setLoading] = useState(false);
+  const [reportLoading, setReportLoading] = useState<'calorie' | 'recommendation' | null>(null);
   const [profile, setProfile] = useState<UserProfile | null>(null);
   const [date, setDate] = useState<DateRange | undefined>({
     from: addDays(new Date(), -29),
@@ -69,7 +77,7 @@ export default function ReportsPage() {
       toast({ title: 'Error', description: 'Please select a valid date range.', variant: 'destructive' });
       return;
     }
-    setLoading(true);
+    setReportLoading('calorie');
 
     try {
       const q = query(
@@ -84,7 +92,7 @@ export default function ReportsPage() {
 
       if (logs.length === 0) {
         toast({ title: 'No Data', description: 'No food logs found in the selected date range.' });
-        setLoading(false);
+        setReportLoading(null);
         return;
       }
 
@@ -143,62 +151,165 @@ export default function ReportsPage() {
       toast({ title: 'Report Generation Failed', description: e.message || 'An error occurred.', variant: 'destructive' });
       console.error(e);
     } finally {
-      setLoading(false);
+      setReportLoading(null);
     }
   };
+
+  const handleGenerateRecommendationsReport = async () => {
+    if (!user || !date?.from || !date?.to || !profile) {
+      toast({ title: 'Error', description: 'Please select a valid date range.', variant: 'destructive' });
+      return;
+    }
+    setReportLoading('recommendation');
+
+    try {
+        const q = query(
+            collection(db, 'recommendation-history'),
+            where('userId', '==', user.uid),
+            where('timestamp', '>=', Timestamp.fromDate(date.from)),
+            where('timestamp', '<=', Timestamp.fromDate(date.to)),
+            orderBy('timestamp', 'asc')
+        );
+        const querySnapshot = await getDocs(q);
+        const recommendations = querySnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as Recommendation));
+
+        if (recommendations.length === 0) {
+            toast({ title: 'No Data', description: 'No saved recommendations found in the selected date range.' });
+            setReportLoading(null);
+            return;
+        }
+
+        const doc = new jsPDF();
+        let finalY = 0;
+
+        const fromDate = format(date.from, "PPP");
+        const toDate = format(date.to, "PPP");
+
+        doc.setFontSize(18);
+        doc.text("Recommendations Report", 14, 22);
+        doc.setFontSize(11);
+        doc.text(`User: ${profile.name}`, 14, 30);
+        doc.text(`Period: ${fromDate} to ${toDate}`, 14, 36);
+        finalY = 40;
+
+        const addSection = (title: string, items: Recommendation[]) => {
+            if (items.length === 0) return;
+            if (finalY > 250) doc.addPage();
+            doc.setFontSize(14);
+            doc.text(title, 14, finalY + 10);
+            finalY += 15;
+
+            items.forEach(item => {
+                if (finalY > 260) {
+                    doc.addPage();
+                    finalY = 20;
+                }
+                const itemDate = format(item.timestamp.toDate(), 'yyyy-MM-dd');
+                let name = '';
+                if(item.type === 'workout') name = item.data.planTitle;
+                if(item.type === 'meditation') name = item.data.title;
+                if(item.type === 'recipe') name = item.data.name;
+
+                doc.setFontSize(12);
+                doc.text(`${itemDate}: ${name}`, 16, finalY);
+                finalY += 8;
+            });
+        };
+
+        addSection("Workouts", recommendations.filter(r => r.type === 'workout'));
+        addSection("Meditations", recommendations.filter(r => r.type === 'meditation'));
+        addSection("Recipes", recommendations.filter(r => r.type === 'recipe'));
+        
+        doc.save(`Recommendations_Report_${profile.name}_${format(new Date(), 'yyyy-MM-dd')}.pdf`);
+
+    } catch (e: any) {
+        toast({ title: 'Report Generation Failed', description: e.message || 'An error occurred.', variant: 'destructive' });
+        console.error(e);
+    } finally {
+        setReportLoading(null);
+    }
+  }
   
+  if (loading) {
+    return <div className="flex justify-center"><Loader2 className="h-8 w-8 animate-spin" /></div>
+  }
+
   return (
-    <Card>
-      <CardHeader>
-        <CardTitle>Calorie Intake Report</CardTitle>
-        <CardDescription>Generate a PDF report of your calorie intake for a specific period.</CardDescription>
-      </CardHeader>
-      <CardContent className="space-y-6">
-        <div className="flex flex-col items-start gap-4">
-          <Label>Select Date Range</Label>
-          <Popover>
-            <PopoverTrigger asChild>
-              <Button
-                id="date"
-                variant={"outline"}
-                className={cn(
-                  "w-[300px] justify-start text-left font-normal",
-                  !date && "text-muted-foreground"
-                )}
-              >
-                <CalendarIcon className="mr-2 h-4 w-4" />
-                {date?.from ? (
-                  date.to ? (
-                    <>
-                      {format(date.from, "LLL dd, y")} -{" "}
-                      {format(date.to, "LLL dd, y")}
-                    </>
-                  ) : (
-                    format(date.from, "LLL dd, y")
-                  )
-                ) : (
-                  <span>Pick a date</span>
-                )}
-              </Button>
-            </PopoverTrigger>
-            <PopoverContent className="w-auto p-0" align="start">
-              <Calendar
-                initialFocus
-                mode="range"
-                defaultMonth={date?.from}
-                selected={date}
-                onSelect={setDate}
-                numberOfMonths={2}
-              />
-            </PopoverContent>
-          </Popover>
+    <div className="space-y-6">
+        <Card>
+            <CardHeader>
+                <CardTitle>Generate Report</CardTitle>
+                <CardDescription>Select a date range for your reports.</CardDescription>
+            </CardHeader>
+            <CardContent>
+                <div className="flex flex-col items-start gap-4">
+                    <Label>Select Date Range</Label>
+                    <Popover>
+                        <PopoverTrigger asChild>
+                        <Button
+                            id="date"
+                            variant={"outline"}
+                            className={cn(
+                            "w-[300px] justify-start text-left font-normal",
+                            !date && "text-muted-foreground"
+                            )}
+                        >
+                            <CalendarIcon className="mr-2 h-4 w-4" />
+                            {date?.from ? (
+                            date.to ? (
+                                <>
+                                {format(date.from, "LLL dd, y")} -{" "}
+                                {format(date.to, "LLL dd, y")}
+                                </>
+                            ) : (
+                                format(date.from, "LLL dd, y")
+                            )
+                            ) : (
+                            <span>Pick a date</span>
+                            )}
+                        </Button>
+                        </PopoverTrigger>
+                        <PopoverContent className="w-auto p-0" align="start">
+                        <Calendar
+                            initialFocus
+                            mode="range"
+                            defaultMonth={date?.from}
+                            selected={date}
+                            onSelect={setDate}
+                            numberOfMonths={2}
+                        />
+                        </PopoverContent>
+                    </Popover>
+                </div>
+            </CardContent>
+        </Card>
+
+        <div className="grid md:grid-cols-2 gap-6">
+             <Card>
+                <CardHeader>
+                    <CardTitle>Calorie Intake Report</CardTitle>
+                    <CardDescription>Generate a PDF report of your calorie intake for a specific period.</CardDescription>
+                </CardHeader>
+                <CardContent>
+                    <Button onClick={handleGenerateCalorieReport} disabled={!!reportLoading}>
+                    {reportLoading === 'calorie' ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <FileDown className="mr-2 h-4 w-4" />}
+                    Generate PDF
+                    </Button>
+                </CardContent>
+            </Card>
+             <Card>
+                <CardHeader>
+                    <CardTitle>Recommendations Report</CardTitle>
+                    <CardDescription>Generate a PDF of all saved workouts, meditations, and recipes.</CardDescription>
+                </CardHeader>
+                <CardContent>
+                    <Button onClick={handleGenerateRecommendationsReport} disabled={!!reportLoading}>
+                    {reportLoading === 'recommendation' ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <FileDown className="mr-2 h-4 w-4" />}
+                    Generate PDF
+                    </Button>
+                </CardContent>
+            </Card>
         </div>
-        <Button onClick={handleGenerateCalorieReport} disabled={loading}>
-          {loading ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <FileDown className="mr-2 h-4 w-4" />}
-          Generate PDF
-        </Button>
-      </CardContent>
-    </Card>
+    </div>
   );
 }
-
