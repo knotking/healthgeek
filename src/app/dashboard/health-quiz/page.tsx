@@ -160,7 +160,7 @@ const QuizGenerator = ({ onQuizStart }: { onQuizStart: (quiz: QuizGeneratorOutpu
 }
 
 export default function HealthQuizPage() {
-  const [user, authLoading] = useAuthState(auth);
+  const [user] = useAuthState(auth);
   const [quizState, setQuizState] = useState<QuizState>('setup');
   const [quizData, setQuizData] = useState<QuizGeneratorOutput | null>(null);
   const [currentQuestionIndex, setCurrentQuestionIndex] = useState(0);
@@ -168,10 +168,12 @@ export default function HealthQuizPage() {
   const [score, setScore] = useState(0);
   const { toast } = useToast();
   const [savedQuizzes, setSavedQuizzes] = useState<SavedQuiz[]>([]);
-  const [loadingQuizzes, setLoadingQuizzes] = useState(true);
+  const [loadingQuizzes, setLoadingQuizzes] = useState(false);
+  const [hasFetchedQuizzes, setHasFetchedQuizzes] = useState(false);
+  const [activeTab, setActiveTab] = useState("generator");
 
   const fetchSavedQuizzes = useCallback(async () => {
-    if (!user) return;
+    if (!user || hasFetchedQuizzes) return;
     setLoadingQuizzes(true);
     try {
         const q = query(
@@ -186,18 +188,20 @@ export default function HealthQuizPage() {
             timestamp: (doc.data().timestamp as Timestamp).toDate(),
         })) as SavedQuiz[];
         setSavedQuizzes(quizzes);
+        setHasFetchedQuizzes(true); // Mark as fetched
     } catch (e: any) {
         toast({ title: 'Error', description: 'Failed to fetch saved quizzes.', variant: 'destructive' });
+        console.error("Fetch error:", e);
     } finally {
         setLoadingQuizzes(false);
     }
-  }, [user, toast]);
+  }, [user, toast, hasFetchedQuizzes]);
   
   useEffect(() => {
-    if (!authLoading && user) {
-        fetchSavedQuizzes();
+    if(activeTab === 'saved' && user && !hasFetchedQuizzes) {
+      fetchSavedQuizzes();
     }
-  }, [user, authLoading, fetchSavedQuizzes]);
+  }, [activeTab, user, hasFetchedQuizzes, fetchSavedQuizzes]);
   
   const startQuiz = (data: QuizGeneratorOutput) => {
     setQuizData(data);
@@ -243,7 +247,7 @@ export default function HealthQuizPage() {
             ...quizData
         });
         toast({ title: 'Quiz Saved!', description: 'You can replay this quiz anytime from the "Saved Quizzes" tab.' });
-        fetchSavedQuizzes();
+        setHasFetchedQuizzes(false); // Allow refetching
     } catch(e: any) {
          toast({ title: 'Save failed', description: e.message || "Could not save the quiz.", variant: 'destructive' });
     }
@@ -259,7 +263,7 @@ export default function HealthQuizPage() {
     <div className="max-w-3xl mx-auto">
       <AnimatePresence mode="wait">
         {quizState === 'setup' && (
-          <Tabs defaultValue="generator" className="w-full">
+          <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
             <TabsList className="grid w-full grid-cols-2">
               <TabsTrigger value="generator">New Quiz</TabsTrigger>
               <TabsTrigger value="saved">Saved Quizzes</TabsTrigger>
@@ -382,3 +386,5 @@ export default function HealthQuizPage() {
     </div>
   );
 }
+
+    
