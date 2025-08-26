@@ -263,6 +263,7 @@ export default function HealthQuizPage() {
         });
         toast({ title: 'Quiz Saved!', description: 'You can replay this quiz anytime from the "Saved Quizzes" tab.' });
         setHasFetchedQuizzes(false); // Allow refetching
+        handleRestart();
         setActiveTab("saved");
     } catch(e: any) {
          toast({ title: 'Save failed', description: e.message || "Could not save the quiz.", variant: 'destructive' });
