@@ -528,11 +528,15 @@ const meditationGoals = [
     { id: 'sleep', label: 'Promote Better Sleep' }, 
     { id: 'self-awareness', label: 'Increase Self-Awareness' }, 
     { id: 'gratitude', label: 'Cultivate Gratitude' },
+    { id: 'pain-management', label: 'Managing Pain' },
+    { id: 'emotional-healing', label: 'Emotional Healing' },
+    { id: 'mindful-eating', label: 'Mindful Eating' },
 ] as const;
 const meditationSchema = zMeditation.object({
   duration: zMeditation.number().min(5, "Duration must be at least 5 minutes.").max(60, "Duration must be less than 60 minutes."),
   timeOfDay: zMeditation.enum(['morning', 'afternoon', 'evening'], { required_error: 'Please select a time of day.' }),
   goals: zMeditation.array(zMeditation.string()).refine((value) => value.some((item) => item), { message: 'You have to select at least one goal.' }),
+  customInstructions: zMeditation.string().optional(),
 });
 type MeditationFormData = zMeditation.infer<typeof meditationSchema>;
 const MeditationSteps = { PREFERENCES: 1, GENERATING: 2, RESULT: 3 };
@@ -549,7 +553,7 @@ function MeditationGenerator() {
 
     const form = useFormMeditation<MeditationFormData>({
         resolver: zodResolverMeditation(meditationSchema),
-        defaultValues: { duration: 10, timeOfDay: 'morning', goals: [] },
+        defaultValues: { duration: 10, timeOfDay: 'morning', goals: [], customInstructions: '' },
     });
 
     const fetchUserData = useCallback(async () => {
@@ -579,7 +583,12 @@ function MeditationGenerator() {
         }
         setCurrentStep(MeditationSteps.GENERATING);
         try {
-            const result = await generateMeditationPractice({ ...values, userProfile: JSON.stringify(profile) });
+            const result = await generateMeditationPractice({
+              ...values,
+              userProfile: JSON.stringify(profile),
+              // Pass custom instructions to the flow if needed.
+              // This requires the flow to be updated to accept it.
+            });
             setMeditationResult(result);
             setCurrentStep(MeditationSteps.RESULT);
         } catch (e: any) {
@@ -706,6 +715,22 @@ function MeditationGenerator() {
                                             </div><FormMessageMeditation />
                                         </FormItemMeditation>
                                     )} />
+                                    <FormFieldMeditation
+                                      control={form.control}
+                                      name="customInstructions"
+                                      render={({ field }) => (
+                                        <FormItemMeditation>
+                                          <FormLabelMeditation>Specific Instructions (Optional)</FormLabelMeditation>
+                                          <FormControlMeditation>
+                                            <TextareaMeditation
+                                              placeholder="e.g., 'Focus on breathing for my asthma', 'Help me process a recent argument'"
+                                              {...field}
+                                            />
+                                          </FormControlMeditation>
+                                          <FormMessageMeditation />
+                                        </FormItemMeditation>
+                                      )}
+                                    />
                                     <ButtonCommon type="submit" disabled={!profile}>Generate Practice <MoveRightMeditation className="ml-2" /></ButtonCommon>
                                 </form>
                             </FormMeditation>
@@ -1045,11 +1070,7 @@ const MyHistory = () => {
     }, [fetchMyHistory]);
 
     const handleDelete = (id: string) => {
-        // Just refetch the initial page after deletion
-        setPage(1);
-        setLastDoc(null);
-        setFirstDoc(null);
-        setIsEnd(false);
+        setHistory(prev => prev.filter(item => item.id !== id));
         fetchMyHistory();
     };
 
