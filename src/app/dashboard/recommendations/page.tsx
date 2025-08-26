@@ -908,7 +908,8 @@ const RecommendationCard = ({ recommendation, isOwner, onDelete }: { recommendat
     }, [recommendation.type]);
     
     const handleDelete = async () => {
-        if (!onDelete) return;
+        if (!onDelete || !user || user.uid !== recommendation.userId) return;
+
         try {
             await deleteDoc(doc(db, 'recommendation-history', recommendation.id));
             toast({ title: 'Success', description: 'Recommendation deleted.' });
@@ -979,7 +980,11 @@ const MyHistory = () => {
             return;
         }
 
+        let currentIsLoading = direction === 'initial';
+        if (currentIsLoading) setIsLoading(true);
+        
         setIsFetchingMore(true);
+
         try {
             let q;
             const baseQuery = [
@@ -1018,17 +1023,23 @@ const MyHistory = () => {
             console.error(error);
             toast({ title: "Error", description: "Could not fetch your history.", variant: "destructive" });
         } finally {
-            setIsLoading(false);
+            if(currentIsLoading) setIsLoading(false);
             setIsFetchingMore(false);
         }
     }, [user, toast, lastDoc, firstDoc, page]);
     
     useEffect(() => {
-        fetchHistory('initial');
+        if(user) {
+            fetchHistory('initial');
+        }
     }, [user]);
 
     const handleDelete = (id: string) => {
         setHistory(prev => prev.filter(item => item.id !== id));
+        if (history.length === 1 && page > 1) { // last item on a page that is not the first page
+            setPage(p => p - 1);
+        }
+        fetchHistory('initial');
     };
 
     if (isLoading) {
@@ -1041,64 +1052,12 @@ const MyHistory = () => {
 
     return (
         <div className="space-y-4">
-            {history.map(item => <RecommendationCard key={item.id} recommendation={item} isOwner={true} onDelete={handleDelete} />)}
-            <div className="flex justify-between items-center">
+            {history.map(item => <RecommendationCard key={item.id} recommendation={item} isOwner={item.userId === user?.uid} onDelete={handleDelete} />)}
+            <div className="flex justify-between items-center pt-4">
                 <ButtonCommon onClick={() => fetchHistory('prev')} disabled={page <= 1 || isFetchingMore}>Previous</ButtonCommon>
                 <span>Page {page}</span>
                 <ButtonCommon onClick={() => fetchHistory('next')} disabled={isEnd || isFetchingMore}>Next</ButtonCommon>
             </div>
-        </div>
-    );
-}
-
-const CommunityFeed = () => {
-    const [user] = useAuthState(auth);
-    const { toast } = useToast();
-    const [recommendations, setRecommendations] = useState<Recommendation[]>([]);
-    const [isLoading, setIsLoading] = useState(true);
-
-     const fetchCommunityRecommendations = useCallback(async () => {
-        setIsLoading(true);
-        try {
-            const q = query(
-                collection(db, 'recommendation-history'), 
-                where('isPublic', '==', true), 
-                orderBy('rating', 'desc'),
-                orderBy('timestamp', 'desc'), 
-                limit(20)
-            );
-            const docSnap = await getDocs(q);
-            const newRecs = docSnap.docs.map(d => ({ id: d.id, ...d.data() } as Recommendation));
-            setRecommendations(newRecs);
-        } catch (error: any) {
-            console.error("Firestore Error:", error);
-            if (error.code === 'failed-precondition') {
-                 toast({ title: "Missing Index", description: "The required database index is missing. Please contact support.", variant: "destructive" });
-            } else if (error.code === 'permission-denied') {
-                toast({ title: "Permissions Error", description: "You don't have permission to view community recommendations.", variant: "destructive" });
-            } else {
-                toast({ title: "Error", description: "Could not fetch community recommendations.", variant: "destructive" });
-            }
-        } finally {
-            setIsLoading(false);
-        }
-    }, [toast]);
-
-    useEffect(() => {
-        fetchCommunityRecommendations();
-    }, [fetchCommunityRecommendations]);
-    
-    if (isLoading) {
-        return <div className="flex justify-center p-8"><Loader2Common className="h-8 w-8 animate-spin" /></div>;
-    }
-    
-    if (recommendations.length === 0) {
-        return <div className="text-center py-16 text-muted-foreground">No community recommendations available yet.</div>
-    }
-
-    return (
-        <div className="space-y-4">
-            {recommendations.map(item => <RecommendationCard key={item.id} recommendation={item} isOwner={item.userId === user?.uid} />)}
         </div>
     );
 }
@@ -1108,19 +1067,15 @@ export default function RecommendationsPage() {
   
   return (
     <Tabs defaultValue="generators" className="w-full">
-        <TabsList className="grid w-full grid-cols-3">
+        <TabsList className="grid w-full grid-cols-2">
           <TabsTrigger value="generators"><SparklesRecipe className="mr-2 h-4 w-4"/>Generators</TabsTrigger>
           <TabsTrigger value="my-history"><History className="mr-2 h-4 w-4"/>My History</TabsTrigger>
-          <TabsTrigger value="community"><Users className="mr-2 h-4 w-4"/>Community</TabsTrigger>
         </TabsList>
         <TabsContent value="generators" className="pt-6">
             <Generators />
         </TabsContent>
         <TabsContent value="my-history" className="pt-6">
             <MyHistory />
-        </TabsContent>
-        <TabsContent value="community" className="pt-6">
-            <CommunityFeed />
         </TabsContent>
       </Tabs>
   );
