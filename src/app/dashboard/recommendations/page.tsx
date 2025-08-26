@@ -1,4 +1,5 @@
 
+
 'use client';
 
 // Common Imports
@@ -918,7 +919,7 @@ const CommunityFeed = ({ onView }: { onView: (item: any) => void }) => {
         where('isPublic', '==', true),
         orderBy('rating', 'desc'),
         orderBy('timestamp', 'desc'),
-        limit(50) // Limit to the latest 50 public items
+        limit(50)
       );
       const querySnapshot = await getDocs(q);
       setFeed(querySnapshot.docs.map(d => ({ id: d.id, ...d.data() })));
