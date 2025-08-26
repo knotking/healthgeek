@@ -1,4 +1,5 @@
 
+
 'use server';
 /**
  * @fileOverview An AI agent for generating personalized meditation practices.
@@ -16,7 +17,6 @@ const MeditationPreferencesInputSchema = z.object({
   duration: z.number().describe('The desired meditation duration in minutes.'),
   timeOfDay: z.enum(['morning', 'afternoon', 'evening']).describe('The time of day for the meditation.'),
   goals: z.array(z.string()).describe('A list of goals for the meditation session (e.g., "Reduce Stress", "Improve Focus", "Better Sleep").'),
-  customInstructions: z.string().optional().describe('Any specific free-text instructions or context from the user for the AI.'),
 });
 export type MeditationPreferencesInput = z.infer<typeof MeditationPreferencesInputSchema>;
 
@@ -51,11 +51,6 @@ const prompt = ai.definePrompt({
 Your task is to create a detailed, safe, and effective guided meditation script for the user based on their goals, desired duration, and time of day.
 
 **Crucially, you must tailor the meditation to their profile. For example, if a user has hypertension, you might focus on calming breathing techniques. For anxiety, focus on grounding exercises.**
-
-{{#if customInstructions}}
-The user has provided the following specific instructions, please prioritize them:
-"{{{customInstructions}}}"
-{{/if}}
 
 User Preferences:
 - Desired Duration: {{{duration}}} minutes
