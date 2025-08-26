@@ -1,100 +1,62 @@
 
 'use client';
 
-import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { Card, CardContent, CardHeader, CardTitle, CardDescription, CardFooter } from '@/components/ui/card';
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from '@/components/ui/accordion';
+import { BrainCircuit, ChefHat, Dumbbell } from 'lucide-react';
 
 
-// Common History Imports
+// Common Imports
 import { useState, useEffect, useCallback, useMemo } from 'react';
 import { useAuthState } from 'react-firebase-hooks/auth';
 import { auth, db } from '@/lib/firebase';
-import { collection, addDoc, query, where, orderBy, getDocs, Timestamp, doc, updateDoc, limit, startAfter, getCountFromServer, deleteDoc } from 'firebase/firestore';
+import { collection, addDoc, doc, getDoc, query, where, orderBy, limit, getDocs } from 'firebase/firestore';
 import { useToast } from '@/hooks/use-toast';
-import { BrainCircuit, ChefHat, Dumbbell, History, Loader2, Save, Eye, Star, ChevronLeft, ChevronRight, Trash2, Users, MoreHorizontal } from 'lucide-react';
-import { Button } from '@/components/ui/button';
-import { Badge } from '@/components/ui/badge';
-import { Switch } from '@/components/ui/switch';
-import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
+import { Loader2 as Loader2Common } from 'lucide-react';
+import { Button as ButtonCommon } from '@/components/ui/button';
+import { Card, CardContent, CardHeader, CardTitle, CardDescription, CardFooter } from '@/components/ui/card';
+import { Badge as BadgeCommon } from '@/components/ui/badge';
+import jsPDF from 'jspdf';
+import 'jspdf-autotable';
+import { AnimatePresence, motion } from 'framer-motion';
 
 
 // Recipe Generator Imports
-import { useState as useStateRecipe, useEffect as useEffectRecipe, useCallback as useCallbackRecipe } from 'react';
 import { useForm as useFormRecipe } from 'react-hook-form';
 import { zodResolver as zodResolverRecipe } from '@hookform/resolvers/zod';
 import { z as zRecipe } from 'zod';
-import { useAuthState as useAuthStateRecipe } from 'react-firebase-hooks/auth';
-import { auth as authRecipe, db as dbRecipe } from '@/lib/firebase';
-import { doc as docRecipe, getDoc as getDocRecipe } from 'firebase/firestore';
-import { Button as ButtonRecipe } from '@/components/ui/button';
-import { CardFooter as CardFooterRecipe } from '@/components/ui/card';
-import { Badge as BadgeRecipe } from '@/components/ui/badge';
-import { useToast as useToastRecipe } from '@/hooks/use-toast';
-import { Loader2 as Loader2Recipe, CookingPot, FileDown as FileDownRecipe, Utensils, Clock, User, Sparkles as SparklesRecipe, MoveRight as MoveRightRecipe, MoveLeft as MoveLeftRecipe } from 'lucide-react';
 import { generateSingleRecipe, SingleRecipeOutput } from '@/ai/flows/conversational-recipe-generator';
 import { Form as FormRecipe, FormControl as FormControlRecipe, FormField as FormFieldRecipe, FormItem as FormItemRecipe, FormLabel as FormLabelRecipe, FormMessage as FormMessageRecipe } from '@/components/ui/form';
 import { Input as InputRecipe } from '@/components/ui/input';
 import { Textarea as TextareaRecipe } from '@/components/ui/textarea';
 import { Select as SelectRecipe, SelectContent as SelectContentRecipe, SelectItem as SelectItemRecipe, SelectTrigger as SelectTriggerRecipe, SelectValue as SelectValueRecipe } from '@/components/ui/select';
-import { AnimatePresence as AnimatePresenceRecipe, motion as motionRecipe } from 'framer-motion';
-import jsPDF from 'jspdf';
-import 'jspdf-autotable';
+import { CookingPot, FileDown as FileDownRecipe, Utensils, Clock, User, Sparkles as SparklesRecipe, MoveRight as MoveRightRecipe, MoveLeft as MoveLeftRecipe } from 'lucide-react';
+
 
 // Workout Generator Imports
-import { useState as useStateWorkout, useEffect as useEffectWorkout, useCallback as useCallbackWorkout } from 'react';
 import { useForm as useFormWorkout } from 'react-hook-form';
 import { zodResolver as zodResolverWorkout } from '@hookform/resolvers/zod';
 import { z as zWorkout } from 'zod';
-import { useAuthState as useAuthStateWorkout } from 'react-firebase-hooks/auth';
-import { auth as authWorkout, db as dbWorkout } from '@/lib/firebase';
-import { doc as docWorkout, getDoc as getDocWorkout, collection as collectionWorkout, query as queryWorkout, orderBy as orderByWorkout, where as whereWorkout, limit as limitWorkout, getDocs as getDocsWorkout } from 'firebase/firestore';
-import { Button as ButtonWorkout } from '@/components/ui/button';
-import { CardFooter as CardFooterWorkout } from '@/components/ui/card';
-import { Badge as BadgeWorkout } from '@/components/ui/badge';
-import { useToast as useToastWorkout } from '@/hooks/use-toast';
-import { Loader2 as Loader2Workout, FileDown as FileDownWorkout, Activity, Shield, MoveRight as MoveRightWorkout, MoveLeft as MoveLeftWorkout, Repeat, Target, Timer as TimerWorkout, HeartPulse } from 'lucide-react';
 import { generateWorkoutPlan, type WorkoutPlanOutput } from '@/ai/flows/workout-recommender';
 import { Form as FormWorkout, FormControl as FormControlWorkout, FormField as FormFieldWorkout, FormItem as FormItemWorkout, FormLabel as FormLabelWorkout, FormMessage as FormMessageWorkout } from '@/components/ui/form';
 import { RadioGroup as RadioGroupWorkout, RadioGroupItem as RadioGroupItemWorkout } from '@/components/ui/radio-group';
 import { Slider as SliderWorkout } from '@/components/ui/slider';
 import { Checkbox as CheckboxWorkout } from '@/components/ui/checkbox';
-import { AnimatePresence as AnimatePresenceWorkout, motion as motionWorkout } from 'framer-motion';
 import { Alert as AlertWorkout, AlertDescription as AlertDescriptionWorkout, AlertTitle as AlertTitleWorkout } from '@/components/ui/alert';
+import { FileDown as FileDownWorkout, Activity, Shield, MoveRight as MoveRightWorkout, MoveLeft as MoveLeftWorkout, Repeat, Target, Timer as TimerWorkout, HeartPulse } from 'lucide-react';
+
 
 // Meditation Generator Imports
-import { useState as useStateMeditation, useEffect as useEffectMeditation, useCallback as useCallbackMeditation } from 'react';
 import { useForm as useFormMeditation } from 'react-hook-form';
 import { zodResolver as zodResolverMeditation } from '@hookform/resolvers/zod';
 import { z as zMeditation } from 'zod';
-import { useAuthState as useAuthStateMeditation } from 'react-firebase-hooks/auth';
-import { auth as authMeditation, db as dbMeditation } from '@/lib/firebase';
-import { doc as docMeditation, getDoc as getDocMeditation } from 'firebase/firestore';
-import { Button as ButtonMeditation } from '@/components/ui/button';
-import { CardFooter as CardFooterMeditation } from '@/components/ui/card';
-import { Badge as BadgeMeditation } from '@/components/ui/badge';
-import { useToast as useToastMeditation } from '@/hooks/use-toast';
-import { Loader2 as Loader2Meditation, FileDown as FileDownMeditation, MoveRight as MoveRightMeditation, MoveLeft as MoveLeftMeditation, Sparkles as SparklesMeditation, Timer as TimerMeditation } from 'lucide-react';
 import { generateMeditationPractice, type MeditationPracticeOutput } from '@/ai/flows/meditation-recommender';
 import { Form as FormMeditation, FormControl as FormControlMeditation, FormField as FormFieldMeditation, FormItem as FormItemMeditation, FormLabel as FormLabelMeditation, FormMessage as FormMessageMeditation } from '@/components/ui/form';
 import { RadioGroup as RadioGroupMeditation, RadioGroupItem as RadioGroupItemMeditation } from '@/components/ui/radio-group';
 import { Slider as SliderMeditation } from '@/components/ui/slider';
 import { Checkbox as CheckboxMeditation } from '@/components/ui/checkbox';
-import { AnimatePresence as AnimatePresenceMeditation, motion as motionMeditation } from 'framer-motion';
 import { Alert as AlertMeditation, AlertDescription as AlertDescriptionMeditation, AlertTitle as AlertTitleMeditation } from '@/components/ui/alert';
+import { FileDown as FileDownMeditation, MoveRight as MoveRightMeditation, MoveLeft as MoveLeftMeditation, Sparkles as SparklesMeditation, Timer as TimerMeditation } from 'lucide-react';
 
-type RecommendationType = 'recipe' | 'workout' | 'meditation';
-
-type RecommendationHistoryItem = {
-    id: string;
-    timestamp: Date;
-    type: RecommendationType;
-    data: any;
-    isPublic?: boolean;
-    rating?: number;
-    userId: string;
-};
 
 // --- Recipe Component ---
 const recipeSchema = zRecipe.object({
@@ -107,40 +69,24 @@ const recipeSchema = zRecipe.object({
 type RecipeFormData = zRecipe.infer<typeof recipeSchema>;
 const RecipeSteps = { PREFERENCES: 1, GENERATING: 2, RESULT: 3 };
 
-function RecipeGeneratorTab({ onSave, initialData, isVisible }: { onSave: () => void; initialData?: SingleRecipeOutput | null; isVisible: boolean }) {
-  const [user, authLoading] = useAuthStateRecipe(authRecipe);
-  const { toast } = useToastRecipe();
-  const [loading, setLoading] = useStateRecipe(true);
-  const [isSaving, setIsSaving] = useStateRecipe(false);
-  const [profile, setProfile] = useStateRecipe<any>(null);
-  const [recipeResult, setRecipeResult] = useStateRecipe<SingleRecipeOutput | null>(initialData || null);
-  const [currentStep, setCurrentStep] = useStateRecipe(initialData ? RecipeSteps.RESULT : RecipeSteps.PREFERENCES);
-
-  useEffectRecipe(() => {
-    if (initialData) {
-      setRecipeResult(initialData);
-      setCurrentStep(RecipeSteps.RESULT);
-    }
-  }, [initialData]);
-
-  useEffectRecipe(() => {
-    if (!isVisible && !initialData) {
-      setRecipeResult(null);
-      setCurrentStep(RecipeSteps.PREFERENCES);
-      form.reset();
-    }
-  }, [isVisible, initialData]);
+function RecipeGenerator() {
+  const [user, authLoading] = useAuthState(auth);
+  const { toast } = useToast();
+  const [loading, setLoading] = useState(true);
+  const [profile, setProfile] = useState<any>(null);
+  const [recipeResult, setRecipeResult] = useState<SingleRecipeOutput | null>(null);
+  const [currentStep, setCurrentStep] = useState(RecipeSteps.PREFERENCES);
 
   const form = useFormRecipe<RecipeFormData>({
     resolver: zodResolverRecipe(recipeSchema),
     defaultValues: { mealType: '', cuisine: '', ingredientsToInclude: '', ingredientsToExclude: '', dietaryNotes: '' },
   });
 
-  const fetchUserData = useCallbackRecipe(async () => {
+  const fetchUserData = useCallback(async () => {
     if (user) {
       try {
-        const docRef = docRecipe(dbRecipe, 'profiles', user.uid);
-        const docSnap = await getDocRecipe(docRef);
+        const docRef = doc(db, 'profiles', user.uid);
+        const docSnap = await getDoc(docRef);
         if (docSnap.exists()) setProfile(docSnap.data());
         else toast({ variant: 'destructive', title: 'Profile Required', description: 'Please complete your user profile first.' });
       } catch (e: any) {
@@ -152,7 +98,7 @@ function RecipeGeneratorTab({ onSave, initialData, isVisible }: { onSave: () => 
     }
   }, [user, toast]);
 
-  useEffectRecipe(() => {
+  useEffect(() => {
     if (!authLoading && user) fetchUserData();
     else if (!authLoading && !user) setLoading(false);
   }, [user, authLoading, fetchUserData]);
@@ -171,27 +117,6 @@ function RecipeGeneratorTab({ onSave, initialData, isVisible }: { onSave: () => 
       console.error(e);
       toast({ title: 'Generation Failed', description: e.message || 'An error occurred.', variant: 'destructive' });
       setCurrentStep(RecipeSteps.PREFERENCES);
-    }
-  }
-
-  async function handleSave() {
-    if (!user || !recipeResult) return;
-    setIsSaving(true);
-    try {
-        await addDoc(collection(dbRecipe, 'recommendation-history'), {
-            userId: user.uid,
-            timestamp: new Date(),
-            type: 'recipe',
-            data: recipeResult,
-            isPublic: false,
-            rating: 0
-        });
-        toast({ title: 'Recipe Saved', description: 'This recipe has been saved to your history.'});
-        onSave();
-    } catch(e: any) {
-        toast({ title: "Save Failed", description: e.message, variant: "destructive" });
-    } finally {
-        setIsSaving(false);
     }
   }
 
@@ -241,19 +166,15 @@ function RecipeGeneratorTab({ onSave, initialData, isVisible }: { onSave: () => 
     setCurrentStep(RecipeSteps.PREFERENCES);
   }
 
-  if (!isVisible && !recipeResult) {
-      return null;
-  }
-
   const pageVariants = { initial: { opacity: 0, x: 50 }, in: { opacity: 1, x: 0 }, out: { opacity: 0, x: -50 } };
   const pageTransition = { type: "tween", ease: "anticipate", duration: 0.5 };
 
-  if (authLoading || (loading && !profile)) return <div className="flex justify-center py-6"><Loader2Recipe className="h-8 w-8 animate-spin" /></div>;
+  if (authLoading || (loading && !profile)) return <div className="flex justify-center py-6"><Loader2Common className="h-8 w-8 animate-spin" /></div>;
 
   return (
-    <AnimatePresenceRecipe mode="wait">
+    <AnimatePresence mode="wait">
       {currentStep === RecipeSteps.PREFERENCES && (
-        <motionRecipe.div key="preferences" initial="initial" animate="in" exit="out" variants={pageVariants} transition={pageTransition}>
+        <motion.div key="preferences" initial="initial" animate="in" exit="out" variants={pageVariants} transition={pageTransition}>
           <Card>
             <CardHeader>
               <CardTitle className="flex items-center gap-2"><ChefHat /> Create Your Perfect Recipe</CardTitle>
@@ -279,24 +200,24 @@ function RecipeGeneratorTab({ onSave, initialData, isVisible }: { onSave: () => 
                    <FormFieldRecipe control={form.control} name="dietaryNotes" render={({ field }) => (
                     <FormItemRecipe><FormLabelRecipe>Other Dietary Notes (optional)</FormLabelRecipe><FormControlRecipe><TextareaRecipe placeholder="e.g., low-fodmap, extra spicy, for kids..." {...field} /></FormControlRecipe><FormMessageRecipe /></FormItemRecipe>
                   )} />
-                  <ButtonRecipe type="submit" disabled={!profile}>Generate Recipe <MoveRightRecipe className="ml-2" /></ButtonRecipe>
+                  <ButtonCommon type="submit" disabled={!profile}>Generate Recipe <MoveRightRecipe className="ml-2" /></ButtonCommon>
                 </form>
               </FormRecipe>
             </CardContent>
           </Card>
-        </motionRecipe.div>
+        </motion.div>
       )}
       {currentStep === RecipeSteps.GENERATING && (
-        <motionRecipe.div key="generating" initial="initial" animate="in" exit="out" variants={pageVariants} transition={pageTransition}>
-          <Card className="flex flex-col items-center justify-center py-24"><Loader2Recipe className="h-16 w-16 animate-spin text-primary" /><CardTitle className="mt-6">Crafting your recipe...</CardTitle><CardDescription className="mt-2">Our AI chef is at work!</CardDescription></Card>
-        </motionRecipe.div>
+        <motion.div key="generating" initial="initial" animate="in" exit="out" variants={pageVariants} transition={pageTransition}>
+          <Card className="flex flex-col items-center justify-center py-24"><Loader2Common className="h-16 w-16 animate-spin text-primary" /><CardTitle className="mt-6">Crafting your recipe...</CardTitle><CardDescription className="mt-2">Our AI chef is at work!</CardDescription></Card>
+        </motion.div>
       )}
       {currentStep === RecipeSteps.RESULT && recipeResult && (
-         <motionRecipe.div key="result" initial="initial" animate="in" exit="out" variants={pageVariants} transition={pageTransition}>
+         <motion.div key="result" initial="initial" animate="in" exit="out" variants={pageVariants} transition={pageTransition}>
           <Card>
               <CardHeader><CardTitle className="text-3xl font-bold text-center">{recipeResult.name}</CardTitle><CardDescription className="text-center text-md pt-2">{recipeResult.description}</CardDescription></CardHeader>
                <CardContent className="space-y-8">
-                   <div className="flex gap-2 justify-center flex-wrap">{recipeResult.tags.map(tag => <BadgeRecipe key={tag} variant="secondary">{tag}</BadgeRecipe>)}</div>
+                   <div className="flex gap-2 justify-center flex-wrap">{recipeResult.tags.map(tag => <BadgeCommon key={tag} variant="secondary">{tag}</BadgeCommon>)}</div>
                   <div className="grid grid-cols-2 md:grid-cols-4 gap-4 text-center">
                       <div className="bg-muted p-3 rounded-lg"><h4 className="font-semibold text-sm">Prep Time</h4><p className="text-lg flex items-center justify-center gap-1"><Clock className="h-4 w-4"/> {recipeResult.prepTime}</p></div>
                       <div className="bg-muted p-3 rounded-lg"><h4 className="font-semibold text-sm">Cook Time</h4><p className="text-lg flex items-center justify-center gap-1"><Clock className="h-4 w-4"/> {recipeResult.cookTime}</p></div>
@@ -308,18 +229,14 @@ function RecipeGeneratorTab({ onSave, initialData, isVisible }: { onSave: () => 
                       <div className="md:col-span-3"><h3 className="font-bold text-xl mb-4 flex items-center gap-2"><CookingPot /> Instructions</h3><ol className="space-y-4 text-muted-foreground">{recipeResult.instructions.map((step, i) => <li key={i} className="flex items-start"><span className="font-bold text-primary mr-3">{i + 1}.</span><span>{step}</span></li>)}</ol></div>
                   </div>
                </CardContent>
-               <CardFooterRecipe className="flex-col sm:flex-row gap-2 justify-center">
-                    <ButtonRecipe onClick={resetFlow} variant="outline"><MoveLeftRecipe className="mr-2"/> Generate Another</ButtonRecipe>
-                    <ButtonRecipe onClick={() => handleDownloadPdf(recipeResult)}><FileDownRecipe className="mr-2"/> Download PDF</ButtonRecipe>
-                    <ButtonRecipe onClick={handleSave} disabled={isSaving}>
-                        {isSaving ? <Loader2Recipe className="animate-spin mr-2"/> : <Save className="mr-2"/>}
-                        Save to History
-                    </ButtonRecipe>
-                </CardFooterRecipe>
+               <CardFooter className="flex-col sm:flex-row gap-2 justify-center">
+                    <ButtonCommon onClick={resetFlow} variant="outline"><MoveLeftRecipe className="mr-2"/> Generate Another</ButtonCommon>
+                    <ButtonCommon onClick={() => handleDownloadPdf(recipeResult)}><FileDownRecipe className="mr-2"/> Download PDF</ButtonCommon>
+                </CardFooter>
           </Card>
-         </motionRecipe.div>
+         </motion.div>
       )}
-    </AnimatePresenceRecipe>
+    </AnimatePresence>
   );
 }
 
@@ -333,46 +250,30 @@ const workoutSchema = zWorkout.object({
 type WorkoutFormData = zWorkout.infer<typeof workoutSchema>;
 const WorkoutSteps = { PREFERENCES: 1, GENERATING: 2, RESULT: 3 };
 
-function WorkoutGeneratorTab({ onSave, initialData, isVisible }: { onSave: () => void; initialData?: WorkoutPlanOutput | null, isVisible: boolean }) {
-  const [user, authLoading] = useAuthStateWorkout(authWorkout);
-  const { toast } = useToastWorkout();
-  const [initialLoading, setInitialLoading] = useStateWorkout(true);
-  const [isSaving, setIsSaving] = useStateWorkout(false);
-  const [profile, setProfile] = useStateWorkout<any>(null);
-  const [latestHealthReport, setLatestHealthReport] = useStateWorkout<any>(null);
-  const [workoutResult, setWorkoutResult] = useStateWorkout<WorkoutPlanOutput | null>(initialData || null);
-  const [currentStep, setCurrentStep] = useStateWorkout(initialData ? WorkoutSteps.RESULT : WorkoutSteps.PREFERENCES);
-
-  useEffectWorkout(() => {
-    if (initialData) {
-      setWorkoutResult(initialData);
-      setCurrentStep(WorkoutSteps.RESULT);
-    }
-  }, [initialData]);
-
-   useEffectWorkout(() => {
-    if (!isVisible && !initialData) {
-      setWorkoutResult(null);
-      setCurrentStep(WorkoutSteps.PREFERENCES);
-      form.reset();
-    }
-  }, [isVisible, initialData]);
+function WorkoutGenerator() {
+  const [user, authLoading] = useAuthState(auth);
+  const { toast } = useToast();
+  const [initialLoading, setInitialLoading] = useState(true);
+  const [profile, setProfile] = useState<any>(null);
+  const [latestHealthReport, setLatestHealthReport] = useState<any>(null);
+  const [workoutResult, setWorkoutResult] = useState<WorkoutPlanOutput | null>(null);
+  const [currentStep, setCurrentStep] = useState(WorkoutSteps.PREFERENCES);
 
   const form = useFormWorkout<WorkoutFormData>({
     resolver: zodResolverWorkout(workoutSchema),
     defaultValues: { workoutDuration: 30, location: 'home', focusAreas: [] },
   });
 
-  const fetchUserData = useCallbackWorkout(async () => {
+  const fetchUserData = useCallback(async () => {
     if (user) {
       try {
-        const profileRef = docWorkout(dbWorkout, 'profiles', user.uid);
-        const profileSnap = await getDocWorkout(profileRef);
+        const profileRef = doc(db, 'profiles', user.uid);
+        const profileSnap = await getDoc(profileRef);
         if (profileSnap.exists()) setProfile(profileSnap.data());
         else toast({ variant: 'destructive', title: 'Profile Required', description: 'Please complete your user profile first.' });
 
-        const reportsQuery = queryWorkout(collectionWorkout(dbWorkout, 'health-reports'), whereWorkout('userId', '==', user.uid), orderByWorkout('timestamp', 'desc'), limitWorkout(1));
-        const reportSnapshot = await getDocsWorkout(reportsQuery);
+        const reportsQuery = query(collection(db, 'health-reports'), where('userId', '==', user.uid), orderBy('timestamp', 'desc'), limit(1));
+        const reportSnapshot = await getDocs(reportsQuery);
         if (!reportSnapshot.empty) setLatestHealthReport(reportSnapshot.docs[0].data());
       } catch (e: any) {
         toast({ title: "Data Fetch Failed", description: "Could not load your user data.", variant: "destructive" });
@@ -382,7 +283,7 @@ function WorkoutGeneratorTab({ onSave, initialData, isVisible }: { onSave: () =>
     }
   }, [user, toast]);
 
-  useEffectWorkout(() => {
+  useEffect(() => {
     if (!authLoading && user) fetchUserData();
     else if (!authLoading && !user) setInitialLoading(false);
   }, [user, authLoading, fetchUserData]);
@@ -401,27 +302,6 @@ function WorkoutGeneratorTab({ onSave, initialData, isVisible }: { onSave: () =>
       console.error(e);
       toast({ title: 'Generation Failed', description: e.message || 'An error occurred.', variant: 'destructive' });
       setCurrentStep(WorkoutSteps.PREFERENCES);
-    }
-  }
-
-  async function handleSave() {
-    if (!user || !workoutResult) return;
-    setIsSaving(true);
-    try {
-      await addDoc(collection(db, 'recommendation-history'), {
-        userId: user.uid,
-        timestamp: new Date(),
-        type: 'workout',
-        data: workoutResult,
-        isPublic: false,
-        rating: 0,
-      });
-      toast({ title: 'Workout Saved', description: 'This workout has been saved to your history.' });
-      onSave();
-    } catch (e: any) {
-      toast({ title: 'Save Failed', description: e.message, variant: 'destructive' });
-    } finally {
-      setIsSaving(false);
     }
   }
 
@@ -484,19 +364,15 @@ function WorkoutGeneratorTab({ onSave, initialData, isVisible }: { onSave: () =>
     setCurrentStep(WorkoutSteps.PREFERENCES);
   }
 
-  if (!isVisible && !workoutResult) {
-      return null;
-  }
-
   const pageVariants = { initial: { opacity: 0, x: 50 }, in: { opacity: 1, x: 0 }, out: { opacity: 0, x: -50 } };
   const pageTransition = { type: "tween", ease: "anticipate", duration: 0.5 };
 
-  if (authLoading || initialLoading) return <div className="flex justify-center py-6"><Loader2Workout className="h-8 w-8 animate-spin" /></div>;
+  if (authLoading || initialLoading) return <div className="flex justify-center py-6"><Loader2Common className="h-8 w-8 animate-spin" /></div>;
 
   return (
-    <AnimatePresenceWorkout mode="wait">
+    <AnimatePresence mode="wait">
       {currentStep === WorkoutSteps.PREFERENCES && (
-        <motionWorkout.div key="preferences" initial="initial" animate="in" exit="out" variants={pageVariants} transition={pageTransition}>
+        <motion.div key="preferences" initial="initial" animate="in" exit="out" variants={pageVariants} transition={pageTransition}>
           <Card>
             <CardHeader>
               <CardTitle className="flex items-center gap-2"><Dumbbell /> Your Personalized Workout</CardTitle>
@@ -523,24 +399,24 @@ function WorkoutGeneratorTab({ onSave, initialData, isVisible }: { onSave: () =>
                       </div><FormMessageWorkout />
                     </FormItemWorkout>
                   )} />
-                  <ButtonWorkout type="submit" disabled={!profile}>Generate Workout Plan <MoveRightWorkout className="ml-2" /></ButtonWorkout>
+                  <ButtonCommon type="submit" disabled={!profile}>Generate Workout Plan <MoveRightWorkout className="ml-2" /></ButtonCommon>
                 </form>
               </FormWorkout>
             </CardContent>
           </Card>
-        </motionWorkout.div>
+        </motion.div>
       )}
       {currentStep === WorkoutSteps.GENERATING && (
-        <motionWorkout.div key="generating" initial="initial" animate="in" exit="out" variants={pageVariants} transition={pageTransition}>
-          <Card className="flex flex-col items-center justify-center py-24"><Loader2Workout className="h-16 w-16 animate-spin text-primary" /><CardTitle className="mt-6">Building your workout plan...</CardTitle><CardDescription className="mt-2">Our AI coach is personalizing your session!</CardDescription></Card>
-        </motionWorkout.div>
+        <motion.div key="generating" initial="initial" animate="in" exit="out" variants={pageVariants} transition={pageTransition}>
+          <Card className="flex flex-col items-center justify-center py-24"><Loader2Common className="h-16 w-16 animate-spin text-primary" /><CardTitle className="mt-6">Building your workout plan...</CardTitle><CardDescription className="mt-2">Our AI coach is personalizing your session!</CardDescription></Card>
+        </motion.div>
       )}
       {currentStep === WorkoutSteps.RESULT && workoutResult && (
-         <motionWorkout.div key="result" initial="initial" animate="in" exit="out" variants={pageVariants} transition={pageTransition}>
+         <motion.div key="result" initial="initial" animate="in" exit="out" variants={pageVariants} transition={pageTransition}>
           <Card>
               <CardHeader><CardTitle className="text-3xl font-bold text-center">{workoutResult.planTitle}</CardTitle><CardDescription className="text-center text-md pt-2">{workoutResult.planSummary}</CardDescription></CardHeader>
                <CardContent className="space-y-8">
-                   <div className="flex gap-2 justify-center flex-wrap">{workoutResult.tags.map(tag => <BadgeWorkout key={tag} variant="secondary">{tag}</BadgeWorkout>)}</div>
+                   <div className="flex gap-2 justify-center flex-wrap">{workoutResult.tags.map(tag => <BadgeCommon key={tag} variant="secondary">{tag}</BadgeCommon>)}</div>
                    <AlertWorkout variant="destructive"><Shield className="h-4 w-4"/><AlertTitleWorkout>Safety First!</AlertTitleWorkout><AlertDescriptionWorkout>{workoutResult.notes}</AlertDescriptionWorkout></AlertWorkout>
                   {[{title: 'Warm-Up', icon: Activity, exercises: workoutResult.warmUp}, {title: 'Main Workout', icon: Dumbbell, exercises: workoutResult.mainWorkout}, {title: 'Cool-Down', icon: HeartPulse, exercises: workoutResult.coolDown}].map(section => (
                      section.exercises.length > 0 && <div key={section.title}>
@@ -561,18 +437,14 @@ function WorkoutGeneratorTab({ onSave, initialData, isVisible }: { onSave: () =>
                       </div>
                   ))}
                </CardContent>
-               <CardFooterWorkout className="flex-col sm:flex-row gap-2 justify-center">
-                    <ButtonWorkout onClick={resetFlow} variant="outline"><MoveLeftWorkout className="mr-2"/> New Workout</ButtonWorkout>
-                    <ButtonWorkout onClick={handleDownloadPdf}><FileDownWorkout className="mr-2"/> Download PDF</ButtonWorkout>
-                    <ButtonWorkout onClick={handleSave} disabled={isSaving}>
-                        {isSaving ? <Loader2Workout className="animate-spin mr-2"/> : <Save className="mr-2"/>}
-                        Save to History
-                    </ButtonWorkout>
-                </CardFooterWorkout>
+               <CardFooter className="flex-col sm:flex-row gap-2 justify-center">
+                    <ButtonCommon onClick={resetFlow} variant="outline"><MoveLeftWorkout className="mr-2"/> New Workout</ButtonCommon>
+                    <ButtonCommon onClick={handleDownloadPdf}><FileDownWorkout className="mr-2"/> Download PDF</ButtonCommon>
+                </CardFooter>
           </Card>
-         </motionWorkout.div>
+         </motion.div>
       )}
-    </AnimatePresenceWorkout>
+    </AnimatePresence>
   );
 }
 
@@ -586,40 +458,24 @@ const meditationSchema = zMeditation.object({
 type MeditationFormData = zMeditation.infer<typeof meditationSchema>;
 const MeditationSteps = { PREFERENCES: 1, GENERATING: 2, RESULT: 3 };
 
-function MeditationGeneratorTab({ onSave, initialData, isVisible }: { onSave: () => void; initialData?: MeditationPracticeOutput | null, isVisible: boolean }) {
-    const [user, authLoading] = useAuthStateMeditation(authMeditation);
-    const { toast } = useToastMeditation();
-    const [initialLoading, setInitialLoading] = useStateMeditation(true);
-    const [isSaving, setIsSaving] = useStateMeditation(false);
-    const [profile, setProfile] = useStateMeditation<any>(null);
-    const [meditationResult, setMeditationResult] = useStateMeditation<MeditationPracticeOutput | null>(initialData || null);
-    const [currentStep, setCurrentStep] = useStateMeditation(initialData ? MeditationSteps.RESULT : MeditationSteps.PREFERENCES);
-
-    useEffectMeditation(() => {
-        if (initialData) {
-          setMeditationResult(initialData);
-          setCurrentStep(MeditationSteps.RESULT);
-        }
-    }, [initialData]);
-
-    useEffectMeditation(() => {
-        if (!isVisible && !initialData) {
-          setMeditationResult(null);
-          setCurrentStep(MeditationSteps.PREFERENCES);
-          form.reset();
-        }
-    }, [isVisible, initialData]);
+function MeditationGenerator() {
+    const [user, authLoading] = useAuthState(auth);
+    const { toast } = useToast();
+    const [initialLoading, setInitialLoading] = useState(true);
+    const [profile, setProfile] = useState<any>(null);
+    const [meditationResult, setMeditationResult] = useState<MeditationPracticeOutput | null>(null);
+    const [currentStep, setCurrentStep] = useState(MeditationSteps.PREFERENCES);
 
     const form = useFormMeditation<MeditationFormData>({
         resolver: zodResolverMeditation(meditationSchema),
         defaultValues: { duration: 10, timeOfDay: 'morning', goals: [] },
     });
 
-    const fetchUserData = useCallbackMeditation(async () => {
+    const fetchUserData = useCallback(async () => {
         if (user) {
             try {
-                const profileRef = docMeditation(dbMeditation, 'profiles', user.uid);
-                const profileSnap = await getDocMeditation(profileRef);
+                const profileRef = doc(db, 'profiles', user.uid);
+                const profileSnap = await getDoc(profileRef);
                 if (profileSnap.exists()) setProfile(profileSnap.data());
                 else toast({ variant: 'destructive', title: 'Profile Required', description: 'Please complete your user profile first.' });
             } catch (e: any) {
@@ -630,7 +486,7 @@ function MeditationGeneratorTab({ onSave, initialData, isVisible }: { onSave: ()
         }
     }, [user, toast]);
 
-    useEffectMeditation(() => {
+    useEffect(() => {
         if (!authLoading && user) fetchUserData();
         else if (!authLoading && !user) setInitialLoading(false);
     }, [user, authLoading, fetchUserData]);
@@ -651,27 +507,6 @@ function MeditationGeneratorTab({ onSave, initialData, isVisible }: { onSave: ()
             setCurrentStep(MeditationSteps.PREFERENCES);
         }
     }
-
-    async function handleSave() {
-        if (!user || !meditationResult) return;
-        setIsSaving(true);
-        try {
-          await addDoc(collection(db, 'recommendation-history'), {
-            userId: user.uid,
-            timestamp: new Date(),
-            type: 'meditation',
-            data: meditationResult,
-            isPublic: false,
-            rating: 0
-          });
-          toast({ title: 'Meditation Saved', description: 'This practice has been saved to your history.' });
-          onSave();
-        } catch (e: any) {
-          toast({ title: 'Save Failed', description: e.message, variant: 'destructive' });
-        } finally {
-          setIsSaving(false);
-        }
-      }
 
     function handleDownloadPdf() {
         if (!meditationResult) return;
@@ -723,20 +558,16 @@ function MeditationGeneratorTab({ onSave, initialData, isVisible }: { onSave: ()
         setMeditationResult(null);
         setCurrentStep(MeditationSteps.PREFERENCES);
     }
-    
-    if (!isVisible && !meditationResult) {
-      return null;
-    }
 
     const pageVariants = { initial: { opacity: 0, x: 50 }, in: { opacity: 1, x: 0 }, out: { opacity: 0, x: -50 } };
     const pageTransition = { type: "tween", ease: "anticipate", duration: 0.5 };
 
-    if (authLoading || initialLoading) return <div className="flex justify-center py-6"><Loader2Meditation className="h-8 w-8 animate-spin" /></div>;
+    if (authLoading || initialLoading) return <div className="flex justify-center py-6"><Loader2Common className="h-8 w-8 animate-spin" /></div>;
 
     return (
-        <AnimatePresenceMeditation mode="wait">
+        <AnimatePresence mode="wait">
             {currentStep === MeditationSteps.PREFERENCES && (
-                <motionMeditation.div key="preferences" initial="initial" animate="in" exit="out" variants={pageVariants} transition={pageTransition}>
+                <motion.div key="preferences" initial="initial" animate="in" exit="out" variants={pageVariants} transition={pageTransition}>
                     <Card>
                         <CardHeader>
                             <CardTitle className="flex items-center gap-2"><BrainCircuit /> Personal Meditation Guide</CardTitle>
@@ -772,24 +603,24 @@ function MeditationGeneratorTab({ onSave, initialData, isVisible }: { onSave: ()
                                             </div><FormMessageMeditation />
                                         </FormItemMeditation>
                                     )} />
-                                    <ButtonMeditation type="submit" disabled={!profile}>Generate Practice <MoveRightMeditation className="ml-2" /></ButtonMeditation>
+                                    <ButtonCommon type="submit" disabled={!profile}>Generate Practice <MoveRightMeditation className="ml-2" /></ButtonCommon>
                                 </form>
                             </FormMeditation>
                         </CardContent>
                     </Card>
-                </motionMeditation.div>
+                </motion.div>
             )}
             {currentStep === MeditationSteps.GENERATING && (
-                <motionMeditation.div key="generating" initial="initial" animate="in" exit="out" variants={pageVariants} transition={pageTransition}>
-                    <Card className="flex flex-col items-center justify-center py-24"><Loader2Meditation className="h-16 w-16 animate-spin text-primary" /><CardTitle className="mt-6">Preparing your meditation...</CardTitle><CardDescription className="mt-2">Our AI coach is finding your inner peace.</CardDescription></Card>
-                </motionMeditation.div>
+                <motion.div key="generating" initial="initial" animate="in" exit="out" variants={pageVariants} transition={pageTransition}>
+                    <Card className="flex flex-col items-center justify-center py-24"><Loader2Common className="h-16 w-16 animate-spin text-primary" /><CardTitle className="mt-6">Preparing your meditation...</CardTitle><CardDescription className="mt-2">Our AI coach is finding your inner peace.</CardDescription></Card>
+                </motion.div>
             )}
             {currentStep === MeditationSteps.RESULT && meditationResult && (
-                <motionMeditation.div key="result" initial="initial" animate="in" exit="out" variants={pageVariants} transition={pageTransition}>
+                <motion.div key="result" initial="initial" animate="in" exit="out" variants={pageVariants} transition={pageTransition}>
                     <Card>
                         <CardHeader><CardTitle className="text-3xl font-bold text-center">{meditationResult.title}</CardTitle><CardDescription className="text-center text-md pt-2">{meditationResult.summary}</CardDescription></CardHeader>
                         <CardContent className="space-y-8">
-                            <div className="flex gap-2 justify-center flex-wrap">{meditationResult.tags.map(tag => <BadgeMeditation key={tag} variant="secondary">{tag}</BadgeMeditation>)}</div>
+                            <div className="flex gap-2 justify-center flex-wrap">{meditationResult.tags.map(tag => <BadgeCommon key={tag} variant="secondary">{tag}</BadgeCommon>)}</div>
                             <AlertMeditation><SparklesMeditation className="h-4 w-4"/><AlertTitleMeditation>Benefits for You</AlertTitleMeditation><AlertDescriptionMeditation>{meditationResult.benefits}</AlertDescriptionMeditation></AlertMeditation>
                             <div>
                                 <h3 className="font-bold text-xl mb-4 flex items-center gap-2"><BrainCircuit className="text-primary"/> Guided Practice</h3>
@@ -806,385 +637,59 @@ function MeditationGeneratorTab({ onSave, initialData, isVisible }: { onSave: ()
                                 </div>
                             </div>
                         </CardContent>
-                        <CardFooterMeditation className="flex-col sm:flex-row gap-2 justify-center">
-                            <ButtonMeditation onClick={resetFlow} variant="outline"><MoveLeftMeditation className="mr-2"/> New Practice</ButtonMeditation>
-                            <ButtonMeditation onClick={handleDownloadPdf}><FileDownMeditation className="mr-2"/> Download PDF</ButtonMeditation>
-                            <ButtonMeditation onClick={handleSave} disabled={isSaving}>
-                                {isSaving ? <Loader2Meditation className="animate-spin mr-2"/> : <Save className="mr-2"/>}
-                                Save to History
-                            </ButtonMeditation>
-                        </CardFooterMeditation>
+                        <CardFooter className="flex-col sm:flex-row gap-2 justify-center">
+                            <ButtonCommon onClick={resetFlow} variant="outline"><MoveLeftMeditation className="mr-2"/> New Practice</ButtonCommon>
+                            <ButtonCommon onClick={handleDownloadPdf}><FileDownMeditation className="mr-2"/> Download PDF</ButtonCommon>
+                        </CardFooter>
                     </Card>
-                </motionMeditation.div>
+                </motion.div>
             )}
-        </AnimatePresenceMeditation>
+        </AnimatePresence>
     );
 }
 
-const StarRating = ({ rating, onRate, disabled }: { rating: number, onRate: (rating: number) => void, disabled?: boolean }) => {
-    return (
-        <div className="flex items-center">
-            {[1, 2, 3, 4, 5].map((star) => (
-                <Star
-                    key={star}
-                    className={`h-5 w-5 cursor-pointer ${rating >= star ? 'text-yellow-400 fill-yellow-400' : 'text-gray-400'}`}
-                    onClick={() => !disabled && onRate(star)}
-                />
-            ))}
-        </div>
-    );
-};
-
-const HistoryTable = ({ 
-    items, 
-    loading, 
-    onView, 
-    onTogglePublic, 
-    onRate,
-    onDelete,
-    onNextPage,
-    onPrevPage,
-    hasMore,
-    isFirstPage,
-    isPublicView = false,
-    currentUser,
-}) => {
-    const getIcon = (type: string) => {
-        switch(type) {
-            case 'workout': return <Dumbbell className="h-5 w-5 text-primary" />;
-            case 'meditation': return <BrainCircuit className="h-5 w-5 text-primary" />;
-            case 'recipe': return <ChefHat className="h-5 w-5 text-primary" />;
-            default: return null;
-        }
-    }
-
-    const getTitle = (item: RecommendationHistoryItem) => {
-         switch(item.type) {
-            case 'workout': return item.data.planTitle;
-            case 'meditation': return item.data.title;
-            case 'recipe': return item.data.name;
-            default: return "History Item";
-        }
-    }
-    
-    return (
-        <Card>
-            <CardHeader>
-                <CardTitle className="flex items-center gap-2">
-                    {isPublicView ? <><Users/> Community Recommendations</> : <><History/> My History</>}
-                </CardTitle>
-                <CardDescription>
-                    {isPublicView ? "Explore recommendations shared by the community." : "Your saved recommendations. Click an action to view or delete."}
-                </CardDescription>
-            </CardHeader>
-            <CardContent>
-                {loading ? <div className="flex justify-center"><Loader2 className="h-6 w-6 animate-spin"/></div> :
-                    items.length === 0 ? <p className="text-muted-foreground text-center">No recommendations found.</p> :
-                    <>
-                        <div className="border rounded-md">
-                            <Table>
-                                <TableHeader>
-                                    <TableRow>
-                                        <TableHead>Type</TableHead>
-                                        <TableHead>Title</TableHead>
-                                        <TableHead>Date</TableHead>
-                                        <TableHead>Rating</TableHead>
-                                        {!isPublicView && <TableHead>Public</TableHead>}
-                                        <TableHead className="text-right">Actions</TableHead>
-                                    </TableRow>
-                                </TableHeader>
-                                <TableBody>
-                                    {items.map(item => (
-                                        <TableRow key={item.id}>
-                                            <TableCell className="capitalize flex items-center gap-2">
-                                                {getIcon(item.type)} {item.type}
-                                            </TableCell>
-                                            <TableCell className="font-medium">{getTitle(item)}</TableCell>
-                                            <TableCell>{item.timestamp.toLocaleDateString()}</TableCell>
-                                            <TableCell>
-                                                <StarRating 
-                                                    rating={item.rating || 0} 
-                                                    onRate={(rating) => onRate && onRate(item.id, rating)} 
-                                                    disabled={isPublicView}
-                                                />
-                                            </TableCell>
-                                            {!isPublicView && (
-                                                <TableCell>
-                                                    <Switch
-                                                        checked={item.isPublic}
-                                                        onCheckedChange={(checked) => onTogglePublic && onTogglePublic(item.id, checked)}
-                                                    />
-                                                </TableCell>
-                                            )}
-                                            <TableCell className="text-right">
-                                                {!isPublicView ? (
-                                                    <DropdownMenu>
-                                                        <DropdownMenuTrigger asChild>
-                                                            <Button variant="ghost" size="icon">
-                                                                <MoreHorizontal className="h-4 w-4" />
-                                                                <span className="sr-only">Actions</span>
-                                                            </Button>
-                                                        </DropdownMenuTrigger>
-                                                        <DropdownMenuContent align="end">
-                                                            <DropdownMenuItem onClick={() => onView(item)}>
-                                                                <Eye className="mr-2 h-4 w-4"/>
-                                                                <span>View</span>
-                                                            </DropdownMenuItem>
-                                                            <DropdownMenuItem onClick={() => onDelete && onDelete(item.id)} className="text-destructive focus:bg-destructive/10 focus:text-destructive">
-                                                                <Trash2 className="mr-2 h-4 w-4"/>
-                                                                <span>Delete</span>
-                                                            </DropdownMenuItem>
-                                                        </DropdownMenuContent>
-                                                    </DropdownMenu>
-                                                ) : (
-                                                    <Button size="sm" variant="outline" onClick={() => onView(item)}>
-                                                        <Eye className="mr-2 h-4 w-4"/> View
-                                                    </Button>
-                                                )}
-                                            </TableCell>
-                                        </TableRow>
-                                    ))}
-                                </TableBody>
-                            </Table>
-                        </div>
-                        <div className="flex items-center justify-end space-x-2 pt-4">
-                            <Button variant="outline" size="sm" onClick={onPrevPage} disabled={isFirstPage}>
-                                <ChevronLeft className="h-4 w-4 mr-1"/> Previous
-                            </Button>
-                            <Button variant="outline" size="sm" onClick={onNextPage} disabled={!hasMore}>
-                                Next <ChevronRight className="h-4 w-4 ml-1"/>
-                            </Button>
-                        </div>
-                    </>
-                }
-            </CardContent>
-        </Card>
-    );
-};
 
 
 // --- Main Component ---
 export default function RecommendationsPage() {
-    const [user, authLoading] = useAuthState(auth);
-    const { toast } = useToast();
-    
-    // State for personal history
-    const [myHistory, setMyHistory] = useState<RecommendationHistoryItem[]>([]);
-    const [loadingMyHistory, setLoadingMyHistory] = useState(true);
-    const [myHistoryPageDocs, setMyHistoryPageDocs] = useState<any[]>([null]);
-    const [myHistoryHasMore, setMyHistoryHasMore] = useState(true);
-    const [myHistoryCurrentPage, setMyHistoryCurrentPage] = useState(1);
-    
-    // State for community recommendations
-    const [communityRecs, setCommunityRecs] = useState<RecommendationHistoryItem[]>([]);
-    const [loadingCommunityRecs, setLoadingCommunityRecs] = useState(true);
-    const [communityLastVisible, setCommunityLastVisible] = useState<any>(null);
-    const [communityPageStack, setCommunityPageStack] = useState<any[]>([]);
-    const [communityHasMore, setCommunityHasMore] = useState(true);
-
-    const [activeTab, setActiveTab] = useState<RecommendationType | 'community' | 'history'>('history');
-    const [viewData, setViewData] = useState<any>(null);
-    const [viewDataType, setViewDataType] = useState<RecommendationType | null>(null);
-    
-    const ITEMS_PER_PAGE = 5;
-
-    const fetchMyHistory = useCallback(async (page = 1) => {
-        if (!user) return;
-        setLoadingMyHistory(true);
-        
-        const startAfterDoc = myHistoryPageDocs[page - 1];
-        const q = query(
-            collection(db, 'recommendation-history'), 
-            where('userId', '==', user.uid), 
-            orderBy('timestamp', 'desc'), 
-            ...(startAfterDoc ? [startAfter(startAfterDoc)] : []), 
-            limit(ITEMS_PER_PAGE)
-        );
-        
-        try {
-            const snap = await getDocs(q);
-            const items = snap.docs.map(doc => ({ id: doc.id, ...doc.data(), timestamp: (doc.data().timestamp as Timestamp).toDate() })) as RecommendationHistoryItem[];
-            const lastDoc = snap.docs[snap.docs.length - 1];
-
-            if (lastDoc) {
-                const newPageDocs = [...myHistoryPageDocs];
-                newPageDocs[page] = lastDoc;
-                setMyHistoryPageDocs(newPageDocs);
-            }
-            
-            setMyHistory(items);
-            setMyHistoryHasMore(items.length === ITEMS_PER_PAGE);
-            setMyHistoryCurrentPage(page);
-        } catch (e: any) { 
-            toast({ title: "Error fetching history", description: e.message, variant: "destructive"}); 
-        } finally { 
-            setLoadingMyHistory(false); 
-        }
-    }, [user, toast, myHistoryPageDocs]); 
-    
-    const fetchCommunityRecs = useCallback(async (direction: 'next' | 'prev' = 'next') => {
-        setLoadingCommunityRecs(true);
-        let newLastVisible = communityLastVisible;
-        if (direction === 'prev') {
-            const newStack = [...communityPageStack];
-            newStack.pop();
-            newLastVisible = newStack.pop() || null;
-            setCommunityPageStack(newStack);
-        }
-        const q = query(collection(db, 'recommendation-history'), where('isPublic', '==', true), orderBy('rating', 'desc'), orderBy('timestamp', 'desc'), ...(newLastVisible ? [startAfter(newLastVisible)] : []), limit(ITEMS_PER_PAGE));
-        try {
-            const snap = await getDocs(q);
-            const items = snap.docs.map(doc => ({ id: doc.id, ...doc.data(), timestamp: (doc.data().timestamp as Timestamp).toDate() })) as RecommendationHistoryItem[];
-            const lastDoc = snap.docs[snap.docs.length - 1];
-            setCommunityLastVisible(lastDoc);
-            if (direction === 'next' && lastDoc) {
-                setCommunityPageStack(prev => [...prev, lastDoc]);
-            }
-            setCommunityRecs(items);
-            setCommunityHasMore(items.length === ITEMS_PER_PAGE);
-        } catch (e: any) {
-             console.error("Error fetching community data:", e);
-        }
-        finally { setLoadingCommunityRecs(false); }
-    }, [toast, communityLastVisible, communityPageStack]);
-
-
-    useEffect(() => {
-        if (!authLoading && user) {
-            fetchMyHistory(1);
-            fetchCommunityRecs();
-        } else if (!authLoading && !user) {
-            setLoadingMyHistory(false);
-            setLoadingCommunityRecs(false);
-        }
-    }, [user, authLoading, fetchMyHistory, fetchCommunityRecs]);
-
-    const handleViewHistoryItem = (item: RecommendationHistoryItem) => {
-        setViewData(null); 
-        setActiveTab(item.type);
-        setViewDataType(item.type);
-        setTimeout(() => {
-            setViewData(item.data);
-        }, 50); 
-    };
-
-    const handleTabChange = (val: string) => {
-        const newTab = val as RecommendationType | 'community' | 'history';
-        setActiveTab(newTab);
-        setViewData(null);
-        setViewDataType(null);
-        if (newTab === 'history') {
-            setMyHistoryPageDocs([null]);
-            fetchMyHistory(1);
-        }
-    }
-    
-    const ViewedItem = useMemo(() => {
-      if(!viewData || !viewDataType) return null;
-      if(viewDataType === 'workout') return <WorkoutGeneratorTab onSave={() => handleTabChange('history')} initialData={viewData} isVisible={true} />;
-      if(viewDataType === 'meditation') return <MeditationGeneratorTab onSave={() => handleTabChange('history')} initialData={viewData} isVisible={true} />;
-      if(viewDataType === 'recipe') return <RecipeGeneratorTab onSave={() => handleTabChange('history')} initialData={viewData} isVisible={true} />;
-      return null;
-    }, [viewData, viewDataType, fetchMyHistory]);
-
-    const handleTogglePublic = async (id: string, isPublic: boolean) => {
-        try {
-            await updateDoc(doc(db, 'recommendation-history', id), { isPublic });
-            setMyHistory(myHistory.map(item => item.id === id ? { ...item, isPublic } : item));
-            toast({ title: 'Visibility Updated' });
-            fetchCommunityRecs(); // Refresh community list
-        } catch (e: any) {
-            toast({ title: 'Update Failed', description: e.message, variant: 'destructive' });
-        }
-    };
-
-    const handleRate = async (id: string, rating: number) => {
-        try {
-            await updateDoc(doc(db, 'recommendation-history', id), { rating });
-            setMyHistory(myHistory.map(item => item.id === id ? { ...item, rating } : item));
-            toast({ title: 'Rating Submitted' });
-        } catch (e: any) {
-            toast({ title: 'Update Failed', description: e.message, variant: 'destructive' });
-        }
-    };
-    
-    const handleDelete = async (id: string) => {
-        if (!window.confirm("Are you sure you want to delete this item? This action cannot be undone.")) return;
-        try {
-            await deleteDoc(doc(db, 'recommendation-history', id));
-            toast({ title: 'Item Deleted' });
-            handleTabChange('history');
-        } catch(e: any) {
-            toast({ title: "Delete failed", description: e.message, variant: 'destructive' });
-        }
-    }
-
-
+  
   return (
-    <div className="space-y-6">
-        <Tabs value={activeTab} onValueChange={handleTabChange} className="w-full">
-        <TabsList className="grid w-full grid-cols-5">
-            <TabsTrigger value="history">My History</TabsTrigger>
-            <TabsTrigger value="community">Community</TabsTrigger>
-            <TabsTrigger value="workout">Workout</TabsTrigger>
-            <TabsTrigger value="meditation">Meditation</TabsTrigger>
-            <TabsTrigger value="recipe">Recipe</TabsTrigger>
-        </TabsList>
-        <TabsContent value="history" className="mt-4">
-             <HistoryTable 
-                items={myHistory} 
-                loading={loadingMyHistory} 
-                onView={handleViewHistoryItem}
-                onTogglePublic={handleTogglePublic}
-                onRate={handleRate}
-                onDelete={handleDelete}
-                onNextPage={() => fetchMyHistory(myHistoryCurrentPage + 1)}
-                onPrevPage={() => fetchMyHistory(myHistoryCurrentPage - 1)}
-                hasMore={myHistoryHasMore}
-                isFirstPage={myHistoryCurrentPage === 1}
-                currentUser={user}
-            />
-        </TabsContent>
-        <TabsContent value="community" className="mt-4">
-            <HistoryTable 
-                items={communityRecs} 
-                loading={loadingCommunityRecs} 
-                onView={handleViewHistoryItem}
-                onNextPage={() => fetchCommunityRecs('next')}
-                onPrevPage={() => fetchCommunityRecs('prev')}
-                hasMore={communityHasMore}
-                isFirstPage={communityPageStack.length <= 1}
-                isPublicView={true}
-                currentUser={user}
-            />
-        </TabsContent>
-        <TabsContent value="workout" forceMount className="mt-4">
-             <div className="max-w-4xl mx-auto space-y-6">
-                {viewData && viewDataType === 'workout' 
-                    ? ViewedItem 
-                    : <WorkoutGeneratorTab onSave={() => handleTabChange('history')} initialData={null} isVisible={activeTab === 'workout' && !viewData} />
-                }
-            </div>
-        </TabsContent>
-        <TabsContent value="meditation" forceMount className="mt-4">
-            <div className="max-w-4xl mx-auto space-y-6">
-                 {viewData && viewDataType === 'meditation'
-                    ? ViewedItem 
-                    : <MeditationGeneratorTab onSave={() => handleTabChange('history')} initialData={null} isVisible={activeTab === 'meditation' && !viewData} />
-                 }
-            </div>
-        </TabsContent>
-        <TabsContent value="recipe" forceMount className="mt-4">
-            <div className="max-w-4xl mx-auto space-y-6">
-                {viewData && viewDataType === 'recipe'
-                    ? ViewedItem
-                    : <RecipeGeneratorTab onSave={() => handleTabChange('history')} initialData={null} isVisible={activeTab === 'recipe' && !viewData} />
-                }
-            </div>
-        </TabsContent>
-        </Tabs>
+    <div className="space-y-6 max-w-4xl mx-auto">
+        <Accordion type="single" collapsible className="w-full" defaultValue="workout">
+            <AccordionItem value="workout">
+                <AccordionTrigger className="text-xl font-semibold">
+                    <div className="flex items-center gap-3">
+                        <Dumbbell className="h-6 w-6 text-primary"/>
+                        Workout Generator
+                    </div>
+                </AccordionTrigger>
+                <AccordionContent className="pt-4">
+                    <WorkoutGenerator />
+                </AccordionContent>
+            </AccordionItem>
+            <AccordionItem value="meditation">
+                <AccordionTrigger className="text-xl font-semibold">
+                     <div className="flex items-center gap-3">
+                        <BrainCircuit className="h-6 w-6 text-primary"/>
+                        Meditation Generator
+                    </div>
+                </AccordionTrigger>
+                <AccordionContent className="pt-4">
+                    <MeditationGenerator />
+                </AccordionContent>
+            </AccordionItem>
+            <AccordionItem value="recipe">
+                <AccordionTrigger className="text-xl font-semibold">
+                     <div className="flex items-center gap-3">
+                        <ChefHat className="h-6 w-6 text-primary"/>
+                        Recipe Generator
+                    </div>
+                </AccordionTrigger>
+                <AccordionContent className="pt-4">
+                    <RecipeGenerator />
+                </AccordionContent>
+            </AccordionItem>
+        </Accordion>
     </div>
   );
 }
-
-    
