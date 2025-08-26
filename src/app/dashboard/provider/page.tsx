@@ -7,7 +7,7 @@ export default function ProviderPage() {
     <Card>
       <CardHeader>
         <CardTitle>Provider</CardTitle>
-        <CardDescription>This feature is currently under construction.</CardDescription>
+        <CardDescription>Chat/schedule with our providers for health consultation.</CardDescription>
       </CardHeader>
       <CardContent className="flex flex-col items-center justify-center gap-4 py-16">
         <Construction className="w-16 h-16 text-muted-foreground" />
