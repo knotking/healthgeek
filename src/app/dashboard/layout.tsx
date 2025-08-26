@@ -29,7 +29,7 @@ import {
 } from "@/components/ui/dropdown-menu";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Logo } from '@/components/logo';
-import { User, BarChart, UtensilsCrossed, Book, LogOut, Loader2, ClipboardList, PieChart, Settings, LifeBuoy, ChevronUp, Sparkles, Store, Handshake } from 'lucide-react';
+import { User, BarChart, UtensilsCrossed, Book, LogOut, Loader2, ClipboardList, PieChart, Settings, LifeBuoy, ChevronUp, Sparkles, Store, Handshake, BrainCircuit } from 'lucide-react';
 import { usePathname } from 'next/navigation';
 
 export default function DashboardLayout({
@@ -129,6 +129,14 @@ export default function DashboardLayout({
                 <Link href="/dashboard/analysis">
                   <ClipboardList />
                   Number Analysis
+                </Link>
+              </SidebarMenuButton>
+            </SidebarMenuItem>
+             <SidebarMenuItem>
+              <SidebarMenuButton asChild isActive={pathname.startsWith('/dashboard/health-quiz')}>
+                <Link href="/dashboard/health-quiz">
+                  <BrainCircuit />
+                  Health Quiz
                 </Link>
               </SidebarMenuButton>
             </SidebarMenuItem>

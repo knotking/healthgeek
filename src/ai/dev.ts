@@ -9,3 +9,4 @@ import '@/ai/flows/health-report-analyzer.ts';
 import '@/ai/flows/conversational-recipe-generator.ts';
 import '@/ai/flows/workout-recommender.ts';
 import '@/ai/flows/meditation-recommender.ts';
+import '@/ai/flows/quiz-generator.ts';
