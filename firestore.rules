@@ -1,55 +1,25 @@
-
 rules_version = '2';
 
 service cloud.firestore {
   match /databases/{database}/documents {
-
-    // Helper functions
-    function isOwner(userId) {
-      return request.auth.uid == userId;
-    }
-    
-    function isPublic() {
-      return resource.data.isPublic == true;
-    }
-
-    // Profiles: Users can only read/write their own profile.
+    // Profiles can only be read or written by the owner
     match /profiles/{userId} {
-      allow read, write: if isOwner(userId);
-    }
-    
-    // Food Log: Users can only read/write their own food logs.
-    // Public can count all documents.
-    match /food-log/{logId} {
-      allow read, create: if isOwner(request.resource.data.userId);
-      allow list: if request.auth != null;
+      allow read, write: if request.auth != null && request.auth.uid == userId;
     }
 
-    // Health Reports: Users can only read/write their own reports.
-    // Public can count all documents.
-    match /health-reports/{reportId} {
-       allow read, create: if isOwner(request.resource.data.userId);
-       allow list: if request.auth != null;
-    }
-    
-    // Recommendation History:
-    // Users can read/write their own history.
-    // Authenticated users can read public recommendations.
-    // Public can count all documents.
-    match /recommendation-history/{recommendationId} {
-        allow read, create, update, delete: if isOwner(request.resource.data.userId);
-        allow list: if request.auth != null;
-    }
-    
-    // Allow public counts for the landing page stats
-    match /{path=**}/food-log/{logId} {
+    // Any authenticated user can read/write their own documents in these collections.
+    // Unauthenticated users are allowed to count all documents in these collections.
+    match /food-log/{document=**} {
       allow list: if true;
+      allow read, write: if request.auth != null && request.auth.uid == resource.data.userId;
     }
-    match /{path=**}/health-reports/{reportId} {
+    match /health-reports/{document=**} {
       allow list: if true;
+      allow read, write: if request.auth != null && request.auth.uid == resource.data.userId;
     }
-    match /{path=**}/recommendation-history/{recommendationId} {
+    match /recommendation-history/{document=**} {
       allow list: if true;
+      allow read, write: if request.auth != null && request.auth.uid == resource.data.userId;
     }
   }
 }
