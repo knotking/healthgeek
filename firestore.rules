@@ -1,25 +1,44 @@
+
 rules_version = '2';
 
 service cloud.firestore {
   match /databases/{database}/documents {
-    // Profiles can only be read or written by the owner
-    match /profiles/{userId} {
-      allow read, write: if request.auth != null && request.auth.uid == userId;
+    // Helper function to check if the user is authenticated.
+    function isAuthenticated() {
+      return request.auth != null;
     }
 
-    // Any authenticated user can read/write their own documents in these collections.
-    // Unauthenticated users are allowed to count all documents in these collections.
-    match /food-log/{document=**} {
-      allow list: if true;
-      allow read, write: if request.auth != null && request.auth.uid == resource.data.userId;
+    // Helper function to check if the user is the owner of the document.
+    function isOwner(userId) {
+      return request.auth.uid == userId;
     }
-    match /health-reports/{document=**} {
-      allow list: if true;
-      allow read, write: if request.auth != null && request.auth.uid == resource.data.userId;
+    
+    // Profiles can be created by any authenticated user for themselves.
+    // They can only be read or updated by the owner.
+    match /profiles/{userId} {
+      allow read, update: if isAuthenticated() && isOwner(userId);
+      allow create: if isAuthenticated();
     }
-    match /recommendation-history/{document=**} {
-      allow list: if true;
-      allow read, write: if request.auth != null && request.auth.uid == resource.data.userId;
+
+    // Any authenticated user can create food logs for themselves.
+    // They can only be read by the owner.
+    match /food-log/{docId} {
+      allow read: if isAuthenticated() && isOwner(resource.data.userId);
+      allow create: if isAuthenticated();
+    }
+    
+    // Any authenticated user can create health reports for themselves.
+    // They can only be read by the owner.
+    match /health-reports/{docId} {
+      allow read: if isAuthenticated() && isOwner(resource.data.userId);
+      allow create: if isAuthenticated();
+    }
+
+    // Any authenticated user can create recommendations for themselves.
+    // They can only be read by the owner.
+    match /recommendation-history/{docId} {
+      allow read, update, delete: if isAuthenticated() && isOwner(resource.data.userId);
+      allow create: if isAuthenticated();
     }
   }
 }
