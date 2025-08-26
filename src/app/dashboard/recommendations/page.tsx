@@ -14,10 +14,11 @@ import { useAuthState } from 'react-firebase-hooks/auth';
 import { auth, db } from '@/lib/firebase';
 import { collection, addDoc, query, where, orderBy, getDocs, Timestamp, doc, updateDoc, limit, startAfter, getCountFromServer, deleteDoc } from 'firebase/firestore';
 import { useToast } from '@/hooks/use-toast';
-import { BrainCircuit, ChefHat, Dumbbell, History, Loader2, Save, Eye, Star, ChevronLeft, ChevronRight, Trash2, Users } from 'lucide-react';
+import { BrainCircuit, ChefHat, Dumbbell, History, Loader2, Save, Eye, Star, ChevronLeft, ChevronRight, Trash2, Users, MoreHorizontal } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Switch } from '@/components/ui/switch';
+import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
 
 
 // Recipe Generator Imports
@@ -874,7 +875,7 @@ const HistoryTable = ({
                     {isPublicView ? <><Users/> Community Recommendations</> : <><History/> My History</>}
                 </CardTitle>
                 <CardDescription>
-                    {isPublicView ? "Explore recommendations shared by the community." : "Your saved recommendations. Click a row to view the full details."}
+                    {isPublicView ? "Explore recommendations shared by the community." : "Your saved recommendations. Click an action to view or delete."}
                 </CardDescription>
             </CardHeader>
             <CardContent>
@@ -916,14 +917,30 @@ const HistoryTable = ({
                                                     />
                                                 </TableCell>
                                             )}
-                                            <TableCell className="text-right space-x-2">
-                                                <Button size="sm" variant="outline" onClick={() => onView(item)}>
-                                                    <Eye className="mr-2 h-4 w-4"/> View
-                                                </Button>
-                                                {!isPublicView && (
-                                                  <Button size="sm" variant="destructive" onClick={() => onDelete && onDelete(item.id)}>
-                                                      <Trash2 className="mr-2 h-4 w-4"/> Delete
-                                                  </Button>
+                                            <TableCell className="text-right">
+                                                {!isPublicView ? (
+                                                    <DropdownMenu>
+                                                        <DropdownMenuTrigger asChild>
+                                                            <Button variant="ghost" size="icon">
+                                                                <MoreHorizontal className="h-4 w-4" />
+                                                                <span className="sr-only">Actions</span>
+                                                            </Button>
+                                                        </DropdownMenuTrigger>
+                                                        <DropdownMenuContent align="end">
+                                                            <DropdownMenuItem onClick={() => onView(item)}>
+                                                                <Eye className="mr-2 h-4 w-4"/>
+                                                                <span>View</span>
+                                                            </DropdownMenuItem>
+                                                            <DropdownMenuItem onClick={() => onDelete && onDelete(item.id)} className="text-destructive focus:bg-destructive/10 focus:text-destructive">
+                                                                <Trash2 className="mr-2 h-4 w-4"/>
+                                                                <span>Delete</span>
+                                                            </DropdownMenuItem>
+                                                        </DropdownMenuContent>
+                                                    </DropdownMenu>
+                                                ) : (
+                                                    <Button size="sm" variant="outline" onClick={() => onView(item)}>
+                                                        <Eye className="mr-2 h-4 w-4"/> View
+                                                    </Button>
                                                 )}
                                             </TableCell>
                                         </TableRow>
@@ -1100,16 +1117,16 @@ export default function RecommendationsPage() {
         try {
             await deleteDoc(doc(db, 'recommendation-history', id));
             toast({ title: 'Item Deleted' });
-            // Re-fetch the current page. If the page becomes empty, go to the previous one.
-            const remainingItems = myHistory.filter(item => item.id !== id);
-            if (remainingItems.length === 0 && myHistoryPage > 1) {
-                // We deleted the last item on a page > 1, so go back a page
+            
+            const remainingItemsOnPage = myHistory.filter(item => item.id !== id);
+
+            if (remainingItemsOnPage.length === 0 && myHistoryPage > 1) {
                 const newPageDocs = [...myHistoryPageDocs];
-                newPageDocs.pop(); // Remove last doc for current page
+                newPageDocs.pop(); // Remove current page's last doc
+                newPageDocs.pop(); // Remove previous page's last doc to re-fetch it
                 setMyHistoryPageDocs(newPageDocs);
                 fetchMyHistory(myHistoryPage - 1);
             } else {
-                // Re-fetch the current page
                 fetchMyHistory(myHistoryPage);
             }
         } catch(e: any) {
