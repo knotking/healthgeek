@@ -1,27 +1,25 @@
-
 'use client';
 
 // Common Imports
 import { useState, useEffect, useCallback, useMemo } from 'react';
 import { useAuthState } from 'react-firebase-hooks/auth';
 import { auth, db } from '@/lib/firebase';
-import { collection, addDoc, doc, getDoc, query, where, orderBy, limit, getDocs, deleteDoc, Timestamp, getDocFromCache, serverTimestamp, writeBatch, documentId, startAfter, endBefore, limitToLast } from 'firebase/firestore';
+import { collection, addDoc, doc, getDoc, query, where, orderBy, getDocs, deleteDoc, Timestamp, serverTimestamp, updateDoc } from 'firebase/firestore';
 import { useToast } from '@/hooks/use-toast';
-import { Loader2 as Loader2Common } from 'lucide-react';
+import { Loader2 as Loader2Common, MoreHorizontal } from 'lucide-react';
 import { Button as ButtonCommon } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription, CardFooter } from '@/components/ui/card';
-import { Badge as BadgeCommon, badgeVariants } from '@/components/ui/badge';
+import { Badge as BadgeCommon } from '@/components/ui/badge';
 import jsPDF from 'jspdf';
 import 'jspdf-autotable';
 import { AnimatePresence, motion } from 'framer-motion';
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from '@/components/ui/accordion';
-import { BrainCircuit, ChefHat, Dumbbell, User, Users, History, Eye, Trash2, Heart, ThumbsUp, Star } from 'lucide-react';
+import { BrainCircuit, ChefHat, Dumbbell, User, Trash2, Heart, Star, Eye } from 'lucide-react';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter, DialogTrigger } from '@/components/ui/dialog';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import { Checkbox } from '@/components/ui/checkbox';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
-import { MoreHorizontal } from 'lucide-react';
 
 
 // Recipe Generator Imports
@@ -61,7 +59,6 @@ import { Checkbox as CheckboxMeditation } from '@/components/ui/checkbox';
 import { FileDown as FileDownMeditation, MoveRight as MoveRightMeditation, MoveLeft as MoveLeftMeditation, Sparkles as SparklesMeditation, Timer as TimerMeditation } from 'lucide-react';
 import { Textarea as TextareaMeditation } from '@/components/ui/textarea';
 
-const ITEMS_PER_PAGE = 5;
 
 // --- Recipe Component ---
 const recipeSchema = zRecipe.object({
@@ -74,7 +71,7 @@ const recipeSchema = zRecipe.object({
 type RecipeFormData = zRecipe.infer<typeof recipeSchema>;
 const RecipeSteps = { PREFERENCES: 1, GENERATING: 2, RESULT: 3 };
 
-function RecipeGenerator() {
+function RecipeGenerator({ onSave }: { onSave: () => void }) {
   const [user, authLoading] = useAuthState(auth);
   const { toast } = useToast();
   const [loading, setLoading] = useState(true);
@@ -141,6 +138,7 @@ function RecipeGenerator() {
             rating: 0,
         });
         toast({ title: 'Success', description: 'Recipe saved to your history.' });
+        onSave();
     } catch (e: any) {
         toast({ title: 'Save Failed', description: e.message, variant: 'destructive' });
     } finally {
@@ -289,7 +287,7 @@ const workoutSchema = zWorkout.object({
 type WorkoutFormData = zWorkout.infer<typeof workoutSchema>;
 const WorkoutSteps = { PREFERENCES: 1, GENERATING: 2, RESULT: 3 };
 
-function WorkoutGenerator() {
+function WorkoutGenerator({ onSave }: { onSave: () => void }) {
   const [user, authLoading] = useAuthState(auth);
   const { toast } = useToast();
   const [initialLoading, setInitialLoading] = useState(true);
@@ -360,6 +358,7 @@ function WorkoutGenerator() {
             rating: 0,
         });
         toast({ title: 'Success', description: 'Workout saved to your history.' });
+        onSave();
     } catch (e: any) {
         toast({ title: 'Save Failed', description: e.message, variant: 'destructive' });
     } finally {
@@ -541,7 +540,7 @@ const meditationSchema = zMeditation.object({
 type MeditationFormData = zMeditation.infer<typeof meditationSchema>;
 const MeditationSteps = { PREFERENCES: 1, GENERATING: 2, RESULT: 3 };
 
-function MeditationGenerator() {
+function MeditationGenerator({ onSave }: { onSave: () => void }) {
     const [user, authLoading] = useAuthState(auth);
     const { toast } = useToast();
     const [initialLoading, setInitialLoading] = useState(true);
@@ -610,6 +609,7 @@ function MeditationGenerator() {
                 rating: 0,
             });
             toast({ title: 'Success', description: 'Meditation saved to your history.' });
+            onSave();
         } catch (e: any) {
             toast({ title: 'Save Failed', description: e.message, variant: 'destructive' });
         } finally {
@@ -784,7 +784,7 @@ function MeditationGenerator() {
     );
 }
 
-const Generators = () => (
+const Generators = ({ onGenerate }: { onGenerate: () => void }) => (
     <div className="space-y-6 max-w-4xl mx-auto">
         <Accordion type="single" collapsible className="w-full" defaultValue="workout">
             <AccordionItem value="workout">
@@ -795,7 +795,7 @@ const Generators = () => (
                     </div>
                 </AccordionTrigger>
                 <AccordionContent className="pt-4">
-                    <WorkoutGenerator />
+                    <WorkoutGenerator onSave={onGenerate} />
                 </AccordionContent>
             </AccordionItem>
             <AccordionItem value="meditation">
@@ -806,7 +806,7 @@ const Generators = () => (
                     </div>
                 </AccordionTrigger>
                 <AccordionContent className="pt-4">
-                    <MeditationGenerator />
+                    <MeditationGenerator onSave={onGenerate} />
                 </AccordionContent>
             </AccordionItem>
             <AccordionItem value="recipe">
@@ -817,17 +817,175 @@ const Generators = () => (
                     </div>
                 </AccordionTrigger>
                 <AccordionContent className="pt-4">
-                    <RecipeGenerator />
+                    <RecipeGenerator onSave={onGenerate} />
                 </AccordionContent>
             </AccordionItem>
         </Accordion>
     </div>
 );
 
+
+const MyHistory = ({ history, loading, onDelete, onView }: { history: any[], loading: boolean, onDelete: (id: string) => void, onView: (item: any) => void }) => {
+    
+    const typeIcon = (type: string) => {
+        switch (type) {
+            case 'workout': return <Dumbbell className="h-5 w-5 text-primary" />;
+            case 'meditation': return <BrainCircuit className="h-5 w-5 text-primary" />;
+            case 'recipe': return <ChefHat className="h-5 w-5 text-primary" />;
+            default: return null;
+        }
+    };
+
+    const renderRating = (rating: number) => {
+        return (
+            <div className="flex items-center">
+                {[...Array(5)].map((_, i) => (
+                    <Star key={i} className={`h-4 w-4 ${i < rating ? 'text-yellow-400 fill-yellow-400' : 'text-gray-300'}`} />
+                ))}
+            </div>
+        );
+    };
+
+    const getItemName = (item: any) => {
+        switch (item.type) {
+            case 'workout': return item.data.planTitle;
+            case 'meditation': return item.data.title;
+            case 'recipe': return item.data.name;
+            default: return 'Unknown';
+        }
+    }
+
+    if (loading) {
+        return <div className="flex justify-center py-12"><Loader2Common className="h-8 w-8 animate-spin" /></div>;
+    }
+
+    if (history.length === 0) {
+        return <div className="text-center py-12 text-muted-foreground">You haven't saved any recommendations yet.</div>
+    }
+    
+    return (
+        <Card>
+            <CardHeader>
+                <CardTitle>My Saved Recommendations</CardTitle>
+                <CardDescription>Here are all the recommendations you have saved.</CardDescription>
+            </CardHeader>
+            <CardContent>
+                <div className="space-y-4">
+                    {history.map((item) => (
+                         <Card key={item.id} className="flex items-center justify-between p-4">
+                            <div className="flex items-center gap-4">
+                                {typeIcon(item.type)}
+                                <div>
+                                    <p className="font-semibold">{getItemName(item)}</p>
+                                    <p className="text-sm text-muted-foreground capitalize">{item.type}</p>
+                                </div>
+                            </div>
+                             <div className="flex items-center gap-4">
+                                {renderRating(item.rating)}
+                                <DropdownMenu>
+                                    <DropdownMenuTrigger asChild>
+                                        <ButtonCommon variant="ghost" size="icon"><MoreHorizontal /></ButtonCommon>
+                                    </DropdownMenuTrigger>
+                                    <DropdownMenuContent>
+                                        <DropdownMenuItem onClick={() => onView(item)}><Eye className="mr-2"/>View</DropdownMenuItem>
+                                        <DropdownMenuItem onClick={() => onDelete(item.id)} className="text-red-500 focus:text-red-500"><Trash2 className="mr-2"/>Delete</DropdownMenuItem>
+                                    </DropdownMenuContent>
+                                </DropdownMenu>
+                             </div>
+                        </Card>
+                    ))}
+                </div>
+            </CardContent>
+        </Card>
+    )
+}
+
 // --- Main Component ---
 export default function RecommendationsPage() {
+  const [user, authLoading] = useAuthState(auth);
+  const { toast } = useToast();
+  const [myHistory, setMyHistory] = useState<any[]>([]);
+  const [historyLoading, setHistoryLoading] = useState(true);
+  const [selectedItem, setSelectedItem] = useState<any | null>(null);
+  const [isViewModalOpen, setIsViewModalOpen] = useState(false);
+  const [activeTab, setActiveTab] = useState("history");
+
+  const fetchMyHistory = useCallback(async () => {
+    if (!user) return;
+    setHistoryLoading(true);
+    try {
+        const q = query(collection(db, 'recommendation-history'), where('userId', '==', user.uid), orderBy('timestamp', 'desc'));
+        const querySnapshot = await getDocs(q);
+        setMyHistory(querySnapshot.docs.map(d => ({ id: d.id, ...d.data() })));
+    } catch (e: any) {
+        console.error(e);
+        toast({ title: "Error fetching history", description: e.message, variant: "destructive" });
+    } finally {
+        setHistoryLoading(false);
+    }
+  }, [user, toast]);
+
+  useEffect(() => {
+    if (user) {
+        fetchMyHistory();
+    }
+  }, [user, fetchMyHistory]);
+
+  const handleDelete = async (id: string) => {
+    try {
+        await deleteDoc(doc(db, 'recommendation-history', id));
+        toast({ title: "Deleted", description: "Recommendation removed from your history." });
+        fetchMyHistory();
+    } catch (e: any) {
+        toast({ title: "Delete failed", description: e.message, variant: "destructive" });
+    }
+  };
+
+  const handleView = (item: any) => {
+    setSelectedItem(item);
+    setIsViewModalOpen(true);
+  }
+  
+  const handleGenerated = () => {
+    fetchMyHistory();
+    setActiveTab("history");
+  };
   
   return (
-    <Generators />
+    <>
+      <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
+        <TabsList className="grid w-full grid-cols-2">
+          <TabsTrigger value="history">My History</TabsTrigger>
+          <TabsTrigger value="generators">Generators</TabsTrigger>
+        </TabsList>
+        <TabsContent value="history">
+            <MyHistory history={myHistory} loading={historyLoading} onDelete={handleDelete} onView={handleView} />
+        </TabsContent>
+        <TabsContent value="generators">
+            <Generators onGenerate={handleGenerated} />
+        </TabsContent>
+      </Tabs>
+
+      <Dialog open={isViewModalOpen} onOpenChange={setIsViewModalOpen}>
+        <DialogContent className="max-w-3xl">
+          <DialogHeader>
+            <DialogTitle>{selectedItem?.data?.planTitle || selectedItem?.data?.title || selectedItem?.data?.name}</DialogTitle>
+            <DialogDescription>
+                {selectedItem?.data?.planSummary || selectedItem?.data?.summary || selectedItem?.data?.description}
+            </DialogDescription>
+          </DialogHeader>
+          {/* TODO: Add detailed views for each type */}
+          <div className="py-4">
+            <p>Full view is not implemented yet.</p>
+            <pre className="mt-4 p-4 rounded-md bg-muted text-xs overflow-auto max-h-96">
+                {JSON.stringify(selectedItem?.data, null, 2)}
+            </pre>
+          </div>
+          <DialogFooter>
+            <ButtonCommon variant="outline" onClick={() => setIsViewModalOpen(false)}>Close</ButtonCommon>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+    </>
   );
 }
