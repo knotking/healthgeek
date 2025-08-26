@@ -1,23 +1,27 @@
 
 'use client';
 
-import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from '@/components/ui/accordion';
-import { BrainCircuit, ChefHat, Dumbbell } from 'lucide-react';
-
-
 // Common Imports
 import { useState, useEffect, useCallback, useMemo } from 'react';
 import { useAuthState } from 'react-firebase-hooks/auth';
 import { auth, db } from '@/lib/firebase';
-import { collection, addDoc, doc, getDoc, query, where, orderBy, limit, getDocs } from 'firebase/firestore';
+import { collection, addDoc, doc, getDoc, query, where, orderBy, limit, getDocs, deleteDoc, Timestamp, getDocFromCache, serverTimestamp, writeBatch, documentId, startAfter, endBefore, limitToLast } from 'firebase/firestore';
 import { useToast } from '@/hooks/use-toast';
 import { Loader2 as Loader2Common } from 'lucide-react';
 import { Button as ButtonCommon } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription, CardFooter } from '@/components/ui/card';
-import { Badge as BadgeCommon } from '@/components/ui/badge';
+import { Badge as BadgeCommon, badgeVariants } from '@/components/ui/badge';
 import jsPDF from 'jspdf';
 import 'jspdf-autotable';
 import { AnimatePresence, motion } from 'framer-motion';
+import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from '@/components/ui/accordion';
+import { BrainCircuit, ChefHat, Dumbbell, User, Users, History, Eye, Trash2, Heart, ThumbsUp, Star } from 'lucide-react';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter, DialogTrigger } from '@/components/ui/dialog';
+import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
+import { Checkbox } from '@/components/ui/checkbox';
+import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
+import { MoreHorizontal } from 'lucide-react';
 
 
 // Recipe Generator Imports
@@ -29,7 +33,7 @@ import { Form as FormRecipe, FormControl as FormControlRecipe, FormField as Form
 import { Input as InputRecipe } from '@/components/ui/input';
 import { Textarea as TextareaRecipe } from '@/components/ui/textarea';
 import { Select as SelectRecipe, SelectContent as SelectContentRecipe, SelectItem as SelectItemRecipe, SelectTrigger as SelectTriggerRecipe, SelectValue as SelectValueRecipe } from '@/components/ui/select';
-import { CookingPot, FileDown as FileDownRecipe, Utensils, Clock, User, Sparkles as SparklesRecipe, MoveRight as MoveRightRecipe, MoveLeft as MoveLeftRecipe } from 'lucide-react';
+import { CookingPot, FileDown as FileDownRecipe, Utensils, Clock, Sparkles as SparklesRecipe, MoveRight as MoveRightRecipe, MoveLeft as MoveLeftRecipe } from 'lucide-react';
 
 
 // Workout Generator Imports
@@ -54,9 +58,10 @@ import { Form as FormMeditation, FormControl as FormControlMeditation, FormField
 import { RadioGroup as RadioGroupMeditation, RadioGroupItem as RadioGroupItemMeditation } from '@/components/ui/radio-group';
 import { Slider as SliderMeditation } from '@/components/ui/slider';
 import { Checkbox as CheckboxMeditation } from '@/components/ui/checkbox';
-import { Alert as AlertMeditation, AlertDescription as AlertDescriptionMeditation, AlertTitle as AlertTitleMeditation } from '@/components/ui/alert';
 import { FileDown as FileDownMeditation, MoveRight as MoveRightMeditation, MoveLeft as MoveLeftMeditation, Sparkles as SparklesMeditation, Timer as TimerMeditation } from 'lucide-react';
 
+
+const ITEMS_PER_PAGE = 5;
 
 // --- Recipe Component ---
 const recipeSchema = zRecipe.object({
@@ -76,6 +81,8 @@ function RecipeGenerator() {
   const [profile, setProfile] = useState<any>(null);
   const [recipeResult, setRecipeResult] = useState<SingleRecipeOutput | null>(null);
   const [currentStep, setCurrentStep] = useState(RecipeSteps.PREFERENCES);
+  const [isSaving, setIsSaving] = useState(false);
+  const [isPublic, setIsPublic] = useState(false);
 
   const form = useFormRecipe<RecipeFormData>({
     resolver: zodResolverRecipe(recipeSchema),
@@ -117,6 +124,27 @@ function RecipeGenerator() {
       console.error(e);
       toast({ title: 'Generation Failed', description: e.message || 'An error occurred.', variant: 'destructive' });
       setCurrentStep(RecipeSteps.PREFERENCES);
+    }
+  }
+  
+  async function handleSave() {
+    if (!user || !recipeResult) return;
+    setIsSaving(true);
+    try {
+        await addDoc(collection(db, 'recommendation-history'), {
+            userId: user.uid,
+            userName: profile?.name || 'Anonymous',
+            type: 'recipe',
+            data: recipeResult,
+            isPublic,
+            timestamp: serverTimestamp(),
+            rating: 0,
+        });
+        toast({ title: 'Success', description: 'Recipe saved to your history.' });
+    } catch (e: any) {
+        toast({ title: 'Save Failed', description: e.message, variant: 'destructive' });
+    } finally {
+        setIsSaving(false);
     }
   }
 
@@ -164,6 +192,7 @@ function RecipeGenerator() {
     form.reset();
     setRecipeResult(null);
     setCurrentStep(RecipeSteps.PREFERENCES);
+    setIsPublic(false);
   }
 
   const pageVariants = { initial: { opacity: 0, x: 50 }, in: { opacity: 1, x: 0 }, out: { opacity: 0, x: -50 } };
@@ -229,9 +258,19 @@ function RecipeGenerator() {
                       <div className="md:col-span-3"><h3 className="font-bold text-xl mb-4 flex items-center gap-2"><CookingPot /> Instructions</h3><ol className="space-y-4 text-muted-foreground">{recipeResult.instructions.map((step, i) => <li key={i} className="flex items-start"><span className="font-bold text-primary mr-3">{i + 1}.</span><span>{step}</span></li>)}</ol></div>
                   </div>
                </CardContent>
-               <CardFooter className="flex-col sm:flex-row gap-2 justify-center">
+               <CardFooter className="flex-col sm:flex-row gap-4 justify-center">
                     <ButtonCommon onClick={resetFlow} variant="outline"><MoveLeftRecipe className="mr-2"/> Generate Another</ButtonCommon>
                     <ButtonCommon onClick={() => handleDownloadPdf(recipeResult)}><FileDownRecipe className="mr-2"/> Download PDF</ButtonCommon>
+                    <div className="flex items-center space-x-2">
+                        <Checkbox id="publish-recipe" checked={isPublic} onCheckedChange={(checked) => setIsPublic(Boolean(checked))} />
+                        <label htmlFor="publish-recipe" className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70">
+                            Share with community
+                        </label>
+                    </div>
+                    <ButtonCommon onClick={handleSave} disabled={isSaving}>
+                        {isSaving ? <Loader2Common className="mr-2 h-4 w-4 animate-spin" /> : <Heart className="mr-2 h-4 w-4" />}
+                        Save to History
+                    </ButtonCommon>
                 </CardFooter>
           </Card>
          </motion.div>
@@ -258,6 +297,8 @@ function WorkoutGenerator() {
   const [latestHealthReport, setLatestHealthReport] = useState<any>(null);
   const [workoutResult, setWorkoutResult] = useState<WorkoutPlanOutput | null>(null);
   const [currentStep, setCurrentStep] = useState(WorkoutSteps.PREFERENCES);
+  const [isSaving, setIsSaving] = useState(false);
+  const [isPublic, setIsPublic] = useState(false);
 
   const form = useFormWorkout<WorkoutFormData>({
     resolver: zodResolverWorkout(workoutSchema),
@@ -302,6 +343,27 @@ function WorkoutGenerator() {
       console.error(e);
       toast({ title: 'Generation Failed', description: e.message || 'An error occurred.', variant: 'destructive' });
       setCurrentStep(WorkoutSteps.PREFERENCES);
+    }
+  }
+
+  async function handleSave() {
+    if (!user || !workoutResult) return;
+    setIsSaving(true);
+    try {
+        await addDoc(collection(db, 'recommendation-history'), {
+            userId: user.uid,
+            userName: profile?.name || 'Anonymous',
+            type: 'workout',
+            data: workoutResult,
+            isPublic,
+            timestamp: serverTimestamp(),
+            rating: 0,
+        });
+        toast({ title: 'Success', description: 'Workout saved to your history.' });
+    } catch (e: any) {
+        toast({ title: 'Save Failed', description: e.message, variant: 'destructive' });
+    } finally {
+        setIsSaving(false);
     }
   }
 
@@ -362,6 +424,7 @@ function WorkoutGenerator() {
     form.reset({ workoutDuration: 30, location: 'home', focusAreas: [] });
     setWorkoutResult(null);
     setCurrentStep(WorkoutSteps.PREFERENCES);
+    setIsPublic(false);
   }
 
   const pageVariants = { initial: { opacity: 0, x: 50 }, in: { opacity: 1, x: 0 }, out: { opacity: 0, x: -50 } };
@@ -437,9 +500,19 @@ function WorkoutGenerator() {
                       </div>
                   ))}
                </CardContent>
-               <CardFooter className="flex-col sm:flex-row gap-2 justify-center">
+               <CardFooter className="flex-col sm:flex-row gap-4 justify-center">
                     <ButtonCommon onClick={resetFlow} variant="outline"><MoveLeftWorkout className="mr-2"/> New Workout</ButtonCommon>
                     <ButtonCommon onClick={handleDownloadPdf}><FileDownWorkout className="mr-2"/> Download PDF</ButtonCommon>
+                     <div className="flex items-center space-x-2">
+                        <Checkbox id="publish-workout" checked={isPublic} onCheckedChange={(checked) => setIsPublic(Boolean(checked))} />
+                        <label htmlFor="publish-workout" className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70">
+                            Share with community
+                        </label>
+                    </div>
+                    <ButtonCommon onClick={handleSave} disabled={isSaving}>
+                        {isSaving ? <Loader2Common className="mr-2 h-4 w-4 animate-spin" /> : <Heart className="mr-2 h-4 w-4" />}
+                        Save to History
+                    </ButtonCommon>
                 </CardFooter>
           </Card>
          </motion.div>
@@ -465,6 +538,8 @@ function MeditationGenerator() {
     const [profile, setProfile] = useState<any>(null);
     const [meditationResult, setMeditationResult] = useState<MeditationPracticeOutput | null>(null);
     const [currentStep, setCurrentStep] = useState(MeditationSteps.PREFERENCES);
+    const [isSaving, setIsSaving] = useState(false);
+    const [isPublic, setIsPublic] = useState(false);
 
     const form = useFormMeditation<MeditationFormData>({
         resolver: zodResolverMeditation(meditationSchema),
@@ -505,6 +580,27 @@ function MeditationGenerator() {
             console.error(e);
             toast({ title: 'Generation Failed', description: e.message || 'An error occurred.', variant: 'destructive' });
             setCurrentStep(MeditationSteps.PREFERENCES);
+        }
+    }
+
+    async function handleSave() {
+        if (!user || !meditationResult) return;
+        setIsSaving(true);
+        try {
+            await addDoc(collection(db, 'recommendation-history'), {
+                userId: user.uid,
+                userName: profile?.name || 'Anonymous',
+                type: 'meditation',
+                data: meditationResult,
+                isPublic,
+                timestamp: serverTimestamp(),
+                rating: 0,
+            });
+            toast({ title: 'Success', description: 'Meditation saved to your history.' });
+        } catch (e: any) {
+            toast({ title: 'Save Failed', description: e.message, variant: 'destructive' });
+        } finally {
+            setIsSaving(false);
         }
     }
 
@@ -557,6 +653,7 @@ function MeditationGenerator() {
         form.reset({ duration: 10, timeOfDay: 'morning', goals: [] });
         setMeditationResult(null);
         setCurrentStep(MeditationSteps.PREFERENCES);
+        setIsPublic(false);
     }
 
     const pageVariants = { initial: { opacity: 0, x: 50 }, in: { opacity: 1, x: 0 }, out: { opacity: 0, x: -50 } };
@@ -621,7 +718,7 @@ function MeditationGenerator() {
                         <CardHeader><CardTitle className="text-3xl font-bold text-center">{meditationResult.title}</CardTitle><CardDescription className="text-center text-md pt-2">{meditationResult.summary}</CardDescription></CardHeader>
                         <CardContent className="space-y-8">
                             <div className="flex gap-2 justify-center flex-wrap">{meditationResult.tags.map(tag => <BadgeCommon key={tag} variant="secondary">{tag}</BadgeCommon>)}</div>
-                            <AlertMeditation><SparklesMeditation className="h-4 w-4"/><AlertTitleMeditation>Benefits for You</AlertTitleMeditation><AlertDescriptionMeditation>{meditationResult.benefits}</AlertDescriptionMeditation></AlertMeditation>
+                            <Alert variant="default"><SparklesMeditation className="h-4 w-4"/><AlertTitle>Benefits for You</AlertTitle><AlertDescription>{meditationResult.benefits}</AlertDescription></Alert>
                             <div>
                                 <h3 className="font-bold text-xl mb-4 flex items-center gap-2"><BrainCircuit className="text-primary"/> Guided Practice</h3>
                                 <div className="space-y-4">
@@ -637,9 +734,19 @@ function MeditationGenerator() {
                                 </div>
                             </div>
                         </CardContent>
-                        <CardFooter className="flex-col sm:flex-row gap-2 justify-center">
+                        <CardFooter className="flex-col sm:flex-row gap-4 justify-center">
                             <ButtonCommon onClick={resetFlow} variant="outline"><MoveLeftMeditation className="mr-2"/> New Practice</ButtonCommon>
                             <ButtonCommon onClick={handleDownloadPdf}><FileDownMeditation className="mr-2"/> Download PDF</ButtonCommon>
+                            <div className="flex items-center space-x-2">
+                                <Checkbox id="publish-meditation" checked={isPublic} onCheckedChange={(checked) => setIsPublic(Boolean(checked))} />
+                                <label htmlFor="publish-meditation" className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70">
+                                    Share with community
+                                </label>
+                            </div>
+                            <ButtonCommon onClick={handleSave} disabled={isSaving}>
+                                {isSaving ? <Loader2Common className="mr-2 h-4 w-4 animate-spin" /> : <Heart className="mr-2 h-4 w-4" />}
+                                Save to History
+                            </ButtonCommon>
                         </CardFooter>
                     </Card>
                 </motion.div>
@@ -648,12 +755,18 @@ function MeditationGenerator() {
     );
 }
 
+type Recommendation = {
+  id: string;
+  userId: string;
+  userName: string;
+  type: 'workout' | 'meditation' | 'recipe';
+  data: any;
+  isPublic: boolean;
+  timestamp: Timestamp;
+  rating: number;
+}
 
-
-// --- Main Component ---
-export default function RecommendationsPage() {
-  
-  return (
+const Generators = () => (
     <div className="space-y-6 max-w-4xl mx-auto">
         <Accordion type="single" collapsible className="w-full" defaultValue="workout">
             <AccordionItem value="workout">
@@ -691,5 +804,326 @@ export default function RecommendationsPage() {
             </AccordionItem>
         </Accordion>
     </div>
+);
+
+const ViewDetailsDialog = ({ recommendation }: { recommendation: Recommendation }) => {
+    let content;
+    switch(recommendation.type) {
+        case 'workout':
+            const workout: WorkoutPlanOutput = recommendation.data;
+            content = (
+                <div className="space-y-4 max-h-[70vh] overflow-y-auto pr-6">
+                    <Alert variant="destructive"><Shield className="h-4 w-4"/><AlertTitle>Safety First!</AlertTitle><AlertDescription>{workout.notes}</AlertDescription></Alert>
+                    {[{title: 'Warm-Up', icon: Activity, exercises: workout.warmUp}, {title: 'Main Workout', icon: Dumbbell, exercises: workout.mainWorkout}, {title: 'Cool-Down', icon: HeartPulse, exercises: workout.coolDown}].map(section => (
+                        section.exercises.length > 0 && <div key={section.title}>
+                            <h4 className="font-bold text-lg mb-2 flex items-center gap-2"><section.icon className="text-primary"/> {section.title}</h4>
+                            <div className="space-y-3">
+                                {section.exercises.map((ex, i) => (
+                                    <Card key={i} className="p-3 bg-muted/50">
+                                        <p className="font-semibold">{ex.name}</p>
+                                        <div className="flex flex-wrap gap-x-4 gap-y-1 text-xs text-muted-foreground mt-2">
+                                            <span><strong>Sets:</strong> {ex.sets}</span>
+                                            <span><strong>Reps:</strong> {ex.reps}</span>
+                                            <span><strong>Rest:</strong> {ex.rest}</span>
+                                        </div>
+                                        <p className="text-xs mt-2">{ex.description}</p>
+                                    </Card>
+                                ))}
+                            </div>
+                        </div>
+                    ))}
+                </div>
+            );
+            break;
+        case 'meditation':
+            const meditation: MeditationPracticeOutput = recommendation.data;
+            content = (
+                <div className="space-y-4 max-h-[70vh] overflow-y-auto pr-6">
+                     <Alert><SparklesMeditation className="h-4 w-4"/><AlertTitle>Benefits for You</AlertTitle><AlertDescription>{meditation.benefits}</AlertDescription></Alert>
+                     <div>
+                        <h4 className="font-bold text-lg mb-2 flex items-center gap-2"><BrainCircuit className="text-primary"/> Guided Practice</h4>
+                        <div className="space-y-3">
+                            {meditation.steps.map((step, i) => (
+                                <Card key={i} className="p-3 bg-muted/50">
+                                    <div className="flex justify-between items-center">
+                                        <p className="font-semibold">Step {step.step}: {step.title}</p>
+                                        <span className="text-xs font-medium text-muted-foreground">{step.duration}</span>
+                                    </div>
+                                    <p className="text-xs mt-2">{step.instruction}</p>
+                                </Card>
+                            ))}
+                        </div>
+                    </div>
+                </div>
+            );
+            break;
+        case 'recipe':
+             const recipe: SingleRecipeOutput = recommendation.data;
+             content = (
+                <div className="space-y-4 max-h-[70vh] overflow-y-auto pr-6">
+                    <div className="grid grid-cols-2 md:grid-cols-4 gap-2 text-center text-xs">
+                      <div className="bg-muted p-2 rounded-lg"><p className="font-semibold">Prep Time</p><p>{recipe.prepTime}</p></div>
+                      <div className="bg-muted p-2 rounded-lg"><p className="font-semibold">Cook Time</p><p>{recipe.cookTime}</p></div>
+                      <div className="bg-muted p-2 rounded-lg"><p className="font-semibold">Servings</p><p>{recipe.servings}</p></div>
+                      <div className="bg-muted p-2 rounded-lg"><p className="font-semibold">Health Focus</p><p>{recipe.healthFocus}</p></div>
+                  </div>
+                   <div className="grid md:grid-cols-2 gap-6">
+                        <div><h4 className="font-bold text-lg mb-2">Ingredients</h4><ul className="space-y-1 text-sm list-disc pl-5">{recipe.ingredients.map((item, i) => <li key={i}>{item}</li>)}</ul></div>
+                        <div><h4 className="font-bold text-lg mb-2">Instructions</h4><ol className="space-y-2 text-sm list-decimal pl-5">{recipe.instructions.map((step, i) => <li key={i}>{step}</li>)}</ol></div>
+                    </div>
+                </div>
+             );
+            break;
+    }
+    
+    return (
+        <DialogContent className="max-w-2xl">
+            <DialogHeader>
+                <DialogTitle>{recommendation.type === 'workout' ? recommendation.data.planTitle : recommendation.data.name}</DialogTitle>
+                <DialogDescription>{recommendation.type === 'workout' ? recommendation.data.planSummary : recommendation.data.description}</DialogDescription>
+                <div className="flex gap-2 justify-center flex-wrap pt-2">{recommendation.data.tags.map((tag:string) => <BadgeCommon key={tag} variant="secondary" className="text-xs">{tag}</BadgeCommon>)}</div>
+            </DialogHeader>
+            {content}
+            <DialogFooter>
+                <DialogTrigger asChild><ButtonCommon variant="outline">Close</ButtonCommon></DialogTrigger>
+            </DialogFooter>
+        </DialogContent>
+    )
+}
+
+const RecommendationCard = ({ recommendation, isOwner, onDelete }: { recommendation: Recommendation, isOwner: boolean, onDelete?: (id: string) => void }) => {
+    const { toast } = useToast();
+    const [user] = useAuthState(auth);
+
+    const title = recommendation.type === 'workout' ? recommendation.data.planTitle : recommendation.data.name;
+    const description = recommendation.type === 'workout' ? recommendation.data.planSummary : recommendation.data.description;
+
+    const typeDetails = useMemo(() => {
+        switch (recommendation.type) {
+            case 'workout': return { icon: Dumbbell, color: 'text-red-400' };
+            case 'meditation': return { icon: BrainCircuit, color: 'text-blue-400' };
+            case 'recipe': return { icon: ChefHat, color: 'text-green-400' };
+            default: return { icon: Star, color: 'text-yellow-400' };
+        }
+    }, [recommendation.type]);
+    
+    const handleDelete = async () => {
+        if (!onDelete) return;
+        try {
+            await deleteDoc(doc(db, 'recommendation-history', recommendation.id));
+            toast({ title: 'Success', description: 'Recommendation deleted.' });
+            onDelete(recommendation.id);
+        } catch (e: any) {
+            toast({ title: 'Error', description: 'Could not delete recommendation.', variant: 'destructive' });
+        }
+    };
+
+    return (
+        <Card>
+            <CardHeader>
+                <CardTitle className="flex items-start justify-between">
+                    <div className="flex items-center gap-2">
+                        <typeDetails.icon className={`h-5 w-5 ${typeDetails.color}`} />
+                        <span>{title}</span>
+                    </div>
+                    <Dialog>
+                        <DropdownMenu>
+                            <DropdownMenuTrigger asChild>
+                                <ButtonCommon variant="ghost" size="icon" className="h-8 w-8">
+                                    <MoreHorizontal className="h-4 w-4" />
+                                </ButtonCommon>
+                            </DropdownMenuTrigger>
+                            <DropdownMenuContent align="end">
+                                 <DialogTrigger asChild>
+                                    <DropdownMenuItem><Eye className="mr-2 h-4 w-4" /> View Details</DropdownMenuItem>
+                                </DialogTrigger>
+                                {isOwner && onDelete && (
+                                    <DropdownMenuItem onClick={handleDelete} className="text-red-500 focus:text-red-500 focus:bg-red-50">
+                                        <Trash2 className="mr-2 h-4 w-4" /> Delete
+                                    </DropdownMenuItem>
+                                )}
+                            </DropdownMenuContent>
+                        </DropdownMenu>
+                        <ViewDetailsDialog recommendation={recommendation} />
+                    </Dialog>
+                </CardTitle>
+                <CardDescription className="line-clamp-2 pt-1">{description}</CardDescription>
+            </CardHeader>
+            <CardFooter className="flex justify-between text-xs text-muted-foreground">
+                <div>
+                  <p>By: {recommendation.userName}</p>
+                  <p>On: {recommendation.timestamp.toDate().toLocaleDateString()}</p>
+                </div>
+                <div className="flex items-center gap-2">
+                    <ThumbsUp className="h-4 w-4"/> {recommendation.rating}
+                </div>
+            </CardFooter>
+        </Card>
+    );
+}
+
+const MyHistory = () => {
+    const [user] = useAuthState(auth);
+    const { toast } = useToast();
+    const [history, setHistory] = useState<Recommendation[]>([]);
+    const [isLoading, setIsLoading] = useState(true);
+    const [lastDoc, setLastDoc] = useState<any>(null);
+    const [firstDoc, setFirstDoc] = useState<any>(null);
+    const [isFetchingMore, setIsFetchingMore] = useState(false);
+    const [isEnd, setIsEnd] = useState(false);
+    const [page, setPage] = useState(1);
+
+    const fetchHistory = useCallback(async (direction: 'next' | 'prev' | 'initial' = 'initial') => {
+        if (!user) {
+            setIsLoading(false);
+            return;
+        }
+
+        setIsFetchingMore(true);
+        try {
+            let q;
+            const baseQuery = [
+                collection(db, 'recommendation-history'),
+                where('userId', '==', user.uid),
+                orderBy('timestamp', 'desc')
+            ];
+
+            if (direction === 'next' && lastDoc) {
+                q = query(...baseQuery, startAfter(lastDoc), limit(ITEMS_PER_PAGE));
+            } else if (direction === 'prev' && firstDoc) {
+                q = query(...baseQuery, endBefore(firstDoc), limitToLast(ITEMS_PER_PAGE));
+            } else {
+                q = query(...baseQuery, limit(ITEMS_PER_PAGE));
+            }
+
+            const docSnap = await getDocs(q);
+            const newHistory = docSnap.docs.map(d => ({ id: d.id, ...d.data() } as Recommendation));
+            
+            if (newHistory.length > 0) {
+                setHistory(newHistory);
+                setLastDoc(docSnap.docs[docSnap.docs.length - 1]);
+                setFirstDoc(docSnap.docs[0]);
+                 if(direction === 'next') setPage(p => p + 1);
+                 if(direction === 'prev' && page > 1) setPage(p => p - 1);
+            } else if(direction === 'next') {
+                setIsEnd(true);
+                toast({title: "That's all!", description: "You've reached the end of your history."});
+            }
+
+             if (docSnap.empty && direction === 'initial') {
+                setHistory([]);
+            }
+
+        } catch (error: any) {
+            console.error(error);
+            toast({ title: "Error", description: "Could not fetch your history.", variant: "destructive" });
+        } finally {
+            setIsLoading(false);
+            setIsFetchingMore(false);
+        }
+    }, [user, toast, lastDoc, firstDoc, page]);
+    
+    useEffect(() => {
+        fetchHistory('initial');
+    }, [user]);
+
+    const handleDelete = (id: string) => {
+        setHistory(prev => prev.filter(item => item.id !== id));
+    };
+
+    if (isLoading) {
+        return <div className="flex justify-center p-8"><Loader2Common className="h-8 w-8 animate-spin" /></div>;
+    }
+    
+    if (history.length === 0) {
+        return <div className="text-center py-16 text-muted-foreground">You have no saved recommendations yet.</div>
+    }
+
+    return (
+        <div className="space-y-4">
+            {history.map(item => <RecommendationCard key={item.id} recommendation={item} isOwner={true} onDelete={handleDelete} />)}
+            <div className="flex justify-between items-center">
+                <ButtonCommon onClick={() => fetchHistory('prev')} disabled={page <= 1 || isFetchingMore}>Previous</ButtonCommon>
+                <span>Page {page}</span>
+                <ButtonCommon onClick={() => fetchHistory('next')} disabled={isEnd || isFetchingMore}>Next</ButtonCommon>
+            </div>
+        </div>
+    );
+}
+
+const CommunityFeed = () => {
+    const [user] = useAuthState(auth);
+    const { toast } = useToast();
+    const [recommendations, setRecommendations] = useState<Recommendation[]>([]);
+    const [isLoading, setIsLoading] = useState(true);
+
+     const fetchCommunityRecommendations = useCallback(async () => {
+        setIsLoading(true);
+        try {
+            const q = query(
+                collection(db, 'recommendation-history'), 
+                where('isPublic', '==', true), 
+                orderBy('rating', 'desc'),
+                orderBy('timestamp', 'desc'), 
+                limit(20)
+            );
+            const docSnap = await getDocs(q);
+            const newRecs = docSnap.docs.map(d => ({ id: d.id, ...d.data() } as Recommendation));
+            setRecommendations(newRecs);
+        } catch (error: any) {
+            console.error("Firestore Error:", error);
+            if (error.code === 'failed-precondition') {
+                 toast({ title: "Missing Index", description: "The required database index is missing. Please contact support.", variant: "destructive" });
+            } else if (error.code === 'permission-denied') {
+                toast({ title: "Permissions Error", description: "You don't have permission to view community recommendations.", variant: "destructive" });
+            } else {
+                toast({ title: "Error", description: "Could not fetch community recommendations.", variant: "destructive" });
+            }
+        } finally {
+            setIsLoading(false);
+        }
+    }, [toast]);
+
+    useEffect(() => {
+        fetchCommunityRecommendations();
+    }, [fetchCommunityRecommendations]);
+    
+    if (isLoading) {
+        return <div className="flex justify-center p-8"><Loader2Common className="h-8 w-8 animate-spin" /></div>;
+    }
+    
+    if (recommendations.length === 0) {
+        return <div className="text-center py-16 text-muted-foreground">No community recommendations available yet.</div>
+    }
+
+    return (
+        <div className="space-y-4">
+            {recommendations.map(item => <RecommendationCard key={item.id} recommendation={item} isOwner={item.userId === user?.uid} />)}
+        </div>
+    );
+}
+
+// --- Main Component ---
+export default function RecommendationsPage() {
+  
+  return (
+    <Tabs defaultValue="generators" className="w-full">
+        <TabsList className="grid w-full grid-cols-3">
+          <TabsTrigger value="generators"><SparklesRecipe className="mr-2 h-4 w-4"/>Generators</TabsTrigger>
+          <TabsTrigger value="my-history"><History className="mr-2 h-4 w-4"/>My History</TabsTrigger>
+          <TabsTrigger value="community"><Users className="mr-2 h-4 w-4"/>Community</TabsTrigger>
+        </TabsList>
+        <TabsContent value="generators" className="pt-6">
+            <Generators />
+        </TabsContent>
+        <TabsContent value="my-history" className="pt-6">
+            <MyHistory />
+        </TabsContent>
+        <TabsContent value="community" className="pt-6">
+            <CommunityFeed />
+        </TabsContent>
+      </Tabs>
   );
 }
+
+    
