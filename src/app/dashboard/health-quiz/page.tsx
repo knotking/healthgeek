@@ -51,7 +51,7 @@ interface SavedQuiz extends QuizGeneratorOutput {
     timestamp: Date;
 }
 
-const QuizGenerator = ({ onQuizStart }: { onQuizStart: (quiz: QuizGeneratorOutput) => void }) => {
+const QuizGenerator = ({ onQuizStart }: { onQuizStart: (quiz: QuizGeneratorOutput, settings: QuizSetupFormData) => void }) => {
     const [quizState, setQuizState] = useState<'setup' | 'generating'>('setup');
     const { toast } = useToast();
 
@@ -71,7 +71,7 @@ const QuizGenerator = ({ onQuizStart }: { onQuizStart: (quiz: QuizGeneratorOutpu
             if (result.questions.length === 0) {
                 throw new Error("The AI didn't generate any questions. Please try a different topic.");
             }
-            onQuizStart(result);
+            onQuizStart(result, values);
         } catch (error: any) {
             toast({ title: 'Quiz Generation Failed', description: error.message || 'An unexpected error occurred.', variant: 'destructive' });
             setQuizState('setup');
@@ -163,6 +163,7 @@ export default function HealthQuizPage() {
   const [user] = useAuthState(auth);
   const [quizState, setQuizState] = useState<QuizState>('setup');
   const [quizData, setQuizData] = useState<QuizGeneratorOutput | null>(null);
+  const [quizSettings, setQuizSettings] = useState<QuizSetupFormData | null>(null);
   const [currentQuestionIndex, setCurrentQuestionIndex] = useState(0);
   const [userAnswers, setUserAnswers] = useState<UserAnswers>({});
   const [score, setScore] = useState(0);
@@ -173,7 +174,7 @@ export default function HealthQuizPage() {
   const [activeTab, setActiveTab] = useState("generator");
 
   const fetchSavedQuizzes = useCallback(async () => {
-    if (!user || hasFetchedQuizzes) return;
+    if (!user) return;
     setLoadingQuizzes(true);
     try {
         const q = query(
@@ -195,7 +196,7 @@ export default function HealthQuizPage() {
     } finally {
         setLoadingQuizzes(false);
     }
-  }, [user, toast, hasFetchedQuizzes]);
+  }, [user, toast]);
   
   useEffect(() => {
     if(activeTab === 'saved' && user && !hasFetchedQuizzes) {
@@ -203,8 +204,9 @@ export default function HealthQuizPage() {
     }
   }, [activeTab, user, hasFetchedQuizzes, fetchSavedQuizzes]);
   
-  const startQuiz = (data: QuizGeneratorOutput) => {
+  const startQuiz = (data: QuizGeneratorOutput, settings?: QuizSetupFormData) => {
     setQuizData(data);
+    if(settings) setQuizSettings(settings);
     setUserAnswers({});
     setCurrentQuestionIndex(0);
     setScore(0);
@@ -234,20 +236,24 @@ export default function HealthQuizPage() {
   const handleRestart = () => {
     setQuizState('setup');
     setQuizData(null);
+    setQuizSettings(null);
+    setActiveTab('generator');
   };
 
   const handleSaveQuiz = async () => {
-    if (!user || !quizData) return;
+    if (!user || !quizData || !quizSettings) return;
     try {
         await addDoc(collection(db, 'saved-quizzes'), {
             userId: user.uid,
             timestamp: serverTimestamp(),
-            topic: healthTopics.find(t => t.toLowerCase().includes(quizData.title.split(' ')[0].toLowerCase())) || quizData.title,
-            difficulty: 'medium', // This info isn't in the output, might need to pass it down
-            ...quizData
+            topic: quizSettings.topic,
+            difficulty: quizSettings.difficulty,
+            title: quizData.title,
+            questions: quizData.questions,
         });
         toast({ title: 'Quiz Saved!', description: 'You can replay this quiz anytime from the "Saved Quizzes" tab.' });
         setHasFetchedQuizzes(false); // Allow refetching
+        setActiveTab("saved");
     } catch(e: any) {
          toast({ title: 'Save failed', description: e.message || "Could not save the quiz.", variant: 'destructive' });
     }
@@ -288,7 +294,7 @@ export default function HealthQuizPage() {
                                           <p className="font-semibold">{quiz.title}</p>
                                           <p className="text-sm text-muted-foreground">{quiz.questions.length} questions &bull; Saved on {quiz.timestamp.toLocaleDateString()}</p>
                                       </div>
-                                      <Button size="sm" onClick={() => startQuiz(quiz)}>
+                                      <Button size="sm" onClick={() => startQuiz(quiz, { topic: quiz.topic, difficulty: quiz.difficulty, numberOfQuestions: quiz.questions.length } as QuizSetupFormData)}>
                                           <Play className="mr-2 h-4 w-4"/> Replay
                                       </Button>
                                   </Card>
@@ -324,7 +330,10 @@ export default function HealthQuizPage() {
                             ))}
                         </RadioGroup>
                     </CardContent>
-                    <CardFooter>
+                    <CardFooter className="flex justify-between">
+                        <Button onClick={handleRestart} variant="outline">
+                            <XCircle className="mr-2 h-4 w-4" /> Quit
+                        </Button>
                         <Button onClick={handleNextQuestion} disabled={userAnswers[currentQuestionIndex] === undefined}>
                             {currentQuestionIndex < quizLength - 1 ? 'Next Question' : 'Finish Quiz'}
                         </Button>
@@ -374,9 +383,11 @@ export default function HealthQuizPage() {
                         <Button onClick={handleRestart} variant="outline">
                             <RotateCw className="mr-2 h-4 w-4" /> Try a New Quiz
                         </Button>
+                        {quizSettings && (
                         <Button onClick={handleSaveQuiz}>
                             <Save className="mr-2 h-4 w-4" /> Save This Quiz
                         </Button>
+                        )}
                     </CardFooter>
                 </Card>
              </motion.div>
@@ -386,5 +397,3 @@ export default function HealthQuizPage() {
     </div>
   );
 }
-
-    
