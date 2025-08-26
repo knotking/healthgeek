@@ -157,8 +157,8 @@ export default function ReportsPage() {
 
   const handleGenerateRecommendationsReport = async () => {
     if (!user || !date?.from || !date?.to || !profile) {
-      toast({ title: 'Error', description: 'Please select a valid date range.', variant: 'destructive' });
-      return;
+        toast({ title: 'Error', description: 'Please select a valid date range.', variant: 'destructive' });
+        return;
     }
     setReportLoading('recommendation');
 
@@ -178,48 +178,123 @@ export default function ReportsPage() {
             setReportLoading(null);
             return;
         }
-
+        
         const doc = new jsPDF();
         let finalY = 0;
+        const pageHeight = doc.internal.pageSize.height;
+        const addPageIfNeeded = () => { if (finalY > pageHeight - 30) { doc.addPage(); finalY = 20; }};
 
         const fromDate = format(date.from, "PPP");
         const toDate = format(date.to, "PPP");
-
+        
         doc.setFontSize(18);
-        doc.text("Recommendations Report", 14, 22);
+        doc.text("Recommendations Report", 105, 20, { align: 'center' });
         doc.setFontSize(11);
         doc.text(`User: ${profile.name}`, 14, 30);
         doc.text(`Period: ${fromDate} to ${toDate}`, 14, 36);
         finalY = 40;
 
-        const addSection = (title: string, items: Recommendation[]) => {
-            if (items.length === 0) return;
-            if (finalY > 250) doc.addPage();
-            doc.setFontSize(14);
+        const addSectionTitle = (title: string) => {
+            addPageIfNeeded();
+            doc.setFontSize(16);
             doc.text(title, 14, finalY + 10);
             finalY += 15;
+        }
 
-            items.forEach(item => {
-                if (finalY > 260) {
-                    doc.addPage();
-                    finalY = 20;
-                }
-                const itemDate = format(item.timestamp.toDate(), 'yyyy-MM-dd');
-                let name = '';
-                if(item.type === 'workout') name = item.data.planTitle;
-                if(item.type === 'meditation') name = item.data.title;
-                if(item.type === 'recipe') name = item.data.name;
-
-                doc.setFontSize(12);
-                doc.text(`${itemDate}: ${name}`, 16, finalY);
-                finalY += 8;
+        const addWorkout = (item: any) => {
+            const { data, timestamp } = item;
+            addPageIfNeeded();
+            doc.setFontSize(14);
+            doc.text(`${format(timestamp.toDate(), 'PPP')}: ${data.planTitle}`, 14, finalY);
+            finalY += 8;
+            (doc as any).autoTable({
+                head: [['Important Notes']], body: [[data.notes]], theme: 'grid', startY: finalY
             });
+            finalY = (doc as any).lastAutoTable.finalY;
+
+            const addExerciseSection = (title: string, exercises: any[]) => {
+                if(exercises.length === 0) return;
+                (doc as any).autoTable({
+                    head: [[title]], startY: finalY + 5, theme: 'grid',
+                    didParseCell: function(data: any) { if (data.section === 'head') { data.cell.styles.fillColor = '#f3f4f6'; data.cell.styles.textColor = '#111827'; } },
+                });
+                finalY = (doc as any).lastAutoTable.finalY;
+                const rows = exercises.map((ex: any) => [ex.name, `${ex.sets}x${ex.reps}`, ex.rest, ex.description]);
+                (doc as any).autoTable({
+                    head: [['Exercise', 'Sets/Reps', 'Rest', 'Description']], body: rows,
+                    startY: finalY, theme: 'striped'
+                });
+                finalY = (doc as any).lastAutoTable.finalY;
+            };
+            addExerciseSection('Warm-Up', data.warmUp);
+            addExerciseSection('Main Workout', data.mainWorkout);
+            addExerciseSection('Cool-Down', data.coolDown);
+            finalY += 5;
         };
 
-        addSection("Workouts", recommendations.filter(r => r.type === 'workout'));
-        addSection("Meditations", recommendations.filter(r => r.type === 'meditation'));
-        addSection("Recipes", recommendations.filter(r => r.type === 'recipe'));
+        const addMeditation = (item: any) => {
+            const { data, timestamp } = item;
+            addPageIfNeeded();
+            doc.setFontSize(14);
+            doc.text(`${format(timestamp.toDate(), 'PPP')}: ${data.title}`, 14, finalY);
+            finalY += 8;
+             (doc as any).autoTable({
+                head: [['Benefits']], body: [[data.benefits]], theme: 'grid', startY: finalY
+            });
+            finalY = (doc as any).lastAutoTable.finalY;
+
+            data.steps.forEach((step: any) => {
+                (doc as any).autoTable({
+                    head: [[`Step ${step.step}: ${step.title} (${step.duration})`]], body: [[step.instruction]],
+                    startY: finalY + 5, theme: 'striped', headStyles: { fillColor: '#f3f4f6', textColor: '#111827' }
+                });
+                finalY = (doc as any).lastAutoTable.finalY;
+            });
+            finalY += 5;
+        };
+
+        const addRecipe = (item: any) => {
+            const { data, timestamp } = item;
+            addPageIfNeeded();
+            doc.setFontSize(14);
+            doc.text(`${format(timestamp.toDate(), 'PPP')}: ${data.name}`, 14, finalY);
+            finalY += 8;
+            (doc as any).autoTable({
+                head: [['Details', '']],
+                body: [['Prep Time', data.prepTime], ['Cook Time', data.cookTime], ['Servings', data.servings], ['Health Focus', data.healthFocus]],
+                startY: finalY, theme: 'grid',
+            });
+            finalY = (doc as any).lastAutoTable.finalY;
+            (doc as any).autoTable({
+                head: [['Ingredients']], body: data.ingredients.map((i: string) => [i]),
+                startY: finalY + 5, theme: 'striped',
+            });
+            finalY = (doc as any).lastAutoTable.finalY;
+            (doc as any).autoTable({
+                head: [['Instructions']], body: data.instructions.map((step: string, i: number) => [`${i + 1}. ${step}`]),
+                startY: finalY + 5, theme: 'striped',
+            });
+            finalY = (doc as any).lastAutoTable.finalY + 5;
+        };
         
+        const workouts = recommendations.filter(r => r.type === 'workout');
+        if (workouts.length > 0) {
+            addSectionTitle("Workouts");
+            workouts.forEach(addWorkout);
+        }
+
+        const meditations = recommendations.filter(r => r.type === 'meditation');
+        if (meditations.length > 0) {
+            addSectionTitle("Meditations");
+            meditations.forEach(addMeditation);
+        }
+
+        const recipes = recommendations.filter(r => r.type === 'recipe');
+        if (recipes.length > 0) {
+            addSectionTitle("Recipes");
+            recipes.forEach(addRecipe);
+        }
+
         doc.save(`Recommendations_Report_${profile.name}_${format(new Date(), 'yyyy-MM-dd')}.pdf`);
 
     } catch (e: any) {
@@ -313,3 +388,5 @@ export default function ReportsPage() {
     </div>
   );
 }
+
+    
