@@ -1,9 +1,9 @@
 
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
-import { useForm, Controller } from 'react-hook-form';
+import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
 import { createUserWithEmailAndPassword } from 'firebase/auth';
@@ -85,8 +85,6 @@ const healthIssues = {
   ]
 };
 
-const allHealthIssueItems = Object.values(healthIssues).flat();
-
 const diets = [
   { id: 'vegetarian', label: 'Vegetarian' },
   { id: 'vegan', label: 'Vegan' },
@@ -100,17 +98,45 @@ const formSchema = z.object({
   password: z.string().min(6, 'Password must be at least 6 characters.'),
   name: z.string().min(2, 'Name is required.'),
   age: z.coerce.number().min(1, 'Age is required.'),
-  bmi: z.coerce.number().min(1, 'BMI is required.'),
+  height: z.coerce.number().min(1, 'Height is required.'),
+  heightUnit: z.enum(['CM', 'IN']),
   currentWeight: z.coerce.number().min(1, 'Current weight is required.'),
   targetWeight: z.coerce.number().min(1, 'Target weight is required.'),
-  weightUnit: z.enum(['LB', 'KG']),
+  weightUnit: z.enum(['KG', 'LB']),
   healthIssues: z.array(z.string()).optional(),
   diets: z.array(z.string()).refine((value) => value.some((item) => item), {
     message: 'You have to select at least one diet preference.',
   }),
+  bmi: z.coerce.number().optional(),
 });
 
-export type ProfileFormData = z.infer<typeof formSchema>;
+type ProfileFormData = z.infer<typeof formSchema>;
+
+function calculateBMI(data: {
+  height: number;
+  heightUnit: 'CM' | 'IN';
+  currentWeight: number;
+  weightUnit: 'KG' | 'LB';
+}): number {
+  if (data.height <= 0 || data.currentWeight <= 0) return 0;
+
+  if (data.heightUnit === 'CM' && data.weightUnit === 'KG') {
+    const heightInMeters = data.height / 100;
+    return data.currentWeight / (heightInMeters * heightInMeters);
+  }
+
+  if (data.heightUnit === 'IN' && data.weightUnit === 'LB') {
+    return (data.currentWeight / (data.height * data.height)) * 703;
+  }
+  
+  const weightInKg = data.weightUnit === 'LB' ? data.currentWeight * 0.453592 : data.currentWeight;
+  const heightInM = data.heightUnit === 'IN' ? data.height * 0.0254 : data.height / 100;
+  
+  if (heightInM === 0) return 0;
+
+  return weightInKg / (heightInM * heightInM);
+}
+
 
 export default function SignupPage() {
   const router = useRouter();
@@ -124,18 +150,38 @@ export default function SignupPage() {
       password: '',
       name: '',
       age: 0,
-      bmi: 0,
+      height: 0,
+      heightUnit: 'CM',
       currentWeight: 0,
       targetWeight: 0,
-      weightUnit: 'LB',
+      weightUnit: 'KG',
       healthIssues: [],
       diets: [],
+      bmi: 0,
     },
   });
+
+  const watchedValues = form.watch(['height', 'heightUnit', 'currentWeight', 'weightUnit']);
+
+  useEffect(() => {
+    const [height, heightUnit, currentWeight, weightUnit] = watchedValues;
+    const bmi = calculateBMI({ height, heightUnit, currentWeight, weightUnit });
+    form.setValue('bmi', parseFloat(bmi.toFixed(2)));
+  }, [watchedValues, form]);
+
 
   async function onSubmit(values: ProfileFormData) {
     setLoading(true);
     try {
+      const bmi = calculateBMI(values);
+      if (bmi === 0) {
+          toast({ title: 'Invalid Input', description: 'Height and weight must be greater than zero.', variant: 'destructive' });
+          setLoading(false);
+          return;
+      }
+      form.setValue('bmi', parseFloat(bmi.toFixed(2)));
+      values.bmi = parseFloat(bmi.toFixed(2));
+      
       const userCredential = await createUserWithEmailAndPassword(auth, values.email, values.password);
       const user = userCredential.user;
 
@@ -153,6 +199,10 @@ export default function SignupPage() {
         name: values.name,
         age: values.age,
         bmi: values.bmi,
+        height: {
+          value: values.height,
+          unit: values.heightUnit,
+        },
         weight: {
           current: values.currentWeight,
           target: values.targetWeight,
@@ -231,46 +281,75 @@ export default function SignupPage() {
                 </div>
                  <div className="space-y-4">
                     <h3 className="text-lg font-medium border-b pb-2">Health Metrics</h3>
-                    <FormField control={form.control} name="bmi" render={({ field }) => (
+                    
+                     <div className="grid grid-cols-2 gap-2">
+                       <FormField control={form.control} name="height" render={({ field }) => (
                         <FormItem>
-                        <FormLabel>BMI</FormLabel>
-                        <FormControl><Input type="number" placeholder="22.5" {...field} step="0.1" /></FormControl>
-                        <FormMessage />
+                          <FormLabel>Height</FormLabel>
+                          <FormControl><Input type="number" placeholder="175" {...field} /></FormControl>
+                          <FormMessage />
                         </FormItem>
+                      )} />
+                      <FormField control={form.control} name="heightUnit" render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>Unit</FormLabel>
+                        <FormControl>
+                          <RadioGroup onValueChange={field.onChange} defaultValue={field.value} className="flex space-x-4 pt-2">
+                            <FormItem className="flex items-center space-x-2 space-y-0">
+                              <FormControl><RadioGroupItem value="CM" /></FormControl>
+                              <FormLabel className="font-normal">CM</FormLabel>
+                            </FormItem>
+                            <FormItem className="flex items-center space-x-2 space-y-0">
+                              <FormControl><RadioGroupItem value="IN" /></FormControl>
+                              <FormLabel className="font-normal">IN</FormLabel>
+                            </FormItem>
+                          </RadioGroup>
+                        </FormControl>
+                        <FormMessage />
+                      </FormItem>
                     )} />
+                    </div>
+
                     <div className="grid grid-cols-2 gap-2">
                     <FormField control={form.control} name="currentWeight" render={({ field }) => (
                         <FormItem>
                         <FormLabel>Current Weight</FormLabel>
-                        <FormControl><Input type="number" placeholder="150" {...field} /></FormControl>
+                        <FormControl><Input type="number" placeholder="70" {...field} /></FormControl>
                         <FormMessage />
                         </FormItem>
                     )} />
                     <FormField control={form.control} name="targetWeight" render={({ field }) => (
                         <FormItem>
                         <FormLabel>Target Weight</FormLabel>
-                        <FormControl><Input type="number" placeholder="140" {...field} /></FormControl>
+                        <FormControl><Input type="number" placeholder="65" {...field} /></FormControl>
                         <FormMessage />
                         </FormItem>
                     )} />
                     </div>
                     <FormField control={form.control} name="weightUnit" render={({ field }) => (
-                    <FormItem className="space-y-3">
+                    <FormItem>
                         <FormLabel>Weight Unit</FormLabel>
                         <FormControl>
-                        <RadioGroup onValueChange={field.onChange} defaultValue={field.value} className="flex space-x-4">
-                            <FormItem className="flex items-center space-x-2 space-y-0">
-                            <FormControl><RadioGroupItem value="LB" /></FormControl>
-                            <FormLabel className="font-normal">LB</FormLabel>
-                            </FormItem>
+                        <RadioGroup onValueChange={field.onChange} defaultValue={field.value} className="flex space-x-4 pt-2">
                             <FormItem className="flex items-center space-x-2 space-y-0">
                             <FormControl><RadioGroupItem value="KG" /></FormControl>
                             <FormLabel className="font-normal">KG</FormLabel>
+                            </FormItem>
+                            <FormItem className="flex items-center space-x-2 space-y-0">
+                            <FormControl><RadioGroupItem value="LB" /></FormControl>
+                            <FormLabel className="font-normal">LB</FormLabel>
                             </FormItem>
                         </RadioGroup>
                         </FormControl>
                         <FormMessage />
                     </FormItem>
+                    )} />
+                    <FormField control={form.control} name="bmi" render={({ field }) => (
+                        <FormItem>
+                        <FormLabel>Calculated BMI</FormLabel>
+                        <FormControl><Input type="number" {...field} disabled /></FormControl>
+                        <FormMessage />
+                        </FormItem>
                     )} />
                 </div>
                  <div className="space-y-4">
@@ -376,3 +455,5 @@ export default function SignupPage() {
     </div>
   );
 }
+
+    

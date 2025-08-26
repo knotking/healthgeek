@@ -1,3 +1,4 @@
+
 'use client';
 
 import { useEffect, useState } from 'react';
@@ -95,18 +96,47 @@ const diets = [
 const profileSchema = z.object({
   name: z.string().min(2, 'Name is required.'),
   age: z.coerce.number().min(1, 'Age is required.'),
-  bmi: z.coerce.number().min(1, 'BMI is required.'),
+  height: z.coerce.number().min(1, 'Height is required.'),
+  heightUnit: z.enum(['CM', 'IN']),
   currentWeight: z.coerce.number().min(1, 'Current weight is required.'),
   targetWeight: z.coerce.number().min(1, 'Target weight is required.'),
-  weightUnit: z.enum(['LB', 'KG']),
+  weightUnit: z.enum(['KG', 'LB']),
   healthIssues: z.array(z.string()).optional(),
   diets: z.array(z.string()).refine((value) => value.some((item) => item), {
     message: 'You have to select at least one diet preference.',
   }),
   dailyCalorieTarget: z.coerce.number().optional(),
+  bmi: z.coerce.number().optional(),
 });
 
 type ProfileFormData = z.infer<typeof profileSchema>;
+
+function calculateBMI(data: {
+  height: number;
+  heightUnit: 'CM' | 'IN';
+  currentWeight: number;
+  weightUnit: 'KG' | 'LB';
+}): number {
+  if (data.height <= 0 || data.currentWeight <= 0) return 0;
+
+  if (data.heightUnit === 'CM' && data.weightUnit === 'KG') {
+    const heightInMeters = data.height / 100;
+    return data.currentWeight / (heightInMeters * heightInMeters);
+  }
+
+  if (data.heightUnit === 'IN' && data.weightUnit === 'LB') {
+    return (data.currentWeight / (data.height * data.height)) * 703;
+  }
+  
+  // Handle mixed units by converting to metric
+  const weightInKg = data.weightUnit === 'LB' ? data.currentWeight * 0.453592 : data.currentWeight;
+  const heightInM = data.heightUnit === 'IN' ? data.height * 0.0254 : data.height / 100;
+
+  if (heightInM === 0) return 0;
+
+  return weightInKg / (heightInM * heightInM);
+}
+
 
 export default function ProfilePage() {
   const [user, authLoading] = useAuthState(auth);
@@ -119,15 +149,26 @@ export default function ProfilePage() {
     defaultValues: {
       name: '',
       age: 0,
-      bmi: 0,
+      height: 0,
+      heightUnit: 'CM',
       currentWeight: 0,
       targetWeight: 0,
-      weightUnit: 'LB',
+      weightUnit: 'KG',
       healthIssues: [],
       diets: [],
       dailyCalorieTarget: 0,
+      bmi: 0,
     },
   });
+  
+  const watchedValues = form.watch(['height', 'heightUnit', 'currentWeight', 'weightUnit']);
+
+  useEffect(() => {
+    const [height, heightUnit, currentWeight, weightUnit] = watchedValues;
+    const bmi = calculateBMI({ height, heightUnit, currentWeight, weightUnit });
+    form.setValue('bmi', parseFloat(bmi.toFixed(2)));
+  }, [watchedValues, form]);
+
 
   useEffect(() => {
     async function fetchProfile() {
@@ -140,13 +181,15 @@ export default function ProfilePage() {
           form.reset({
             name: profileData.name,
             age: profileData.age,
-            bmi: profileData.bmi,
+            height: profileData.height.value,
+            heightUnit: profileData.height.unit,
             currentWeight: profileData.weight.current,
             targetWeight: profileData.weight.target,
             weightUnit: profileData.weight.unit,
             healthIssues: profileData.healthIssues || [],
             diets: profileData.diets,
             dailyCalorieTarget: profileData.dailyCalorieTarget,
+            bmi: profileData.bmi,
           });
         }
         setFetchingProfile(false);
@@ -161,6 +204,16 @@ export default function ProfilePage() {
     if (!user) return;
     setLoading(true);
     try {
+      const bmi = calculateBMI(values);
+      if (bmi === 0) {
+          toast({ title: 'Invalid Input', description: 'Height and weight must be greater than zero.', variant: 'destructive' });
+          setLoading(false);
+          return;
+      }
+      
+      form.setValue('bmi', parseFloat(bmi.toFixed(2)));
+      values.bmi = parseFloat(bmi.toFixed(2));
+
       const { dailyCalorieTarget } = await generateCalorieTarget({
         age: values.age,
         bmi: values.bmi,
@@ -175,6 +228,10 @@ export default function ProfilePage() {
         name: values.name,
         age: values.age,
         bmi: values.bmi,
+        height: {
+          value: values.height,
+          unit: values.heightUnit,
+        },
         weight: {
           current: values.currentWeight,
           target: values.targetWeight,
@@ -215,7 +272,7 @@ export default function ProfilePage() {
     <Card>
       <CardHeader>
         <CardTitle>Your Profile</CardTitle>
-        <CardDescription>View and edit your personal information. Your daily calorie target is calculated automatically based on your profile.</CardDescription>
+        <CardDescription>View and edit your personal information. Your BMI and daily calorie target are calculated automatically based on your profile.</CardDescription>
       </CardHeader>
       <CardContent>
         <Form {...form}>
@@ -236,55 +293,86 @@ export default function ProfilePage() {
                     <FormMessage />
                   </FormItem>
                 )} />
-                <FormField control={form.control} name="bmi" render={({ field }) => (
-                    <FormItem>
-                      <FormLabel>BMI</FormLabel>
-                      <FormControl><Input type="number" placeholder="22.5" {...field} step="0.1" /></FormControl>
-                      <FormMessage />
-                    </FormItem>
-                )} />
+
                 <div className="grid grid-cols-2 gap-2">
-                   <FormField control={form.control} name="currentWeight" render={({ field }) => (
+                   <FormField control={form.control} name="height" render={({ field }) => (
                     <FormItem>
-                      <FormLabel>Current Weight</FormLabel>
-                      <FormControl><Input type="number" placeholder="150" {...field} /></FormControl>
+                      <FormLabel>Height</FormLabel>
+                      <FormControl><Input type="number" placeholder="175" {...field} /></FormControl>
                       <FormMessage />
                     </FormItem>
                   )} />
-                   <FormField control={form.control} name="targetWeight" render={({ field }) => (
-                    <FormItem>
-                      <FormLabel>Target Weight</FormLabel>
-                      <FormControl><Input type="number" placeholder="140" {...field} /></FormControl>
-                      <FormMessage />
-                    </FormItem>
-                  )} />
-                </div>
-                 <FormField control={form.control} name="weightUnit" render={({ field }) => (
-                  <FormItem className="space-y-3">
-                    <FormLabel>Weight Unit</FormLabel>
+                  <FormField control={form.control} name="heightUnit" render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Unit</FormLabel>
                     <FormControl>
-                      <RadioGroup onValueChange={field.onChange} value={field.value} className="flex space-x-4">
+                      <RadioGroup onValueChange={field.onChange} value={field.value} className="flex space-x-4 pt-2">
                         <FormItem className="flex items-center space-x-2 space-y-0">
-                          <FormControl><RadioGroupItem value="LB" /></FormControl>
-                          <FormLabel className="font-normal">LB</FormLabel>
+                          <FormControl><RadioGroupItem value="CM" /></FormControl>
+                          <FormLabel className="font-normal">CM</FormLabel>
                         </FormItem>
                         <FormItem className="flex items-center space-x-2 space-y-0">
-                          <FormControl><RadioGroupItem value="KG" /></FormControl>
-                          <FormLabel className="font-normal">KG</FormLabel>
+                          <FormControl><RadioGroupItem value="IN" /></FormControl>
+                          <FormLabel className="font-normal">IN</FormLabel>
                         </FormItem>
                       </RadioGroup>
                     </FormControl>
                     <FormMessage />
                   </FormItem>
                 )} />
-
-                 <FormField control={form.control} name="dailyCalorieTarget" render={({ field }) => (
+                </div>
+                
+                <div className="grid grid-cols-2 gap-2">
+                   <FormField control={form.control} name="currentWeight" render={({ field }) => (
                     <FormItem>
-                      <FormLabel>Daily Calorie Target (kcal)</FormLabel>
-                      <FormControl><Input type="number" {...field} disabled /></FormControl>
+                      <FormLabel>Current Weight</FormLabel>
+                      <FormControl><Input type="number" placeholder="70" {...field} /></FormControl>
                       <FormMessage />
                     </FormItem>
+                  )} />
+                   <FormField control={form.control} name="targetWeight" render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Target Weight</FormLabel>
+                      <FormControl><Input type="number" placeholder="65" {...field} /></FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )} />
+                </div>
+                 <FormField control={form.control} name="weightUnit" render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Weight Unit</FormLabel>
+                    <FormControl>
+                      <RadioGroup onValueChange={field.onChange} value={field.value} className="flex space-x-4 pt-2">
+                        <FormItem className="flex items-center space-x-2 space-y-0">
+                          <FormControl><RadioGroupItem value="KG" /></FormControl>
+                          <FormLabel className="font-normal">KG</FormLabel>
+                        </FormItem>
+                        <FormItem className="flex items-center space-x-2 space-y-0">
+                          <FormControl><RadioGroupItem value="LB" /></FormControl>
+                          <FormLabel className="font-normal">LB</FormLabel>
+                        </FormItem>
+                      </RadioGroup>
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
                 )} />
+                
+                <div className="grid grid-cols-2 gap-2">
+                     <FormField control={form.control} name="bmi" render={({ field }) => (
+                        <FormItem>
+                          <FormLabel>Calculated BMI</FormLabel>
+                          <FormControl><Input type="number" {...field} disabled /></FormControl>
+                          <FormMessage />
+                        </FormItem>
+                    )} />
+                     <FormField control={form.control} name="dailyCalorieTarget" render={({ field }) => (
+                        <FormItem>
+                          <FormLabel>Daily Calorie Target (kcal)</FormLabel>
+                          <FormControl><Input type="number" {...field} disabled /></FormControl>
+                          <FormMessage />
+                        </FormItem>
+                    )} />
+                </div>
 
               </div>
               <div className="space-y-4">
@@ -385,3 +473,5 @@ export default function ProfilePage() {
     </Card>
   );
 }
+
+    
