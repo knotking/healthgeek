@@ -1,3 +1,4 @@
+
 import type {Config} from 'tailwindcss';
 
 export default {
@@ -8,7 +9,8 @@ export default {
     './src/components/landing/footer.tsx',
     './src/components/landing/header.tsx',
     './src/components/landing/hero.tsx',
-    './src/components/landing/how-it-works.tsx'
+    './src/components/landing/how-it-works.tsx',
+    './src/components/landing/stats.tsx'
   ],
   theme: {
     container: {
