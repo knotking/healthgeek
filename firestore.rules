@@ -1,38 +1,30 @@
-rules_version = '2';
-
-service cloud.firestore {
-  match /databases/{database}/documents {
-
-    // Helper function to check if the user is authenticated
-    function isAuthenticated() {
-      return request.auth != null;
-    }
-
-    // Profiles can be read and written only by the owner
-    match /profiles/{userId} {
-      allow read, write: if isAuthenticated() && request.auth.uid == userId;
-    }
-
-    // Recommendation history can be created by any authenticated user.
-    // It can be read, updated, or deleted only by the owner.
-    match /recommendation-history/{docId} {
-      allow create: if isAuthenticated();
-      allow read, update, delete: if isAuthenticated() && request.auth.uid == resource.data.userId;
-    }
-    
-    // Community recommendations can be read by any authenticated user if they are public.
-    match /recommendation-history/{docId} {
-        allow list: if isAuthenticated() && request.query.where.isPublic == true;
-    }
-
-    // Health reports can be read and written only by the owner
-    match /health-reports/{reportId} {
-      allow read, create, update, delete: if isAuthenticated() && request.auth.uid == resource.data.userId;
-    }
-
-    // Food logs can be read and written only by the owner
-    match /food-log/{logId} {
-       allow read, create, update, delete: if isAuthenticated() && request.auth.uid == resource.data.userId;
+{
+  "rules": {
+    "profiles": {
+      "$uid": {
+        ".read": "request.auth.uid == $uid",
+        ".write": "request.auth.uid == $uid"
+      }
+    },
+    "food-log": {
+      "$docId": {
+        "read": "request.auth.uid == resource.data.userId",
+        "write": "request.auth.uid == request.resource.data.userId"
+      },
+      "allow list": "if request.auth != null && request.query.resource.data.userId == request.auth.uid"
+    },
+    "health-reports": {
+      "$docId": {
+        "read": "request.auth.uid == resource.data.userId",
+        "write": "request.auth.uid == request.resource.data.userId"
+      },
+       "allow list": "if request.auth.uid != null && request.query.resource.data.userId == request.auth.uid"
+    },
+    "recommendation-history": {
+       "allow list": "if request.auth.uid != null && (request.query.resource.data.userId == request.auth.uid || request.query.where.isPublic == true)",
+       "allow read": "if (request.auth.uid != null && resource.data.isPublic == true) || (request.auth.uid == resource.data.userId)",
+       "allow create": "if request.auth.uid == request.resource.data.userId",
+       "allow update, delete": "if request.auth.uid == resource.data.userId"
     }
   }
 }
