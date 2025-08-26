@@ -1,5 +1,4 @@
 
-
 'use client';
 
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
@@ -1053,14 +1052,12 @@ export default function RecommendationsPage() {
     useEffect(() => {
         if (!authLoading && user) {
             fetchMyHistory(1);
+            fetchCommunityRecs();
         } else if (!authLoading && !user) {
             setLoadingMyHistory(false);
+            setLoadingCommunityRecs(false);
         }
-    }, [user, authLoading, fetchMyHistory]);
-
-    useEffect(() => {
-        fetchCommunityRecs();
-    }, []);
+    }, [user, authLoading, fetchMyHistory, fetchCommunityRecs]);
 
     const handleViewHistoryItem = (item: RecommendationHistoryItem) => {
         setViewData(null); 
@@ -1116,7 +1113,6 @@ export default function RecommendationsPage() {
         try {
             await deleteDoc(doc(db, 'recommendation-history', id));
             toast({ title: 'Item Deleted' });
-            // Reset to the first page and re-fetch. This is a simpler and more reliable approach.
             handleTabChange('history');
         } catch(e: any) {
             toast({ title: "Delete failed", description: e.message, variant: 'destructive' });
@@ -1190,3 +1186,5 @@ export default function RecommendationsPage() {
     </div>
   );
 }
+
+    
