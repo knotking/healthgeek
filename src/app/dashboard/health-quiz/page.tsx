@@ -1,19 +1,25 @@
 
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
+import { useAuthState } from 'react-firebase-hooks/auth';
+import { auth, db } from '@/lib/firebase';
+import { collection, addDoc, query, where, getDocs, orderBy, serverTimestamp, Timestamp } from 'firebase/firestore';
 import { generateQuiz, QuizGeneratorOutput } from '@/ai/flows/quiz-generator';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription, CardFooter } from '@/components/ui/card';
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from '@/components/ui/form';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { useToast } from '@/hooks/use-toast';
-import { Loader2, BrainCircuit, CheckCircle, XCircle, RotateCw, Trophy, Target, Lightbulb } from 'lucide-react';
+import { Loader2, BrainCircuit, CheckCircle, XCircle, RotateCw, Trophy, Target, Lightbulb, Save, Play, BookOpen } from 'lucide-react';
 import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
 import { AnimatePresence, motion } from 'framer-motion';
+import { Slider } from '@/components/ui/slider';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+
 
 const healthTopics = [
     "Nutrition Basics",
@@ -29,6 +35,7 @@ const healthTopics = [
 const quizSetupSchema = z.object({
   topic: z.string().min(1, 'Please select a topic.'),
   difficulty: z.enum(['easy', 'medium', 'hard']),
+  numberOfQuestions: z.number().min(3).max(15),
 });
 type QuizSetupFormData = z.infer<typeof quizSetupSchema>;
 
@@ -36,38 +43,168 @@ type QuizState = 'setup' | 'generating' | 'in_progress' | 'results';
 type Question = QuizGeneratorOutput['questions'][0];
 type UserAnswers = { [key: number]: number };
 
+interface SavedQuiz extends QuizGeneratorOutput {
+    id: string;
+    userId: string;
+    topic: string;
+    difficulty: string;
+    timestamp: Date;
+}
+
+const QuizGenerator = ({ onQuizStart }: { onQuizStart: (quiz: QuizGeneratorOutput) => void }) => {
+    const [quizState, setQuizState] = useState<'setup' | 'generating'>('setup');
+    const { toast } = useToast();
+
+    const form = useForm<QuizSetupFormData>({
+        resolver: zodResolver(quizSetupSchema),
+        defaultValues: {
+            topic: '',
+            difficulty: 'medium',
+            numberOfQuestions: 5,
+        },
+    });
+
+     async function onSubmit(values: QuizSetupFormData) {
+        setQuizState('generating');
+        try {
+            const result = await generateQuiz(values);
+            if (result.questions.length === 0) {
+                throw new Error("The AI didn't generate any questions. Please try a different topic.");
+            }
+            onQuizStart(result);
+        } catch (error: any) {
+            toast({ title: 'Quiz Generation Failed', description: error.message || 'An unexpected error occurred.', variant: 'destructive' });
+            setQuizState('setup');
+        }
+    }
+
+    const pageVariants = { initial: { opacity: 0, y: 20 }, in: { opacity: 1, y: 0 }, out: { opacity: 0, y: -20 } };
+    const pageTransition = { type: "tween", ease: "anticipate", duration: 0.5 };
+
+    if (quizState === 'generating') {
+      return (
+        <motion.div key="generating" initial="initial" animate="in" exit="out" variants={pageVariants} transition={pageTransition}>
+            <Card className="flex flex-col items-center justify-center py-24">
+                <Loader2 className="h-16 w-16 animate-spin text-primary" />
+                <CardTitle className="mt-6">Generating your quiz...</CardTitle>
+                <CardDescription className="mt-2">Our AI is preparing your questions.</CardDescription>
+            </Card>
+        </motion.div>
+      )
+    }
+
+    return (
+        <motion.div key="setup" initial="initial" animate="in" exit="out" variants={pageVariants} transition={pageTransition}>
+            <Card>
+                <CardHeader>
+                    <CardTitle className="flex items-center gap-2"><BrainCircuit/> Health Knowledge Quiz</CardTitle>
+                    <CardDescription>Select a topic and difficulty to test your health knowledge.</CardDescription>
+                </CardHeader>
+                <CardContent>
+                    <Form {...form}>
+                        <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6">
+                            <FormField control={form.control} name="topic" render={({ field }) => (
+                                <FormItem>
+                                    <FormLabel>Topic</FormLabel>
+                                    <Select onValueChange={field.onChange} defaultValue={field.value}>
+                                        <FormControl>
+                                            <SelectTrigger><SelectValue placeholder="Choose a health topic..." /></SelectTrigger>
+                                        </FormControl>
+                                        <SelectContent>
+                                            {healthTopics.map(topic => <SelectItem key={topic} value={topic}>{topic}</SelectItem>)}
+                                        </SelectContent>
+                                    </Select>
+                                    <FormMessage />
+                                </FormItem>
+                            )} />
+                             <FormField control={form.control} name="difficulty" render={({ field }) => (
+                                <FormItem>
+                                    <FormLabel>Difficulty</FormLabel>
+                                     <Select onValueChange={field.onChange} defaultValue={field.value}>
+                                        <FormControl>
+                                            <SelectTrigger><SelectValue /></SelectTrigger>
+                                        </FormControl>
+                                        <SelectContent>
+                                            <SelectItem value="easy">Easy</SelectItem>
+                                            <SelectItem value="medium">Medium</SelectItem>
+                                            <SelectItem value="hard">Hard</SelectItem>
+                                        </SelectContent>
+                                    </Select>
+                                    <FormMessage />
+                                </FormItem>
+                            )} />
+                            <FormField control={form.control} name="numberOfQuestions" render={({ field }) => (
+                              <FormItem>
+                                <FormLabel>Number of Questions: {field.value}</FormLabel>
+                                <FormControl>
+                                  <Slider
+                                    value={[field.value]}
+                                    onValueChange={(vals) => field.onChange(vals[0])}
+                                    min={3}
+                                    max={15}
+                                    step={1}
+                                  />
+                                </FormControl>
+                                <FormMessage />
+                              </FormItem>
+                            )} />
+
+                            <Button type="submit">Generate Quiz</Button>
+                        </form>
+                    </Form>
+                </CardContent>
+            </Card>
+        </motion.div>
+    )
+
+}
+
 export default function HealthQuizPage() {
+  const [user, authLoading] = useAuthState(auth);
   const [quizState, setQuizState] = useState<QuizState>('setup');
-  const [quiz, setQuiz] = useState<Question[]>([]);
+  const [quizData, setQuizData] = useState<QuizGeneratorOutput | null>(null);
   const [currentQuestionIndex, setCurrentQuestionIndex] = useState(0);
   const [userAnswers, setUserAnswers] = useState<UserAnswers>({});
   const [score, setScore] = useState(0);
   const { toast } = useToast();
+  const [savedQuizzes, setSavedQuizzes] = useState<SavedQuiz[]>([]);
+  const [loadingQuizzes, setLoadingQuizzes] = useState(true);
 
-  const form = useForm<QuizSetupFormData>({
-    resolver: zodResolver(quizSetupSchema),
-    defaultValues: {
-      topic: '',
-      difficulty: 'medium',
-    },
-  });
-
-  async function onSubmit(values: QuizSetupFormData) {
-    setQuizState('generating');
+  const fetchSavedQuizzes = useCallback(async () => {
+    if (!user) return;
+    setLoadingQuizzes(true);
     try {
-      const result = await generateQuiz(values);
-      if (result.questions.length === 0) {
-        throw new Error("The AI didn't generate any questions. Please try a different topic.");
-      }
-      setQuiz(result.questions);
-      setUserAnswers({});
-      setCurrentQuestionIndex(0);
-      setScore(0);
-      setQuizState('in_progress');
-    } catch (error: any) {
-      toast({ title: 'Quiz Generation Failed', description: error.message || 'An unexpected error occurred.', variant: 'destructive' });
-      setQuizState('setup');
+        const q = query(
+            collection(db, 'saved-quizzes'),
+            where('userId', '==', user.uid),
+            orderBy('timestamp', 'desc')
+        );
+        const querySnapshot = await getDocs(q);
+        const quizzes = querySnapshot.docs.map(doc => ({
+            id: doc.id,
+            ...doc.data(),
+            timestamp: (doc.data().timestamp as Timestamp).toDate(),
+        })) as SavedQuiz[];
+        setSavedQuizzes(quizzes);
+    } catch (e: any) {
+        toast({ title: 'Error', description: 'Failed to fetch saved quizzes.', variant: 'destructive' });
+    } finally {
+        setLoadingQuizzes(false);
     }
+  }, [user, toast]);
+  
+  useEffect(() => {
+    if (!authLoading && user) {
+        fetchSavedQuizzes();
+    }
+  }, [user, authLoading, fetchSavedQuizzes]);
+  
+  const startQuiz = (data: QuizGeneratorOutput) => {
+    setQuizData(data);
+    setUserAnswers({});
+    setCurrentQuestionIndex(0);
+    setScore(0);
+    setQuizState('in_progress');
   }
 
   const handleAnswerSelect = (questionIndex: number, answerIndex: number) => {
@@ -75,12 +212,12 @@ export default function HealthQuizPage() {
   };
 
   const handleNextQuestion = () => {
-    if (currentQuestionIndex < quiz.length - 1) {
+    if (!quizData) return;
+    if (currentQuestionIndex < quizData.questions.length - 1) {
       setCurrentQuestionIndex(prev => prev + 1);
     } else {
-      // End of quiz, calculate score
       let finalScore = 0;
-      quiz.forEach((q, index) => {
+      quizData.questions.forEach((q, index) => {
         if (userAnswers[index] === q.correctAnswerIndex) {
           finalScore++;
         }
@@ -92,150 +229,156 @@ export default function HealthQuizPage() {
 
   const handleRestart = () => {
     setQuizState('setup');
-    form.reset();
+    setQuizData(null);
+  };
+
+  const handleSaveQuiz = async () => {
+    if (!user || !quizData) return;
+    try {
+        await addDoc(collection(db, 'saved-quizzes'), {
+            userId: user.uid,
+            timestamp: serverTimestamp(),
+            topic: healthTopics.find(t => t.toLowerCase().includes(quizData.title.split(' ')[0].toLowerCase())) || quizData.title,
+            difficulty: 'medium', // This info isn't in the output, might need to pass it down
+            ...quizData
+        });
+        toast({ title: 'Quiz Saved!', description: 'You can replay this quiz anytime from the "Saved Quizzes" tab.' });
+        fetchSavedQuizzes();
+    } catch(e: any) {
+         toast({ title: 'Save failed', description: e.message || "Could not save the quiz.", variant: 'destructive' });
+    }
   };
   
   const pageVariants = { initial: { opacity: 0, y: 20 }, in: { opacity: 1, y: 0 }, out: { opacity: 0, y: -20 } };
   const pageTransition = { type: "tween", ease: "anticipate", duration: 0.5 };
 
+  const currentQuestion = quizData?.questions[currentQuestionIndex];
+  const quizLength = quizData?.questions.length ?? 0;
+
   return (
     <div className="max-w-3xl mx-auto">
-        <AnimatePresence mode="wait">
-            {quizState === 'setup' && (
-                 <motion.div key="setup" initial="initial" animate="in" exit="out" variants={pageVariants} transition={pageTransition}>
-                    <Card>
-                        <CardHeader>
-                            <CardTitle className="flex items-center gap-2"><BrainCircuit/> Health Knowledge Quiz</CardTitle>
-                            <CardDescription>Select a topic and difficulty to test your health knowledge.</CardDescription>
-                        </CardHeader>
-                        <CardContent>
-                            <Form {...form}>
-                                <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6">
-                                    <FormField control={form.control} name="topic" render={({ field }) => (
-                                        <FormItem>
-                                            <FormLabel>Topic</FormLabel>
-                                            <Select onValueChange={field.onChange} defaultValue={field.value}>
-                                                <FormControl>
-                                                    <SelectTrigger><SelectValue placeholder="Choose a health topic..." /></SelectTrigger>
-                                                </FormControl>
-                                                <SelectContent>
-                                                    {healthTopics.map(topic => <SelectItem key={topic} value={topic}>{topic}</SelectItem>)}
-                                                </SelectContent>
-                                            </Select>
-                                            <FormMessage />
-                                        </FormItem>
-                                    )} />
-                                     <FormField control={form.control} name="difficulty" render={({ field }) => (
-                                        <FormItem>
-                                            <FormLabel>Difficulty</FormLabel>
-                                             <Select onValueChange={field.onChange} defaultValue={field.value}>
-                                                <FormControl>
-                                                    <SelectTrigger><SelectValue /></SelectTrigger>
-                                                </FormControl>
-                                                <SelectContent>
-                                                    <SelectItem value="easy">Easy</SelectItem>
-                                                    <SelectItem value="medium">Medium</SelectItem>
-                                                    <SelectItem value="hard">Hard</SelectItem>
-                                                </SelectContent>
-                                            </Select>
-                                            <FormMessage />
-                                        </FormItem>
-                                    )} />
-                                    <Button type="submit">Generate Quiz</Button>
-                                </form>
-                            </Form>
-                        </CardContent>
-                    </Card>
-                 </motion.div>
-            )}
+      <AnimatePresence mode="wait">
+        {quizState === 'setup' && (
+          <Tabs defaultValue="generator" className="w-full">
+            <TabsList className="grid w-full grid-cols-2">
+              <TabsTrigger value="generator">New Quiz</TabsTrigger>
+              <TabsTrigger value="saved">Saved Quizzes</TabsTrigger>
+            </TabsList>
+            <TabsContent value="generator" className="mt-4">
+               <QuizGenerator onQuizStart={startQuiz} />
+            </TabsContent>
+            <TabsContent value="saved" className="mt-4">
+              <Card>
+                  <CardHeader>
+                      <CardTitle className="flex items-center gap-2"><BookOpen/> Saved Quizzes</CardTitle>
+                      <CardDescription>Replay any quiz you have saved previously.</CardDescription>
+                  </CardHeader>
+                  <CardContent>
+                      {loadingQuizzes ? (
+                           <div className="flex justify-center py-8"><Loader2 className="h-8 w-8 animate-spin text-primary"/></div>
+                      ) : savedQuizzes.length > 0 ? (
+                           <div className="space-y-3">
+                              {savedQuizzes.map(quiz => (
+                                  <Card key={quiz.id} className="p-4 flex justify-between items-center">
+                                      <div>
+                                          <p className="font-semibold">{quiz.title}</p>
+                                          <p className="text-sm text-muted-foreground">{quiz.questions.length} questions &bull; Saved on {quiz.timestamp.toLocaleDateString()}</p>
+                                      </div>
+                                      <Button size="sm" onClick={() => startQuiz(quiz)}>
+                                          <Play className="mr-2 h-4 w-4"/> Replay
+                                      </Button>
+                                  </Card>
+                              ))}
+                           </div>
+                      ) : (
+                          <p className="text-center py-8 text-muted-foreground">No saved quizzes yet.</p>
+                      )}
+                  </CardContent>
+              </Card>
+            </TabsContent>
+          </Tabs>
+        )}
+        
+        {quizState === 'in_progress' && currentQuestion && (
+            <motion.div key="in_progress" initial="initial" animate="in" exit="out" variants={pageVariants} transition={pageTransition}>
+                <Card>
+                    <CardHeader>
+                        <CardTitle>Question {currentQuestionIndex + 1} of {quizLength}</CardTitle>
+                        <CardDescription className="pt-4 text-lg font-semibold text-foreground">{currentQuestion.question}</CardDescription>
+                    </CardHeader>
+                    <CardContent>
+                        <RadioGroup
+                            onValueChange={(value) => handleAnswerSelect(currentQuestionIndex, parseInt(value))}
+                            value={userAnswers[currentQuestionIndex]?.toString()}
+                            className="space-y-4"
+                        >
+                            {currentQuestion.options.map((option, index) => (
+                                <div key={index} className="flex items-center space-x-3 p-4 border rounded-md has-[:checked]:bg-muted has-[:checked]:border-primary transition-all">
+                                    <RadioGroupItem value={index.toString()} id={`q${currentQuestionIndex}-o${index}`} />
+                                    <label htmlFor={`q${currentQuestionIndex}-o${index}`} className="font-normal text-base cursor-pointer flex-1">{option}</label>
+                                </div>
+                            ))}
+                        </RadioGroup>
+                    </CardContent>
+                    <CardFooter>
+                        <Button onClick={handleNextQuestion} disabled={userAnswers[currentQuestionIndex] === undefined}>
+                            {currentQuestionIndex < quizLength - 1 ? 'Next Question' : 'Finish Quiz'}
+                        </Button>
+                    </CardFooter>
+                </Card>
+             </motion.div>
+        )}
 
-            {quizState === 'generating' && (
-                 <motion.div key="generating" initial="initial" animate="in" exit="out" variants={pageVariants} transition={pageTransition}>
-                    <Card className="flex flex-col items-center justify-center py-24">
-                        <Loader2 className="h-16 w-16 animate-spin text-primary" />
-                        <CardTitle className="mt-6">Generating your quiz...</CardTitle>
-                        <CardDescription className="mt-2">Our AI is preparing your questions.</CardDescription>
-                    </Card>
-                 </motion.div>
-            )}
-
-            {quizState === 'in_progress' && quiz.length > 0 && (
-                <motion.div key="in_progress" initial="initial" animate="in" exit="out" variants={pageVariants} transition={pageTransition}>
-                    <Card>
-                        <CardHeader>
-                            <CardTitle>Question {currentQuestionIndex + 1} of {quiz.length}</CardTitle>
-                            <CardDescription className="pt-4 text-lg font-semibold text-foreground">{quiz[currentQuestionIndex].question}</CardDescription>
-                        </CardHeader>
-                        <CardContent>
-                            <RadioGroup
-                                onValueChange={(value) => handleAnswerSelect(currentQuestionIndex, parseInt(value))}
-                                value={userAnswers[currentQuestionIndex]?.toString()}
-                                className="space-y-4"
-                            >
-                                {quiz[currentQuestionIndex].options.map((option, index) => (
-                                    <div key={index} className="flex items-center space-x-3 p-4 border rounded-md has-[:checked]:bg-muted has-[:checked]:border-primary transition-all">
-                                        <RadioGroupItem value={index.toString()} id={`q${currentQuestionIndex}-o${index}`} />
-                                        <label htmlFor={`q${currentQuestionIndex}-o${index}`} className="font-normal text-base cursor-pointer flex-1">{option}</label>
-                                    </div>
-                                ))}
-                            </RadioGroup>
-                        </CardContent>
-                        <CardFooter>
-                            <Button onClick={handleNextQuestion} disabled={userAnswers[currentQuestionIndex] === undefined}>
-                                {currentQuestionIndex < quiz.length - 1 ? 'Next Question' : 'Finish Quiz'}
-                            </Button>
-                        </CardFooter>
-                    </Card>
-                 </motion.div>
-            )}
-
-            {quizState === 'results' && (
-                <motion.div key="results" initial="initial" animate="in" exit="out" variants={pageVariants} transition={pageTransition}>
-                    <Card>
-                        <CardHeader className="items-center text-center">
-                            <Trophy className="w-16 h-16 text-yellow-400" />
-                            <CardTitle className="text-3xl">Quiz Complete!</CardTitle>
-                            <CardDescription className="text-xl">
-                                You scored {score} out of {quiz.length}!
-                            </CardDescription>
-                        </CardHeader>
-                        <CardContent className="space-y-6">
-                            {quiz.map((q, index) => {
-                                const userAnswer = userAnswers[index];
-                                const isCorrect = userAnswer === q.correctAnswerIndex;
-                                return (
-                                    <Card key={index} className={`p-4 ${isCorrect ? 'border-green-500' : 'border-red-500'}`}>
-                                        <p className="font-semibold">{index + 1}. {q.question}</p>
-                                        <div className="mt-2 text-sm space-y-1">
-                                            <p className={`flex items-center gap-2 ${isCorrect ? 'text-green-600' : 'text-red-600'}`}>
-                                                {isCorrect ? <CheckCircle size={16} /> : <XCircle size={16} />}
-                                                Your answer: {q.options[userAnswer] ?? "Not answered"}
+        {quizState === 'results' && quizData && (
+            <motion.div key="results" initial="initial" animate="in" exit="out" variants={pageVariants} transition={pageTransition}>
+                <Card>
+                    <CardHeader className="items-center text-center">
+                        <Trophy className="w-16 h-16 text-yellow-400" />
+                        <CardTitle className="text-3xl">Quiz Complete!</CardTitle>
+                        <CardDescription className="text-xl">
+                            You scored {score} out of {quizLength}!
+                        </CardDescription>
+                    </CardHeader>
+                    <CardContent className="space-y-6">
+                        {quizData.questions.map((q, index) => {
+                            const userAnswer = userAnswers[index];
+                            const isCorrect = userAnswer === q.correctAnswerIndex;
+                            return (
+                                <Card key={index} className={`p-4 ${isCorrect ? 'border-green-500' : 'border-red-500'}`}>
+                                    <p className="font-semibold">{index + 1}. {q.question}</p>
+                                    <div className="mt-2 text-sm space-y-1">
+                                        <p className={`flex items-center gap-2 ${isCorrect ? 'text-green-600' : 'text-red-600'}`}>
+                                            {isCorrect ? <CheckCircle size={16} /> : <XCircle size={16} />}
+                                            Your answer: {q.options[userAnswer] ?? "Not answered"}
+                                        </p>
+                                        {!isCorrect && (
+                                            <p className="flex items-center gap-2 text-green-600">
+                                                <Target size={16} />
+                                                Correct answer: {q.options[q.correctAnswerIndex]}
                                             </p>
-                                            {!isCorrect && (
-                                                <p className="flex items-center gap-2 text-green-600">
-                                                    <Target size={16} />
-                                                    Correct answer: {q.options[q.correctAnswerIndex]}
-                                                </p>
-                                            )}
-                                        </div>
-                                        <div className="mt-3 text-xs bg-muted p-2 rounded-md flex items-start gap-2">
-                                            <Lightbulb className="h-4 w-4 text-primary flex-shrink-0 mt-0.5" />
-                                            <p className="text-muted-foreground">{q.explanation}</p>
-                                        </div>
-                                    </Card>
-                                );
-                            })}
-                        </CardContent>
-                         <CardFooter>
-                            <Button onClick={handleRestart}>
-                                <RotateCw className="mr-2 h-4 w-4" /> Try a New Quiz
-                            </Button>
-                        </CardFooter>
-                    </Card>
-                 </motion.div>
-            )}
+                                        )}
+                                    </div>
+                                    <div className="mt-3 text-xs bg-muted p-2 rounded-md flex items-start gap-2">
+                                        <Lightbulb className="h-4 w-4 text-primary flex-shrink-0 mt-0.5" />
+                                        <p className="text-muted-foreground">{q.explanation}</p>
+                                    </div>
+                                </Card>
+                            );
+                        })}
+                    </CardContent>
+                     <CardFooter className="flex-col sm:flex-row gap-4 justify-center">
+                        <Button onClick={handleRestart} variant="outline">
+                            <RotateCw className="mr-2 h-4 w-4" /> Try a New Quiz
+                        </Button>
+                        <Button onClick={handleSaveQuiz}>
+                            <Save className="mr-2 h-4 w-4" /> Save This Quiz
+                        </Button>
+                    </CardFooter>
+                </Card>
+             </motion.div>
+        )}
 
-        </AnimatePresence>
+      </AnimatePresence>
     </div>
   );
 }

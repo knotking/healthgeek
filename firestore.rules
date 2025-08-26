@@ -1,44 +1,38 @@
-
 rules_version = '2';
 
 service cloud.firestore {
   match /databases/{database}/documents {
-    // Helper function to check if the user is authenticated.
-    function isAuthenticated() {
-      return request.auth != null;
-    }
-
-    // Helper function to check if the user is the owner of the document.
-    function isOwner(userId) {
-      return request.auth.uid == userId;
-    }
-    
-    // Profiles can be created by any authenticated user for themselves.
-    // They can only be read or updated by the owner.
+  
+    // Profile: Users can only read and write their own profile.
     match /profiles/{userId} {
-      allow read, update: if isAuthenticated() && isOwner(userId);
-      allow create: if isAuthenticated();
+      allow read, write: if request.auth.uid == userId;
     }
 
-    // Any authenticated user can create food logs for themselves.
-    // They can only be read by the owner.
-    match /food-log/{docId} {
-      allow read: if isAuthenticated() && isOwner(resource.data.userId);
-      allow create: if isAuthenticated();
+    // Food Log: Users can only manage their own food logs.
+    match /food-log/{logId} {
+      allow read, write, delete: if request.auth.uid == resource.data.userId;
     }
     
-    // Any authenticated user can create health reports for themselves.
-    // They can only be read by the owner.
-    match /health-reports/{docId} {
-      allow read: if isAuthenticated() && isOwner(resource.data.userId);
-      allow create: if isAuthenticated();
+    // Health Reports: Users can only manage their own health reports.
+    match /health-reports/{reportId} {
+      allow read, write, delete: if request.auth.uid == resource.data.userId;
+      allow list: if true;
     }
 
-    // Any authenticated user can create recommendations for themselves.
-    // They can only be read by the owner.
-    match /recommendation-history/{docId} {
-      allow read, update, delete: if isAuthenticated() && isOwner(resource.data.userId);
-      allow create: if isAuthenticated();
+    // Recommendation History: Users can manage their own, and read public ones.
+    match /recommendation-history/{recId} {
+      allow write, delete: if request.auth.uid == request.resource.data.userId;
+      allow read: if request.auth.uid == resource.data.userId || resource.data.isPublic == true;
+    }
+    
+    // Saved Quizzes: Users can manage their own quizzes.
+    match /saved-quizzes/{quizId} {
+        allow read, write, delete: if request.auth.uid == resource.data.userId;
+    }
+    
+    // Default deny all other access
+    match /{document=**} {
+      allow read, write: if false;
     }
   }
 }
