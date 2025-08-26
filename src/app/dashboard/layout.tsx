@@ -109,14 +109,6 @@ export default function DashboardLayout({
               </SidebarMenuButton>
             </SidebarMenuItem>
             <SidebarMenuItem>
-              <SidebarMenuButton asChild isActive={pathname.startsWith('/dashboard/marketplace')}>
-                <Link href="/dashboard/marketplace">
-                  <Store />
-                  Market Place
-                </Link>
-              </SidebarMenuButton>
-            </SidebarMenuItem>
-            <SidebarMenuItem>
               <SidebarMenuButton asChild isActive={pathname.startsWith('/dashboard/food-assessment')}>
                 <Link href="/dashboard/food-assessment">
                   <UtensilsCrossed />
@@ -153,6 +145,14 @@ export default function DashboardLayout({
                 <Link href="/dashboard/provider">
                   <Handshake />
                   Provider
+                </Link>
+              </SidebarMenuButton>
+            </SidebarMenuItem>
+            <SidebarMenuItem>
+              <SidebarMenuButton asChild isActive={pathname.startsWith('/dashboard/marketplace')}>
+                <Link href="/dashboard/marketplace">
+                  <Store />
+                  Market Place
                 </Link>
               </SidebarMenuButton>
             </SidebarMenuItem>
