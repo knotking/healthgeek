@@ -15,7 +15,7 @@ import {
   CardDescription,
 } from '@/components/ui/card';
 import { useToast } from '@/hooks/use-toast';
-import { Loader2, Camera, Upload, Utensils, HeartPulse, ChefHat, CheckCircle, XCircle, VideoOff } from 'lucide-react';
+import { Loader2, Camera, Upload, Utensils, HeartPulse, ChefHat, CheckCircle, XCircle, VideoOff, RefreshCw } from 'lucide-react';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import Image from 'next/image';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from '@/components/ui/dialog';
@@ -36,13 +36,15 @@ export default function FoodAssessmentPage() {
   const [hasCameraPermission, setHasCameraPermission] = useState<boolean | null>(null);
   const videoRef = useRef<HTMLVideoElement>(null);
   const canvasRef = useRef<HTMLCanvasElement>(null);
+  const [facingMode, setFacingMode] = useState<'user' | 'environment'>('user');
 
   useEffect(() => {
+    let stream: MediaStream;
     const getCameraPermission = async () => {
       if (!isCameraOpen) {
           if (videoRef.current?.srcObject) {
-            const stream = videoRef.current.srcObject as MediaStream;
-            stream.getTracks().forEach(track => track.stop());
+            const currentStream = videoRef.current.srcObject as MediaStream;
+            currentStream.getTracks().forEach(track => track.stop());
             videoRef.current.srcObject = null;
           }
           return;
@@ -52,7 +54,7 @@ export default function FoodAssessmentPage() {
         if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
             throw new Error("Camera not supported on this browser.");
         }
-        const stream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: 'user' } });
+        stream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: facingMode } });
         setHasCameraPermission(true);
 
         if (videoRef.current) {
@@ -73,12 +75,15 @@ export default function FoodAssessmentPage() {
     getCameraPermission();
 
     return () => {
-        if (videoRef.current?.srcObject) {
-            const stream = videoRef.current.srcObject as MediaStream;
+        if (stream) {
             stream.getTracks().forEach(track => track.stop());
         }
     }
-  }, [isCameraOpen, toast]);
+  }, [isCameraOpen, toast, facingMode]);
+
+  const toggleCamera = () => {
+    setFacingMode(prev => prev === 'user' ? 'environment' : 'user');
+  };
 
   const fetchUserData = useCallback(async () => {
     if (user) {
@@ -286,11 +291,16 @@ export default function FoodAssessmentPage() {
                 </div>
             )}
           </div>
-          <DialogFooter>
-            <Button variant="outline" onClick={() => setIsCameraOpen(false)}>Cancel</Button>
-            <Button onClick={handleTakePhoto} disabled={hasCameraPermission !== true}>
-              <Camera className="mr-2 h-4 w-4" /> Capture
+          <DialogFooter className="sm:justify-between">
+            <Button variant="outline" onClick={toggleCamera} disabled={hasCameraPermission !== true}>
+                <RefreshCw className="mr-2 h-4 w-4" /> Switch Camera
             </Button>
+            <div className="flex gap-2">
+                <Button variant="outline" onClick={() => setIsCameraOpen(false)}>Cancel</Button>
+                <Button onClick={handleTakePhoto} disabled={hasCameraPermission !== true}>
+                  <Camera className="mr-2 h-4 w-4" /> Capture
+                </Button>
+            </div>
           </DialogFooter>
         </DialogContent>
       </Dialog>
