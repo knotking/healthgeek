@@ -52,7 +52,7 @@ export default function FoodAssessmentPage() {
         if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
             throw new Error("Camera not supported on this browser.");
         }
-        const stream = await navigator.mediaDevices.getUserMedia({ video: true });
+        const stream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: 'user' } });
         setHasCameraPermission(true);
 
         if (videoRef.current) {

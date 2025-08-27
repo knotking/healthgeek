@@ -2,28 +2,41 @@ rules_version = '2';
 
 service cloud.firestore {
   match /databases/{database}/documents {
-
+  
+    // Profile: Users can only read and write their own profile.
     match /profiles/{userId} {
-      allow read, update: if request.auth.uid == userId;
-      allow create: if request.auth.uid != null;
+      allow read, write: if request.auth.uid == userId;
     }
 
+    // Food Log: Users can only manage their own food logs.
     match /food-log/{logId} {
-      allow read, create: if request.auth.uid == request.resource.data.userId;
+      allow create: if request.auth != null && request.auth.uid == request.resource.data.userId;
+      allow read, write, delete: if request.auth.uid == resource.data.userId;
     }
     
+    // Health Reports: Users can only manage their own health reports.
     match /health-reports/{reportId} {
-      allow read, create: if request.auth.uid == request.resource.data.userId;
+      allow read, write, delete: if request.auth.uid == resource.data.userId;
+      allow list: if true;
     }
 
-    match /saved-quizzes/{quizId} {
-      allow read, delete, update: if request.auth.uid == resource.data.userId;
+    // Recommendation History: Users can manage their own, and read public ones.
+    match /recommendation-history/{recId} {
+      allow read, update, delete: if request.auth.uid == resource.data.userId;
       allow create: if request.auth.uid != null && request.resource.data.userId == request.auth.uid;
-    }
+   }
     
-    match /recommendation-history/{recommendationId} {
-        allow read, update, delete: if request.auth.uid == resource.data.userId;
-        allow create: if request.auth.uid != null && request.resource.data.userId == request.auth.uid;
+    // Saved Quizzes: Users can manage their own quizzes.
+    match /saved-quizzes/{quizId} {
+      allow read: if request.auth != null && request.auth.uid == resource.data.userId;
+      allow create: if request.auth != null && request.auth.uid == request.resource.data.userId;
+      allow update: if request.auth != null && request.auth.uid == resource.data.userId;
+      allow delete: if request.auth != null && request.auth.uid == resource.data.userId;
+     }
+    
+    // Default deny all other access
+    match /{document=**} {
+      allow read, write: if false;
     }
   }
 }
