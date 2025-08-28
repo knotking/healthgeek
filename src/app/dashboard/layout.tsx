@@ -27,10 +27,33 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from '@/components/ui/dialog';
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Logo } from '@/components/logo';
 import { User, BarChart, UtensilsCrossed, Book, LogOut, Loader2, ClipboardList, PieChart, Settings, LifeBuoy, ChevronUp, Sparkles, Store, Handshake, BrainCircuit } from 'lucide-react';
 import { usePathname } from 'next/navigation';
+
+function ProfileCompletionReminder({ profile, isOpen, onOpenChange, onGoToProfile }: { profile: any, isOpen: boolean, onOpenChange: (open: boolean) => void, onGoToProfile: () => void }) {
+  if (!profile || profile.name) return null;
+
+  return (
+    <Dialog open={isOpen} onOpenChange={onOpenChange}>
+      <DialogContent>
+        <DialogHeader>
+          <DialogTitle>Complete Your Profile</DialogTitle>
+          <DialogDescription>
+            To get the most out of HealthGeek, please complete your profile. This will help us personalize your experience.
+          </DialogDescription>
+        </DialogHeader>
+        <DialogFooter>
+          <Button variant="outline" onClick={() => onOpenChange(false)}>Later</Button>
+          <Button onClick={onGoToProfile}>Go to Profile</Button>
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
+  );
+}
+
 
 export default function DashboardLayout({
   children,
@@ -42,6 +65,7 @@ export default function DashboardLayout({
   const [user, setUser] = useState<any>(null);
   const [profile, setProfile] = useState<any>(null);
   const [loading, setLoading] = useState(true);
+  const [showProfileReminder, setShowProfileReminder] = useState(false);
 
   useEffect(() => {
     const unsubscribe = onAuthStateChanged(auth, async (user) => {
@@ -52,7 +76,11 @@ export default function DashboardLayout({
         const profileRef = doc(db, 'profiles', user.uid);
         const profileSnap = await getDoc(profileRef);
         if (profileSnap.exists()) {
-          setProfile(profileSnap.data());
+          const profileData = profileSnap.data();
+          setProfile(profileData);
+          if (!profileData.name) {
+            setShowProfileReminder(true);
+          }
         }
         setLoading(false);
       }
@@ -64,6 +92,11 @@ export default function DashboardLayout({
     await signOut(auth);
     router.push('/login');
   };
+  
+  const handleGoToProfile = () => {
+    setShowProfileReminder(false);
+    router.push('/dashboard');
+  }
 
   if (loading) {
     return (
@@ -75,6 +108,12 @@ export default function DashboardLayout({
 
   return (
     <SidebarProvider>
+      <ProfileCompletionReminder 
+        profile={profile}
+        isOpen={showProfileReminder}
+        onOpenChange={setShowProfileReminder}
+        onGoToProfile={handleGoToProfile}
+      />
       <Sidebar>
         <SidebarHeader>
           <div className="flex items-center gap-2">
