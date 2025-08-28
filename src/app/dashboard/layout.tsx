@@ -78,7 +78,7 @@ export default function DashboardLayout({
         if (profileSnap.exists()) {
           const profileData = profileSnap.data();
           setProfile(profileData);
-          if (!profileData.name) {
+          if (!profileData.name && pathname !== '/dashboard') {
             setShowProfileReminder(true);
           }
         }
@@ -86,7 +86,7 @@ export default function DashboardLayout({
       }
     });
     return () => unsubscribe();
-  }, [router]);
+  }, [router, pathname]);
 
   const handleLogout = async () => {
     await signOut(auth);
@@ -124,7 +124,7 @@ export default function DashboardLayout({
         <SidebarContent>
           <SidebarMenu>
              <SidebarMenuItem>
-              <SidebarMenuButton asChild isActive={pathname.startsWith('/dashboard/insights')}>
+              <SidebarMenuButton asChild isActive={pathname === '/dashboard/insights'}>
                 <Link href="/dashboard/insights">
                   <PieChart />
                   Insights
@@ -202,7 +202,7 @@ export default function DashboardLayout({
             <DropdownMenuTrigger asChild>
                 <Button variant="ghost" className="w-full justify-start gap-2 h-auto p-2">
                     <Avatar className="size-8">
-                        {/* Add avatar image if available in profile */}
+                        {profile?.name && profile.name.length > 0 ? <AvatarImage src={`https://api.dicebear.com/8.x/lorelei/svg?seed=${profile.name}`} /> : null}
                         <AvatarFallback>{profile?.name?.[0] || user?.email?.[0]}</AvatarFallback>
                     </Avatar>
                     <div className="flex flex-col items-start text-left grow overflow-hidden">
