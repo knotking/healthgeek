@@ -249,6 +249,7 @@ export default function HealthQuizPage() {
     setQuizData(null);
     setQuizSettings(null);
     setUserAnswers({});
+    setCurrentQuestionIndex(0);
   };
 
   const handleSaveQuiz = async () => {
@@ -399,7 +400,7 @@ export default function HealthQuizPage() {
                     <CardContent>
                         <RadioGroup
                             onValueChange={(value) => handleAnswerSelect(currentQuestionIndex, parseInt(value))}
-                            value={userAnswers[currentQuestionIndex]?.toString()}
+                            value={userAnswers[currentQuestionIndex]?.toString() ?? ""}
                             className="space-y-4"
                         >
                             {currentQuestion.options.map((option, index) => (
