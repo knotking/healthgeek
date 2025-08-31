@@ -169,6 +169,7 @@ export default function HealthQuizPage() {
   const [quizSettings, setQuizSettings] = useState<QuizSetupFormData | null>(null);
   const [userAnswers, setUserAnswers] = useState<UserAnswers>({});
   const [score, setScore] = useState(0);
+  const [currentQuestionIndex, setCurrentQuestionIndex] = useState(0);
   const { toast } = useToast();
   const [savedQuizzes, setSavedQuizzes] = useState<SavedQuiz[]>([]);
   const [loadingQuizzes, setLoadingQuizzes] = useState(false);
@@ -208,9 +209,9 @@ export default function HealthQuizPage() {
   
   const startQuiz = (data: QuizGeneratorOutput, settings?: QuizSetupFormData) => {
     setQuizData(data);
-    if(settings) setQuizSettings(settings);
     setUserAnswers({});
     setCurrentQuestionIndex(0);
+    if(settings) setQuizSettings(settings);
     setScore(0);
     setQuizState('in_progress');
   }
