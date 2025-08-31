@@ -30,7 +30,7 @@ import {
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from '@/components/ui/dialog';
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Logo } from '@/components/logo';
-import { User, BarChart, UtensilsCrossed, Book, LogOut, Loader2, ClipboardList, PieChart, Settings, LifeBuoy, ChevronUp, Sparkles, Store, Handshake, BrainCircuit } from 'lucide-react';
+import { User, BarChart, UtensilsCrossed, Book, LogOut, Loader2, ClipboardList, PieChart, Settings, LifeBuoy, ChevronUp, Sparkles, Store, Handshake, BrainCircuit, Body } from 'lucide-react';
 import { usePathname } from 'next/navigation';
 
 function ProfileCompletionReminder({ profile, isOpen, onOpenChange, onGoToProfile }: { profile: any, isOpen: boolean, onOpenChange: (open: boolean) => void, onGoToProfile: () => void }) {
@@ -81,6 +81,24 @@ export default function DashboardLayout({
           if (!profileData.name && pathname !== '/dashboard') {
             setShowProfileReminder(true);
           }
+        } else {
+          // If profile doesn't exist, it means it's a new signup
+           const newProfileData = {
+              email: user.email,
+              name: '',
+              age: 0,
+              height: { value: 0, unit: 'CM' },
+              weight: { current: 0, target: 0, unit: 'KG' },
+              bmi: 0,
+              healthIssues: [],
+              diets: [],
+              dailyCalorieTarget: 0,
+            };
+            await setDoc(doc(db, 'profiles', user.uid), newProfileData);
+            setProfile(newProfileData);
+            if(pathname !== '/dashboard') {
+               setShowProfileReminder(true);
+            }
         }
         setLoading(false);
       }
@@ -171,6 +189,14 @@ export default function DashboardLayout({
                 </Link>
               </SidebarMenuButton>
             </SidebarMenuItem>
+             <SidebarMenuItem>
+              <SidebarMenuButton asChild isActive={pathname.startsWith('/dashboard/posture-analysis')}>
+                <Link href="/dashboard/posture-analysis">
+                  <Body />
+                  Posture Analysis
+                </Link>
+              </SidebarMenuButton>
+            </SidebarMenuItem>
             <SidebarMenuItem>
               <SidebarMenuButton asChild isActive={pathname.startsWith('/dashboard/reports')}>
                 <Link href="/dashboard/reports">
@@ -245,7 +271,7 @@ export default function DashboardLayout({
       <SidebarInset>
         <header className="flex h-14 items-center gap-4 border-b bg-background px-4 lg:h-[60px] lg:px-6">
             <SidebarTrigger className="md:hidden"/>
-            <h1 className="text-lg font-semibold capitalize">{(pathname.split('/').pop() || 'dashboard').replace('-', ' ')}</h1>
+            <h1 className="text-lg font-semibold capitalize">{(pathname.split('/').pop() || 'dashboard').replace(/-/g, ' ')}</h1>
         </header>
         <main className="flex-1 p-4 sm:p-6">{children}</main>
       </SidebarInset>

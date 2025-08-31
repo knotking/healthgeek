@@ -11,3 +11,4 @@ import '@/ai/flows/workout-recommender.ts';
 import '@/ai/flows/meditation-recommender.ts';
 import '@/ai/flows/quiz-generator.ts';
 import '@/ai/flows/habit-recommender.ts';
+import '@/ai/flows/posture-analyzer.ts';
