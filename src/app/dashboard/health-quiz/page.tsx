@@ -167,7 +167,6 @@ export default function HealthQuizPage() {
   const [quizState, setQuizState] = useState<QuizState>('setup');
   const [quizData, setQuizData] = useState<QuizGeneratorOutput | null>(null);
   const [quizSettings, setQuizSettings] = useState<QuizSetupFormData | null>(null);
-  const [currentQuestionIndex, setCurrentQuestionIndex] = useState(0);
   const [userAnswers, setUserAnswers] = useState<UserAnswers>({});
   const [score, setScore] = useState(0);
   const { toast } = useToast();
@@ -477,5 +476,3 @@ export default function HealthQuizPage() {
     </div>
   );
 }
-
-    
