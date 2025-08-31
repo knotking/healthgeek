@@ -240,6 +240,7 @@ export default function HealthQuizPage() {
     setQuizState('setup');
     setQuizData(null);
     setQuizSettings(null);
+    setUserAnswers({});
     setActiveTab('generator');
   };
   
@@ -247,6 +248,7 @@ export default function HealthQuizPage() {
     setQuizState('setup');
     setQuizData(null);
     setQuizSettings(null);
+    setUserAnswers({});
   };
 
   const handleSaveQuiz = async () => {
