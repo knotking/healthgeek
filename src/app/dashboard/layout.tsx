@@ -5,7 +5,7 @@ import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { onAuthStateChanged, signOut } from 'firebase/auth';
 import { auth, db } from '@/lib/firebase';
-import { doc, getDoc } from 'firebase/firestore';
+import { doc, getDoc, setDoc } from 'firebase/firestore';
 import { Button } from '@/components/ui/button';
 import {
   SidebarProvider,
@@ -30,7 +30,7 @@ import {
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from '@/components/ui/dialog';
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Logo } from '@/components/logo';
-import { User, BarChart, UtensilsCrossed, Book, LogOut, Loader2, ClipboardList, PieChart, Settings, LifeBuoy, ChevronUp, Sparkles, Store, Handshake, BrainCircuit, Body } from 'lucide-react';
+import { User, BarChart, UtensilsCrossed, Book, LogOut, Loader2, ClipboardList, PieChart, Settings, LifeBuoy, ChevronUp, Sparkles, Store, Handshake, BrainCircuit, PersonStanding } from 'lucide-react';
 import { usePathname } from 'next/navigation';
 
 function ProfileCompletionReminder({ profile, isOpen, onOpenChange, onGoToProfile }: { profile: any, isOpen: boolean, onOpenChange: (open: boolean) => void, onGoToProfile: () => void }) {
@@ -192,7 +192,7 @@ export default function DashboardLayout({
              <SidebarMenuItem>
               <SidebarMenuButton asChild isActive={pathname.startsWith('/dashboard/posture-analysis')}>
                 <Link href="/dashboard/posture-analysis">
-                  <Body />
+                  <PersonStanding />
                   Posture Analysis
                 </Link>
               </SidebarMenuButton>
