@@ -46,7 +46,7 @@ export default function TrackCaloriePage() {
   const [hasCameraPermission, setHasCameraPermission] = useState<boolean | null>(null);
   const videoRef = useRef<HTMLVideoElement>(null);
   const canvasRef = useRef<HTMLCanvasElement>(null);
-  const [facingMode, setFacingMode] = useState<'user' | 'environment'>('user');
+  const [facingMode, setFacingMode] = useState<'user' | 'environment'>('environment');
 
   useEffect(() => {
     let stream: MediaStream;
@@ -421,3 +421,5 @@ export default function TrackCaloriePage() {
     </>
   );
 }
+
+    

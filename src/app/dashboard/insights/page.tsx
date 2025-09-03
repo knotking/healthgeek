@@ -45,7 +45,7 @@ interface UsageMetrics {
     workouts: number;
     meditations: number;
     recipes: number;
-    foodAssessments: number;
+    foodAnalyses: number;
     numberAnalyses: number;
 }
 
@@ -156,14 +156,14 @@ export default function InsightsPage() {
         const workoutsQuery = query(collection(db, 'recommendation-history'), where('userId', '==', user.uid), where('type', '==', 'workout'));
         const meditationsQuery = query(collection(db, 'recommendation-history'), where('userId', '==', user.uid), where('type', '==', 'meditation'));
         const recipesQuery = query(collection(db, 'recommendation-history'), where('userId', '==', user.uid), where('type', '==', 'recipe'));
-        const foodAssessmentsQuery = query(collection(db, 'food-log'), where('userId', '==', user.uid));
+        const foodAnalysesQuery = query(collection(db, 'food-log'), where('userId', '==', user.uid));
         const numberAnalysesQuery = query(collection(db, 'health-reports'), where('userId', '==', user.uid));
         
-        const [workoutsSnap, meditationsSnap, recipesSnap, foodAssessmentsSnap, numberAnalysesSnap] = await Promise.all([
+        const [workoutsSnap, meditationsSnap, recipesSnap, foodAnalysesSnap, numberAnalysesSnap] = await Promise.all([
             getCountFromServer(workoutsQuery),
             getCountFromServer(meditationsQuery),
             getCountFromServer(recipesQuery),
-            getCountFromServer(foodAssessmentsQuery),
+            getCountFromServer(foodAnalysesQuery),
             getCountFromServer(numberAnalysesQuery),
         ]);
         
@@ -171,7 +171,7 @@ export default function InsightsPage() {
             workouts: workoutsSnap.data().count,
             meditations: meditationsSnap.data().count,
             recipes: recipesSnap.data().count,
-            foodAssessments: foodAssessmentsSnap.data().count,
+            foodAnalyses: foodAnalysesSnap.data().count,
             numberAnalyses: numberAnalysesSnap.data().count,
         });
 
@@ -243,7 +243,7 @@ export default function InsightsPage() {
                             </Card>
                              <Card className="p-4">
                                 <UtensilsCrossed className="mx-auto h-8 w-8 text-primary mb-2"/>
-                                <p className="text-2xl font-bold">{usageMetrics.foodAssessments}</p>
+                                <p className="text-2xl font-bold">{usageMetrics.foodAnalyses}</p>
                                 <p className="text-sm text-muted-foreground">Meals Logged</p>
                             </Card>
                              <Card className="p-4">
@@ -354,3 +354,5 @@ export default function InsightsPage() {
     </div>
   );
 }
+
+    

@@ -166,10 +166,10 @@ export default function DashboardLayout({
               </SidebarMenuButton>
             </SidebarMenuItem>
             <SidebarMenuItem>
-              <SidebarMenuButton asChild isActive={pathname.startsWith('/dashboard/food-assessment')}>
-                <Link href="/dashboard/food-assessment">
+              <SidebarMenuButton asChild isActive={pathname.startsWith('/dashboard/food-analysis')}>
+                <Link href="/dashboard/food-analysis">
                   <UtensilsCrossed />
-                  Food Assessment
+                  Food Analysis
                 </Link>
               </SidebarMenuButton>
             </SidebarMenuItem>
@@ -278,3 +278,5 @@ export default function DashboardLayout({
     </SidebarProvider>
   );
 }
+
+    
