@@ -9,16 +9,10 @@ export default function Hero() {
         <main className="text-5xl md:text-6xl font-bold">
           <h1 className="inline">
             <span className="inline bg-gradient-to-r from-[hsl(var(--accent))] to-[hsl(var(--primary))] text-transparent bg-clip-text">
-              HealthGeek
+              AI Agents
             </span>{" "}
-            Your Personal
-          </h1>{" "}
-          <h2 className="inline">
-            <span className="inline bg-gradient-to-r from-[hsl(var(--accent))] to-[hsl(var(--primary))] text-transparent bg-clip-text">
-              Health
-            </span>{" "}
-            Companion
-          </h2>
+            for Personal HealthCare
+          </h1>
         </main>
 
         <p className="text-xl text-muted-foreground md:w-10/12 mx-auto lg:mx-0">
