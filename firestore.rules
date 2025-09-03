@@ -4,45 +4,42 @@ rules_version = '2';
 service cloud.firestore {
   match /databases/{database}/documents {
 
-    // Profile: Users can read and write their own profile
+    // Users can only read and write to their own profile
     match /profiles/{userId} {
-      allow read, write: if request.auth != null && request.auth.uid == userId;
+      allow read, update: if request.auth.uid == userId;
+      allow create: if request.auth.uid != null;
     }
-    
-    // Health Reports: Users can read and write their own reports
+
+    // Users can only read and write to their own health reports
     match /health-reports/{reportId} {
-      allow create: if request.auth != null && request.auth.uid == request.resource.data.userId;
-      allow read, update, delete: if request.auth != null && request.auth.uid == resource.data.userId;
+      allow read, create, update, delete: if request.auth.uid == request.resource.data.userId;
     }
     
-    // Food Log: Users can read and write their own food logs
+    // Users can only read and write their own food logs
     match /food-log/{logId} {
-      allow create: if request.auth != null && request.auth.uid == request.resource.data.userId;
-      allow read, update, delete: if request.auth != null && request.auth.uid == resource.data.userId;
+        allow read, create, update, delete: if request.auth.uid == request.resource.data.userId;
+    }
+
+    // Users can only read and write to their own saved quizzes
+    match /saved-quizzes/{quizId} {
+        allow read, create, update, delete: if request.auth.uid == request.resource.data.userId;
     }
     
-    // Saved Quizzes: Users can read and write their own quizzes
-    match /saved-quizzes/{quizId} {
-      allow create: if request.auth != null && request.auth.uid == request.resource.data.userId;
-      allow read, update, delete: if request.auth != null && request.auth.uid == resource.data.userId;
+    // Users can only read and write to their own recommendation history
+    match /recommendation-history/{recId} {
+        allow read, create, update, delete: if request.auth.uid == request.resource.data.userId;
+        // Allow public reads if isPublic is true
+        allow read: if resource.data.isPublic == true;
     }
 
-    // Recommendation History: Users can read and write their own history
-    match /recommendation-history/{historyId} {
-        allow create: if request.auth != null && request.auth.uid == request.resource.data.userId;
-        allow read, update, delete: if request.auth != null && request.auth.uid == resource.data.userId;
-    }
-
-    // Meditation Log: Users can read and write their own logs
+    // Users can only read and write to their own meditation logs
     match /meditation-log/{logId} {
-      allow create: if request.auth != null && request.auth.uid == request.resource.data.userId;
-      allow read, update, delete: if request.auth != null && request.auth.uid == resource.data.userId;
+        allow read, create, update, delete: if request.auth.uid == request.resource.data.userId;
     }
 
-     // Workout Log: Users can read and write their own logs
+    // Users can only read and write to their own workout logs
     match /workout-log/{logId} {
-      allow create: if request.auth != null && request.auth.uid == request.resource.data.userId;
-      allow read, update, delete: if request.auth != null && request.auth.uid == resource.data.userId;
+        allow read, create, update, delete: if request.auth.uid == request.resource.data.userId;
     }
   }
 }
