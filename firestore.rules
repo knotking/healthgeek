@@ -4,49 +4,50 @@ rules_version = '2';
 service cloud.firestore {
   match /databases/{database}/documents {
 
-    // Helper function to check if the user is authenticated
-    function isAuthenticated() {
-      return request.auth != null;
-    }
-
-    // Helper function to check if the user owns the document
+    // Helper function to check ownership
     function isOwner(userId) {
-      return request.auth.uid == userId;
+      return request.auth != null && request.auth.uid == userId;
     }
 
-    // Secure the 'profiles' collection
+    // Profiles: Users can read and write to their own profile document
     match /profiles/{userId} {
-      allow read, write: if isAuthenticated() && isOwner(userId);
+      allow read, write: if isOwner(userId);
     }
 
-    // Secure the 'health-reports' collection
-    match /health-reports/{reportId} {
-      allow read, create, update, delete: if isAuthenticated() && isOwner(request.resource.data.userId) || isOwner(resource.data.userId);
+    // Food Log: Users can manage their own food logs
+    match /food-log/{docId} {
+      allow read, write: if isOwner(resource.data.userId);
+      allow create: if isOwner(request.resource.data.userId);
     }
 
-    // Secure the 'food-log' collection
-    match /food-log/{logId} {
-      allow read, create, update, delete: if isAuthenticated() && isOwner(request.resource.data.userId) || isOwner(resource.data.userId);
+    // Health Reports: Users can manage their own health reports
+    match /health-reports/{docId} {
+       allow read, write: if isOwner(resource.data.userId);
+       allow create: if isOwner(request.resource.data.userId);
     }
 
-    // Secure the 'saved-quizzes' collection
-    match /saved-quizzes/{quizId} {
-      allow read, create, update, delete: if isAuthenticated() && isOwner(request.resource.data.userId) || isOwner(resource.data.userId);
+    // Saved Quizzes: Users can manage their own saved quizzes
+    match /saved-quizzes/{docId} {
+       allow read, write: if isOwner(resource.data.userId);
+       allow create: if isOwner(request.resource.data.userId);
     }
 
-    // Secure the 'recommendation-history' collection
-    match /recommendation-history/{recommendationId} {
-      allow read, create, update, delete: if isAuthenticated() && isOwner(request.resource.data.userId) || isOwner(resource.data.userId);
+    // Recommendation History: Users can manage their own recommendation history
+    match /recommendation-history/{docId} {
+       allow read, write: if isOwner(resource.data.userId);
+       allow create: if isOwner(request.resource.data.userId);
     }
     
-    // Secure the 'meditation-log' collection
-    match /meditation-log/{logId} {
-       allow read, create, update, delete: if isAuthenticated() && isOwner(request.resource.data.userId) || isOwner(resource.data.userId);
+    // Meditation Log: Users can manage their own meditation logs
+    match /meditation-log/{docId} {
+       allow read, write: if isOwner(resource.data.userId);
+       allow create: if isOwner(request.resource.data.userId);
     }
     
-    // Secure the 'workout-log' collection
-    match /workout-log/{logId} {
-       allow read, create, update, delete: if isAuthenticated() && isOwner(request.resource.data.userId) || isOwner(resource.data.userId);
+    // Workout Log: Users can manage their own workout logs
+    match /workout-log/{docId} {
+      allow read, write: if isOwner(resource.data.userId);
+      allow create: if isOwner(request.resource.data.userId);
     }
   }
 }
