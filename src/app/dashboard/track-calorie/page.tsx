@@ -1,10 +1,10 @@
 
 'use client';
 
-import { useState, useRef, useEffect, useCallback } from 'react';
+import { useState, useRef, useEffect, useCallback, useMemo } from 'react';
 import { useAuthState } from 'react-firebase-hooks/auth';
 import { auth, db } from '@/lib/firebase';
-import { doc, getDoc, collection, addDoc, query, where, getDocs, Timestamp, orderBy, limit } from 'firebase/firestore';
+import { doc, getDoc, collection, addDoc, query, where, getDocs, Timestamp, orderBy, limit, startAt, endAt } from 'firebase/firestore';
 import { analyzeFood, FoodAnalysisOutput } from '@/ai/flows/food-analyzer';
 import { Button } from '@/components/ui/button';
 import {
@@ -15,16 +15,14 @@ import {
   CardDescription,
 } from '@/components/ui/card';
 import { useToast } from '@/hooks/use-toast';
-import { Loader2, Camera, Upload, Utensils, Zap, HeartPulse, List, AlertTriangle, Video, VideoOff, RefreshCw, PlusCircle, Calendar as CalendarIcon } from 'lucide-react';
+import { Loader2, Camera, Upload, Utensils, Zap, HeartPulse, List, AlertTriangle, Video, VideoOff, RefreshCw, PlusCircle, Search } from 'lucide-react';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import Image from 'next/image';
 import { Progress } from '@/components/ui/progress';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from '@/components/ui/dialog';
-import { format, startOfDay, endOfDay } from 'date-fns';
-import { Calendar } from "@/components/ui/calendar";
-import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
-import { cn } from "@/lib/utils";
+import { startOfDay, endOfDay } from 'date-fns';
+import { Input } from '@/components/ui/input';
 
 
 interface FoodLog {
@@ -300,7 +298,8 @@ export default function TrackCaloriePage() {
   const [profile, setProfile] = useState<any>(null);
   const [latestHealthReport, setLatestHealthReport] = useState<any>(null);
   const [isAnalysisDialogOpen, setIsAnalysisDialogOpen] = useState(false);
-  const [historyDate, setHistoryDate] = useState<Date>(new Date());
+  const [searchQuery, setSearchQuery] = useState('');
+  const [activeTab, setActiveTab] = useState('today');
 
   const fetchUserData = useCallback(async () => {
     if (user) {
@@ -359,18 +358,14 @@ export default function TrackCaloriePage() {
     }
   }, [user]);
   
-  const fetchHistoryLog = useCallback(async (date: Date) => {
+  const fetchInitialHistory = useCallback(async () => {
     if (user) {
         setLoading(true);
-        const start = startOfDay(date);
-        const end = endOfDay(date);
-
         const q = query(
             collection(db, 'food-log'),
             where('userId', '==', user.uid),
-            where('timestamp', '>=', Timestamp.fromDate(start)),
-            where('timestamp', '<=', Timestamp.fromDate(end)),
-            orderBy('timestamp', 'desc')
+            orderBy('timestamp', 'desc'),
+            limit(10)
         );
         const querySnapshot = await getDocs(q);
         const logs = querySnapshot.docs.map(doc => ({
@@ -383,27 +378,58 @@ export default function TrackCaloriePage() {
     }
   }, [user]);
 
+  const searchHistory = useCallback(async (searchString: string) => {
+    if(!user) return;
+    setLoading(true);
+    const q = query(
+        collection(db, 'food-log'),
+        where('userId', '==', user.uid),
+        orderBy('foodName'),
+        startAt(searchString),
+        endAt(searchString + '\uf8ff')
+    );
+    const querySnapshot = await getDocs(q);
+    const logs = querySnapshot.docs.map(doc => ({
+        id: doc.id,
+        ...doc.data(),
+        timestamp: (doc.data().timestamp as Timestamp).toDate(),
+    })) as FoodLog[];
+    setHistoryLog(logs);
+    setLoading(false);
+  }, [user]);
+
   useEffect(() => {
     if (!authLoading && user) {
-      fetchUserData();
-      fetchDailyLog();
-      fetchHistoryLog(historyDate);
+        if(activeTab === 'today') {
+            fetchDailyLog();
+        } else if (activeTab === 'history') {
+            if (searchQuery) {
+                searchHistory(searchQuery);
+            } else {
+                fetchInitialHistory();
+            }
+        }
     }
-  }, [user, authLoading, fetchUserData, fetchDailyLog, fetchHistoryLog, historyDate]);
+  }, [user, authLoading, fetchDailyLog, fetchInitialHistory, searchHistory, activeTab, searchQuery]);
+
+  useEffect(() => {
+      if (!authLoading && user) {
+          fetchUserData();
+      }
+  }, [user, authLoading, fetchUserData]);
   
   const handleFoodLogged = () => {
     fetchDailyLog();
   };
   
   const totalCaloriesToday = dailyLog.reduce((sum, log) => sum + log.calories, 0);
-  const totalCaloriesHistory = historyLog.reduce((sum, log) => sum + log.calories, 0);
   const calorieTarget = profile?.dailyCalorieTarget || 0;
   const remainingCalories = calorieTarget - totalCaloriesToday;
   const progressPercentage = calorieTarget > 0 ? (totalCaloriesToday / calorieTarget) * 100 : 0;
   
   return (
     <>
-      <Tabs defaultValue="today" className="w-full">
+      <Tabs defaultValue="today" value={activeTab} onValueChange={setActiveTab} className="w-full">
         <TabsList className="grid w-full grid-cols-2">
           <TabsTrigger value="today">Today's Log</TabsTrigger>
           <TabsTrigger value="history">History</TabsTrigger>
@@ -464,43 +490,38 @@ export default function TrackCaloriePage() {
           <Card>
             <CardHeader>
               <CardTitle>Log History</CardTitle>
-              <CardDescription>Review your food logs from previous days.</CardDescription>
+              <CardDescription>Review your past food logs. Showing 10 most recent by default.</CardDescription>
             </CardHeader>
             <CardContent className="space-y-4">
-              <Popover>
-                <PopoverTrigger asChild>
-                  <Button variant={"outline"} className={cn("w-[280px] justify-start text-left font-normal", !historyDate && "text-muted-foreground")}>
-                    <CalendarIcon className="mr-2 h-4 w-4" />
-                    {historyDate ? format(historyDate, "PPP") : <span>Pick a date</span>}
-                  </Button>
-                </PopoverTrigger>
-                <PopoverContent className="w-auto p-0">
-                  <Calendar mode="single" selected={historyDate} onSelect={(date) => { if(date) setHistoryDate(date)}} initialFocus />
-                </PopoverContent>
-              </Popover>
+             <div className="relative">
+                <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                <Input
+                    placeholder="Search by food name..."
+                    className="pl-9"
+                    value={searchQuery}
+                    onChange={(e) => setSearchQuery(e.target.value)}
+                />
+              </div>
 
               {loading && <div className="flex justify-center py-8"><Loader2 className="h-6 w-6 animate-spin"/></div>}
 
               {!loading && (
                 historyLog.length > 0 ? (
-                  <>
-                    <p className="font-semibold">Total calories for {format(historyDate, "PPP")}: {totalCaloriesHistory} kcal</p>
                     <div className="space-y-4">
                         <ul className="space-y-3 max-h-96 overflow-y-auto pr-2">
                           {historyLog.map(log => (
                             <li key={log.id} className="flex justify-between items-center p-3 bg-muted/50 rounded-md">
                               <div>
                                 <p className="font-semibold">{log.foodName}</p>
-                                <p className="text-sm text-muted-foreground">{log.timestamp.toLocaleTimeString()}</p>
+                                <p className="text-sm text-muted-foreground">{log.timestamp.toLocaleString()}</p>
                               </div>
                               <p className="font-medium">{log.calories} kcal</p>
                             </li>
                           ))}
                         </ul>
                     </div>
-                  </>
                 ) : (
-                  <p className="text-muted-foreground text-center py-16">No food logged on this day.</p>
+                  <p className="text-muted-foreground text-center py-16">No food logs found.</p>
                 )
               )}
             </CardContent>
