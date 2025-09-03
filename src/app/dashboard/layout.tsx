@@ -30,7 +30,7 @@ import {
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from '@/components/ui/dialog';
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Logo } from '@/components/logo';
-import { User, BarChart, UtensilsCrossed, Book, LogOut, Loader2, ClipboardList, PieChart, Settings, LifeBuoy, ChevronUp, Sparkles, Store, Handshake, BrainCircuit, PersonStanding, Brain, Dumbbell } from 'lucide-react';
+import { User, LogOut, Loader2, ClipboardList, Book, Settings, LifeBuoy, ChevronUp, Sparkles, Store, Handshake, BrainCircuit } from 'lucide-react';
 import { usePathname } from 'next/navigation';
 
 function ProfileCompletionReminder({ profile, isOpen, onOpenChange, onGoToProfile }: { profile: any, isOpen: boolean, onOpenChange: (open: boolean) => void, onGoToProfile: () => void }) {
@@ -141,30 +141,14 @@ export default function DashboardLayout({
         </SidebarHeader>
         <SidebarContent>
           <SidebarMenu>
-            <SidebarMenuItem>
-              <SidebarMenuButton asChild isActive={pathname.startsWith('/dashboard/track-calorie')}>
-                <Link href="/dashboard/track-calorie">
-                  <BarChart />
-                  Track Calorie
-                </Link>
-              </SidebarMenuButton>
-            </SidebarMenuItem>
              <SidebarMenuItem>
-              <SidebarMenuButton asChild isActive={pathname.startsWith('/dashboard/track-workout')}>
-                <Link href="/dashboard/track-workout">
-                  <Dumbbell />
-                  Track Workout
-                </Link>
-              </SidebarMenuButton>
-            </SidebarMenuItem>
-             <SidebarMenuItem>
-              <SidebarMenuButton asChild isActive={pathname.startsWith('/dashboard/track-meditation')}>
-                <Link href="/dashboard/track-meditation">
-                  <Brain />
-                  Track Meditation
-                </Link>
-              </SidebarMenuButton>
-            </SidebarMenuItem>
+                <SidebarMenuButton asChild isActive={pathname.startsWith('/dashboard/tracking')}>
+                  <Link href="/dashboard/tracking">
+                    <ClipboardList />
+                    Tracking
+                  </Link>
+                </SidebarMenuButton>
+              </SidebarMenuItem>
              <SidebarMenuItem>
               <SidebarMenuButton asChild isActive={pathname.startsWith('/dashboard/recommendations')}>
                 <Link href="/dashboard/recommendations">
