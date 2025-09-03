@@ -4,7 +4,7 @@
 import { useState, useRef, useEffect, useCallback } from 'react';
 import { useAuthState } from 'react-firebase-hooks/auth';
 import { auth, db } from '@/lib/firebase';
-import { doc, getDoc, setDoc, addDoc, collection, query, orderBy, getDocs, Timestamp, where, limit, collectionGroup } from 'firebase/firestore';
+import { doc, getDoc, setDoc, addDoc, collection, query, orderBy, getDocs, Timestamp, where, limit, deleteDoc } from 'firebase/firestore';
 import { analyzeHealthReport, HealthReportAnalysisOutput } from '@/ai/flows/health-report-analyzer';
 import { analyzeFood, FoodAnalysisOutput } from '@/ai/flows/food-analyzer';
 import { analyzePosture, PostureAnalysisOutput } from '@/ai/flows/posture-analyzer';
@@ -17,7 +17,7 @@ import {
   CardDescription,
 } from '@/components/ui/card';
 import { useToast } from '@/hooks/use-toast';
-import { Loader2, Upload, FileScan, Beaker, PlusCircle, History, Lightbulb, Camera, Utensils, Zap, HeartPulse, Video, VideoOff, RefreshCw, Sparkles, Send, Trash2, Dumbbell, BrainCircuit, ChefHat, Target as TargetIcon, BookOpen, PieChart } from 'lucide-react';
+import { Loader2, Upload, FileScan, Beaker, PlusCircle, History, Lightbulb, Camera, Utensils, Zap, HeartPulse, Video, VideoOff, RefreshCw, Sparkles, Send, Trash2 } from 'lucide-react';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import Image from 'next/image';
 import { Separator } from '@/components/ui/separator';
@@ -32,20 +32,6 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, Di
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from '@/components/ui/alert-dialog';
 
 import { Textarea } from '@/components/ui/textarea';
-import { Badge } from '@/components/ui/badge';
-
-
-interface Insights {
-    foodLogs: number;
-    workoutLogs: number;
-    meditationLogs: number;
-    healthReports: number;
-    savedRecipes: number;
-    savedWorkouts: number;
-    savedMeditations: number;
-    savedHabitPlans: number;
-    quizzesTaken: number;
-}
 
 
 // --- Health Report Analysis ---
@@ -65,62 +51,10 @@ function NumberAnalysis() {
   const [reportHistory, setReportHistory] = useState<HealthReportLog[]>([]);
   const [isFetchingHistory, setIsFetchingHistory] = useState(true);
   const fileInputRef = useRef<HTMLInputElement>(null);
-  const [insights, setInsights] = useState<Insights | null>(null);
-  const [insightsLoading, setInsightsLoading] = useState(true);
-
-  const fetchInsights = useCallback(async (userId: string) => {
-    setInsightsLoading(true);
-    try {
-        const collections = {
-            foodLogs: collection(db, 'food-log'),
-            workoutLogs: collection(db, 'workout-log'),
-            meditationLogs: collection(db, 'meditation-log'),
-            healthReports: collection(db, 'health-reports'),
-            recommendations: collection(db, 'recommendation-history'),
-            quizzes: collection(db, 'saved-quizzes'),
-        };
-
-        const queries = Object.entries(collections).reduce((acc, [key, coll]) => {
-            acc[key as keyof typeof collections] = query(coll, where('userId', '==', userId));
-            return acc;
-        }, {} as Record<keyof typeof collections, any>);
-
-        const [
-            foodLogsSnap,
-            workoutLogsSnap,
-            meditationLogsSnap,
-            healthReportsSnap,
-            recommendationsSnap,
-            quizzesSnap,
-        ] = await Promise.all(Object.values(queries).map(q => getDocs(q)));
-
-        const recommendationData = recommendationsSnap.docs.map(doc => doc.data());
-
-        setInsights({
-            foodLogs: foodLogsSnap.size,
-            workoutLogs: workoutLogsSnap.size,
-            meditationLogs: meditationLogsSnap.size,
-            healthReports: healthReportsSnap.size,
-            savedRecipes: recommendationData.filter(d => d.type === 'recipe').length,
-            savedWorkouts: recommendationData.filter(d => d.type === 'workout').length,
-            savedMeditations: recommendationData.filter(d => d.type === 'meditation').length,
-            savedHabitPlans: recommendationData.filter(d => d.type === 'habit').length,
-            quizzesTaken: quizzesSnap.size,
-        });
-
-    } catch (e: any) {
-        console.error("Error fetching insights:", e);
-        toast({ title: 'Error fetching insights', description: e.message, variant: 'destructive' });
-    } finally {
-        setInsightsLoading(false);
-    }
-  }, [toast]);
-
 
   const fetchUserAndReports = useCallback(async () => {
     if (user) {
       setIsFetchingHistory(true);
-      fetchInsights(user.uid);
       try {
         const profileRef = doc(db, 'profiles', user.uid);
         const profileSnap = await getDoc(profileRef);
@@ -150,7 +84,7 @@ function NumberAnalysis() {
         setIsFetchingHistory(false);
       }
     }
-  }, [user, toast, fetchInsights]);
+  }, [user, toast]);
 
   useEffect(() => {
     if (!authLoading && user) {
@@ -240,6 +174,17 @@ function NumberAnalysis() {
     }
   }
 
+  const handleDeleteReport = async (reportId: string) => {
+      if (!user) return;
+      try {
+        await deleteDoc(doc(db, 'health-reports', reportId));
+        toast({ title: 'Report Deleted', description: 'The analyzed report has been successfully deleted.' });
+        fetchUserAndReports();
+      } catch (e: any) {
+         toast({ title: 'Delete Failed', description: e.message || 'An error occurred.', variant: 'destructive' });
+      }
+  }
+
   const resetState = () => {
     setSelectedImage(null);
     setAnalysisResult(null);
@@ -251,53 +196,6 @@ function NumberAnalysis() {
 
   return (
     <div className="space-y-6">
-       <Card>
-          <CardHeader>
-              <CardTitle className="flex items-center gap-2"><PieChart/> Your Health Insights</CardTitle>
-              <CardDescription>A quick overview of your activities on the platform.</CardDescription>
-          </CardHeader>
-          <CardContent>
-              {insightsLoading ? (
-                  <div className="flex justify-center py-8">
-                      <Loader2 className="h-8 w-8 animate-spin text-primary"/>
-                  </div>
-              ) : insights ? (
-                  <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
-                      <Card className="p-4">
-                          <CardTitle className="text-sm font-medium flex items-center gap-2 text-muted-foreground">Tracking</CardTitle>
-                          <div className="mt-2 space-y-1 text-sm">
-                              <p className="flex justify-between"><span>Meals</span> <strong>{insights.foodLogs}</strong></p>
-                              <p className="flex justify-between"><span>Workouts</span> <strong>{insights.workoutLogs}</strong></p>
-                              <p className="flex justify-between"><span>Meditations</span> <strong>{insights.meditationLogs}</strong></p>
-                          </div>
-                      </Card>
-                      <Card className="p-4">
-                          <CardTitle className="text-sm font-medium flex items-center gap-2 text-muted-foreground">Analysis</CardTitle>
-                          <div className="mt-2 space-y-1 text-sm">
-                              <p className="flex justify-between"><span>Health Reports</span> <strong>{insights.healthReports}</strong></p>
-                          </div>
-                      </Card>
-                       <Card className="p-4">
-                          <CardTitle className="text-sm font-medium flex items-center gap-2 text-muted-foreground">Recommendations</CardTitle>
-                          <div className="mt-2 space-y-1 text-sm">
-                              <p className="flex justify-between"><span>Recipes</span> <strong>{insights.savedRecipes}</strong></p>
-                              <p className="flex justify-between"><span>Workouts</span> <strong>{insights.savedWorkouts}</strong></p>
-                              <p className="flex justify-between"><span>Meditations</span> <strong>{insights.savedMeditations}</strong></p>
-                              <p className="flex justify-between"><span>Habit Plans</span> <strong>{insights.savedHabitPlans}</strong></p>
-                          </div>
-                      </Card>
-                       <Card className="p-4">
-                          <CardTitle className="text-sm font-medium flex items-center gap-2 text-muted-foreground">Knowledge</CardTitle>
-                          <div className="mt-2 space-y-1 text-sm">
-                              <p className="flex justify-between"><span>Quizzes Taken</span> <strong>{insights.quizzesTaken}</strong></p>
-                          </div>
-                      </Card>
-                  </div>
-              ) : (
-                  <p className="text-muted-foreground text-center py-8">Could not load insights.</p>
-              )}
-          </CardContent>
-      </Card>
       <Card>
         <CardHeader>
           <CardTitle>Health Report Number Analysis</CardTitle>
@@ -439,7 +337,7 @@ function NumberAnalysis() {
                                             </AlertDialogHeader>
                                             <AlertDialogFooter>
                                                 <AlertDialogCancel>Cancel</AlertDialogCancel>
-                                                <AlertDialogAction>Delete</AlertDialogAction>
+                                                <AlertDialogAction onClick={() => handleDeleteReport(report.id)}>Delete</AlertDialogAction>
                                             </AlertDialogFooter>
                                         </AlertDialogContent>
                                     </AlertDialog>
@@ -1004,7 +902,7 @@ export default function AnalysisPage() {
   return (
     <Tabs defaultValue="number" className="w-full">
       <TabsList className="grid w-full grid-cols-3">
-        <TabsTrigger value="number">Insights & Analysis</TabsTrigger>
+        <TabsTrigger value="number">Number Analysis</TabsTrigger>
         <TabsTrigger value="food">Food Analysis</TabsTrigger>
         <TabsTrigger value="posture">Posture Analysis</TabsTrigger>
       </TabsList>

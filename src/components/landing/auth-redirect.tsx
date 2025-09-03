@@ -13,7 +13,7 @@ export default function AuthRedirect() {
   useEffect(() => {
     const unsubscribe = onAuthStateChanged(auth, (user) => {
       if (user) {
-        router.replace('/dashboard/analysis');
+        router.replace('/dashboard/insights');
       } else {
         setLoading(false);
       }

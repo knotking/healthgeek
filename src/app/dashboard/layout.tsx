@@ -30,7 +30,7 @@ import {
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from '@/components/ui/dialog';
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Logo } from '@/components/logo';
-import { User, LogOut, Loader2, ClipboardList, Book, Settings, LifeBuoy, ChevronUp, Sparkles, Store, Handshake, BrainCircuit, PieChart } from 'lucide-react';
+import { User, LogOut, Loader2, ClipboardList, Book, Settings, LifeBuoy, ChevronUp, Sparkles, Store, Handshake, BrainCircuit, PieChart, FileScan } from 'lucide-react';
 import { usePathname } from 'next/navigation';
 
 function ProfileCompletionReminder({ profile, isOpen, onOpenChange, onGoToProfile }: { profile: any, isOpen: boolean, onOpenChange: (open: boolean) => void, onGoToProfile: () => void }) {
@@ -78,7 +78,7 @@ export default function DashboardLayout({
         if (profileSnap.exists()) {
           const profileData = profileSnap.data();
           setProfile(profileData);
-          if (!profileData.name && pathname !== '/dashboard/analysis') {
+          if (!profileData.name && pathname !== '/dashboard/profile') {
             setShowProfileReminder(true);
           }
         } else {
@@ -96,7 +96,7 @@ export default function DashboardLayout({
             };
             await setDoc(doc(db, 'profiles', user.uid), newProfileData);
             setProfile(newProfileData);
-            if(pathname !== '/dashboard/analysis') {
+            if(pathname !== '/dashboard/profile') {
                setShowProfileReminder(true);
             }
         }
@@ -113,7 +113,7 @@ export default function DashboardLayout({
   
   const handleGoToProfile = () => {
     setShowProfileReminder(false);
-    router.push('/dashboard/analysis');
+    router.push('/dashboard/profile');
   }
 
   if (loading) {
@@ -141,11 +141,19 @@ export default function DashboardLayout({
         </SidebarHeader>
         <SidebarContent>
           <SidebarMenu>
-            <SidebarMenuItem>
-              <SidebarMenuButton asChild isActive={pathname.startsWith('/dashboard/analysis')}>
-                <Link href="/dashboard/analysis">
+             <SidebarMenuItem>
+              <SidebarMenuButton asChild isActive={pathname.startsWith('/dashboard/insights')}>
+                <Link href="/dashboard/insights">
                   <PieChart />
                   Insights
+                </Link>
+              </SidebarMenuButton>
+            </SidebarMenuItem>
+             <SidebarMenuItem>
+              <SidebarMenuButton asChild isActive={pathname.startsWith('/dashboard/analysis')}>
+                <Link href="/dashboard/analysis">
+                  <FileScan />
+                  Analysis
                 </Link>
               </SidebarMenuButton>
             </SidebarMenuItem>
@@ -218,7 +226,7 @@ export default function DashboardLayout({
                 <DropdownMenuLabel>My Account</DropdownMenuLabel>
                 <DropdownMenuSeparator />
                 <DropdownMenuItem asChild>
-                    <Link href="/dashboard">
+                    <Link href="/dashboard/profile">
                         <User className="mr-2 h-4 w-4" />
                         <span>Profile</span>
                     </Link>
