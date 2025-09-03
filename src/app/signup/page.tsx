@@ -72,7 +72,7 @@ export default function SignupPage() {
         description: "Welcome! Please complete your profile to personalize your experience."
       });
 
-      router.push('/dashboard/insights');
+      router.push('/dashboard');
     } catch (error: any) {
       console.error('Signup error:', error);
       toast({

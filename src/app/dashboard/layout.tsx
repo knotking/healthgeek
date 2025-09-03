@@ -141,14 +141,6 @@ export default function DashboardLayout({
         </SidebarHeader>
         <SidebarContent>
           <SidebarMenu>
-             <SidebarMenuItem>
-              <SidebarMenuButton asChild isActive={pathname === '/dashboard/insights'}>
-                <Link href="/dashboard/insights">
-                  <PieChart />
-                  Insights
-                </Link>
-              </SidebarMenuButton>
-            </SidebarMenuItem>
             <SidebarMenuItem>
               <SidebarMenuButton asChild isActive={pathname.startsWith('/dashboard/track-calorie')}>
                 <Link href="/dashboard/track-calorie">

@@ -49,7 +49,7 @@ export default function LoginPage() {
     setLoading(true);
     try {
       await signInWithEmailAndPassword(auth, values.email, values.password);
-      router.push('/dashboard/insights');
+      router.push('/dashboard');
     } catch (error: any) {
       console.error('Login error:', error);
       toast({
