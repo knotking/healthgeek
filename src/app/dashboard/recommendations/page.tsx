@@ -1,5 +1,4 @@
 
-
 'use client';
 
 // Common Imports
@@ -506,11 +505,11 @@ function WorkoutGenerator({ onSave }: { onSave: () => void }) {
                                           <div className="flex items-center gap-1.5"><TimerWorkout/> <strong>Rest:</strong> {ex.rest}</div>
                                       </div>
                                       <CardDescription>{ex.description}</CardDescription>
-                                  </Card>
-                              ))}
-                          </div>
-                      </div>
-                  ))}
+                                    </Card>
+                                ))}
+                            </div>
+                        </div>
+                    ))}
                </CardContent>
                <CardFooter className="flex-col sm:flex-row gap-4 justify-center">
                     <ButtonCommon onClick={resetFlow} variant="outline"><MoveLeftWorkout className="mr-2"/> New Workout</ButtonCommon>
@@ -1061,52 +1060,38 @@ function HabitGenerator({ onSave }: { onSave: () => void }) {
 
 const Generators = ({ onGenerate }: { onGenerate: () => void }) => (
     <div className="space-y-6 max-w-4xl mx-auto">
-        <Accordion type="single" collapsible className="w-full" defaultValue="workout">
-            <AccordionItem value="workout">
-                <AccordionTrigger className="text-xl font-semibold">
-                    <div className="flex items-center gap-3">
-                        <Dumbbell className="h-6 w-6 text-primary"/>
-                        Workout Generator
-                    </div>
-                </AccordionTrigger>
-                <AccordionContent className="pt-4">
-                    <WorkoutGenerator onSave={onGenerate} />
-                </AccordionContent>
-            </AccordionItem>
-            <AccordionItem value="meditation">
-                <AccordionTrigger className="text-xl font-semibold">
-                     <div className="flex items-center gap-3">
-                        <BrainCircuit className="h-6 w-6 text-primary"/>
-                        Meditation Generator
-                    </div>
-                </AccordionTrigger>
-                <AccordionContent className="pt-4">
-                    <MeditationGenerator onSave={onGenerate} />
-                </AccordionContent>
-            </AccordionItem>
-            <AccordionItem value="recipe">
-                <AccordionTrigger className="text-xl font-semibold">
-                     <div className="flex items-center gap-3">
-                        <ChefHat className="h-6 w-6 text-primary"/>
-                        Recipe Generator
-                    </div>
-                </AccordionTrigger>
-                <AccordionContent className="pt-4">
-                    <RecipeGenerator onSave={onGenerate} />
-                </AccordionContent>
-            </AccordionItem>
-            <AccordionItem value="habit">
-                <AccordionTrigger className="text-xl font-semibold">
-                     <div className="flex items-center gap-3">
-                        <Sparkles className="h-6 w-6 text-primary"/>
-                        Habit Builder
-                    </div>
-                </AccordionTrigger>
-                <AccordionContent className="pt-4">
-                    <HabitGenerator onSave={onGenerate} />
-                </AccordionContent>
-            </AccordionItem>
-        </Accordion>
+        <Tabs defaultValue="workout" className="w-full">
+            <TabsList className="grid w-full grid-cols-4">
+                <TabsTrigger value="workout">
+                    <Dumbbell className="h-4 w-4 mr-2"/>
+                    Workout
+                </TabsTrigger>
+                <TabsTrigger value="meditation">
+                     <BrainCircuit className="h-4 w-4 mr-2"/>
+                    Meditation
+                </TabsTrigger>
+                <TabsTrigger value="recipe">
+                    <ChefHat className="h-4 w-4 mr-2"/>
+                    Recipe
+                </TabsTrigger>
+                <TabsTrigger value="habit">
+                    <Sparkles className="h-4 w-4 mr-2"/>
+                    Habit
+                </TabsTrigger>
+            </TabsList>
+            <TabsContent value="workout" className="mt-6">
+                <WorkoutGenerator onSave={onGenerate} />
+            </TabsContent>
+            <TabsContent value="meditation" className="mt-6">
+                <MeditationGenerator onSave={onGenerate} />
+            </TabsContent>
+            <TabsContent value="recipe" className="mt-6">
+                <RecipeGenerator onSave={onGenerate} />
+            </TabsContent>
+            <TabsContent value="habit" className="mt-6">
+                <HabitGenerator onSave={onGenerate} />
+            </TabsContent>
+        </Tabs>
     </div>
 );
 
@@ -1268,7 +1253,7 @@ const DetailedView = ({ item }: { item: any }) => {
                     <div>
                         <h3 className="font-bold text-xl mb-4 flex items-center gap-2"><TargetHabit className="text-primary"/> Your New Habits</h3>
                         <div className="space-y-4">
-                            {data.habits.map((habit: any, i: number) => (
+                            {data.habits.map((habit, i) => (
                                 <Card key={i} className="p-4 bg-muted/50">
                                     <CardTitle className="text-lg flex justify-between items-center">
                                         <span>{habit.name}</span>
@@ -1390,3 +1375,5 @@ export default function RecommendationsPage() {
     </>
   );
 }
+
+    
