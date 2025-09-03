@@ -1,0 +1,1149 @@
+[33mcommit 5ae241b7a5f1d02eef0555096a5111e4d0abdd28[m[33m ([m[1;36mHEAD[m[33m -> [m[1;32mmain[m[33m)[m
+Author: Parag Agarwal <pagarwal@homegeek.ai>
+Date:   Wed Sep 3 03:02:07 2025 +0000
+
+    Add feature insights on top. It should have metrics on type of 1) Tracki
+
+[33mcommit 45e569176f680f465ecacdf115eec31ff2ae6bae[m
+Author: Parag Agarwal <pagarwal@homegeek.ai>
+Date:   Wed Sep 3 02:59:32 2025 +0000
+
+    For Number Analysis, add ability to delete history
+
+[33mcommit ba2bad8c7303e392b436c9dcd093dcaf61aa1601[m
+Author: Parag Agarwal <pagarwal@homegeek.ai>
+Date:   Wed Sep 3 02:57:15 2025 +0000
+
+    In Reports add reports for Workout, Mediation, Health Numbers
+
+[33mcommit 588cc0ce396caa4046dc28feea375ebd505bea22[m
+Author: Parag Agarwal <pagarwal@homegeek.ai>
+Date:   Wed Sep 3 02:53:32 2025 +0000
+
+    In tracking for workout and meditation we have Today's log and History.
+
+[33mcommit ef15f20910ae0931e1d504b4549a3ca9499f20e3[m
+Author: Parag Agarwal <pagarwal@homegeek.ai>
+Date:   Wed Sep 3 02:50:20 2025 +0000
+
+    In Tracking feature, for anything like calorie, workout, mediation histo
+
+[33mcommit 019e988cae9ddbcd15bca595f2647a01f2934ed4[m
+Author: Parag Agarwal <pagarwal@homegeek.ai>
+Date:   Wed Sep 3 02:48:14 2025 +0000
+
+    I see this error with the app, reported by NextJS, please fix it. The er
+
+[33mcommit f8284b587c0c679836f152302e3a9ea120278e25[m
+Author: Parag Agarwal <pagarwal@homegeek.ai>
+Date:   Wed Sep 3 02:44:52 2025 +0000
+
+    Merge Track Calorie, Workout and Meditation into one feature: Tracking.
+
+[33mcommit a01b79d948016d2bc302fc729022899b3bab896b[m
+Author: Parag Agarwal <pagarwal@homegeek.ai>
+Date:   Wed Sep 3 02:38:06 2025 +0000
+
+    Remove insights feature
+
+[33mcommit 3cd36077818bbe4ed512a1dba889b838768ad0d2[m
+Author: Parag Agarwal <pagarwal@homegeek.ai>
+Date:   Wed Sep 3 02:32:53 2025 +0000
+
+    Please fix insights
+
+[33mcommit 2463d1c8f8c4e4fd8597f48cc7ae9ec1df70119e[m
+Author: Parag Agarwal <pagarwal@homegeek.ai>
+Date:   Wed Sep 3 02:31:25 2025 +0000
+
+    I see this error with the app, reported by NextJS, please fix it. The er
+
+[33mcommit 086a0a5312fab07b4e331a735180b2628f078c7c[m
+Author: Parag Agarwal <pagarwal@homegeek.ai>
+Date:   Wed Sep 3 02:29:49 2025 +0000
+
+    File changes
+
+[33mcommit 52eb5e93f32756540011e582eb8315d40daf6b91[m
+Author: Parag Agarwal <pagarwal@homegeek.ai>
+Date:   Wed Sep 3 02:28:00 2025 +0000
+
+    I see this error with the app, reported by NextJS, please fix it. The er
+
+[33mcommit 925b65fda0dca59249477b3f57e4673c1e23e02a[m
+Author: Parag Agarwal <pagarwal@homegeek.ai>
+Date:   Wed Sep 3 02:26:25 2025 +0000
+
+    All the tracking features are getting permission issues. Can u please ch
+
+[33mcommit b1dd979fe10e520f067bb6810fed28f3301086f3[m
+Author: Parag Agarwal <pagarwal@homegeek.ai>
+Date:   Wed Sep 3 02:25:30 2025 +0000
+
+    File changes
+
+[33mcommit 2981fb17aebb3ecada7ef137cc161b7ba70dc0a1[m
+Author: Parag Agarwal <pagarwal@homegeek.ai>
+Date:   Wed Sep 3 02:23:31 2025 +0000
+
+    File changes
+
+[33mcommit bea9096604c8ff350b198f862ee1fc7851534d87[m
+Author: Parag Agarwal <pagarwal@homegeek.ai>
+Date:   Wed Sep 3 02:19:12 2025 +0000
+
+    Add track workout similar to mediation
+
+[33mcommit f206c409979c19fda8f4a1186403df6e2381b4f7[m
+Author: Parag Agarwal <pagarwal@homegeek.ai>
+Date:   Wed Sep 3 02:14:27 2025 +0000
+
+    I see this error with the app, reported by NextJS, please fix it. The er
+
+[33mcommit 6704029af39ef33dd48e94d56aa397649154fd28[m
+Author: Parag Agarwal <pagarwal@homegeek.ai>
+Date:   Wed Sep 3 02:12:58 2025 +0000
+
+    I see this error with the app, reported by NextJS, please fix it. The er
+
+[33mcommit 9ee34539aadf138e09cf4e4cea135a5b8540c340[m
+Author: Parag Agarwal <pagarwal@homegeek.ai>
+Date:   Wed Sep 3 02:09:41 2025 +0000
+
+    Add permissions for track meditations
+
+[33mcommit 1dd84e7db007c2ae1d51e91eae3d7a1985e3f7f4[m
+Author: Parag Agarwal <pagarwal@homegeek.ai>
+Date:   Wed Sep 3 02:08:20 2025 +0000
+
+    We can add feature to "Track Mediation" 1) Add mediation by clicking but
+
+[33mcommit 15eb5bc60ca6300eb116d05dd90e2a5168fa467f[m
+Author: Parag Agarwal <pagarwal@homegeek.ai>
+Date:   Wed Sep 3 02:00:57 2025 +0000
+
+    In Track calorie, history should show top 10, rest we can search
+
+[33mcommit 540a26717ccc065fef3f3b0778e8ef3e52a86f73[m
+Author: Parag Agarwal <pagarwal@homegeek.ai>
+Date:   Wed Sep 3 01:58:54 2025 +0000
+
+    I see this error with the app, reported by NextJS, please fix it. The er
+
+[33mcommit 0852d7b12cfa0bb812ce724d3d28ef8214039fb5[m
+Author: Parag Agarwal <pagarwal@homegeek.ai>
+Date:   Wed Sep 3 01:53:02 2025 +0000
+
+    Move recommendation generators on top. And History below it. History is
+
+[33mcommit 637f810bf23c8463c69b819e8532575ba0a569bc[m
+Author: Parag Agarwal <pagarwal@homegeek.ai>
+Date:   Wed Sep 3 01:46:38 2025 +0000
+
+    In Recommendations, use tabs for workout, mediation, recipe and habit.
+
+[33mcommit b14db6886dfd123cefa79b60f54423f30a43ad91[m
+Author: Parag Agarwal <pagarwal@homegeek.ai>
+Date:   Wed Sep 3 01:34:27 2025 +0000
+
+    Based on the features, we have added, change How it works
+
+[33mcommit 3172fb6363a384fb088b7c5308d4483ecd56902b[m
+Author: Parag Agarwal <pagarwal@homegeek.ai>
+Date:   Wed Sep 3 01:33:21 2025 +0000
+
+    On the landing Page, say AI Agents for Personal HealthCare
+
+[33mcommit e37cb2efbda967b254269885897343cede1b604f[m
+Author: Parag Agarwal <pagarwal@homegeek.ai>
+Date:   Wed Sep 3 01:24:52 2025 +0000
+
+    Merge Food Analysis, Number Analysis and Posture Analysis into Analysis.
+
+[33mcommit f4e3f86e3251b2e299271f157bc21ac36882ef98[m
+Author: Parag Agarwal <pagarwal@homegeek.ai>
+Date:   Wed Sep 3 01:21:15 2025 +0000
+
+    Rename Food Assessment as food analysis
+
+[33mcommit ca334417e63fa237eb626d03c8c6e22bbe57cc5e[m
+Author: Parag Agarwal <pagarwal@homegeek.ai>
+Date:   Sun Aug 31 08:55:44 2025 +0000
+
+    When playing quiz, do not pre-select an option answer. Just leave it all
+
+[33mcommit 68d63d54ce2437c4499f2d46fb1ccf859a165a7b[m
+Author: Parag Agarwal <pagarwal@homegeek.ai>
+Date:   Sun Aug 31 08:53:52 2025 +0000
+
+    I see this error with the app, reported by NextJS, please fix it. The er
+
+[33mcommit c995cb8e44b1db8cbe1e3da61c997114a9d7dd45[m
+Author: Parag Agarwal <pagarwal@homegeek.ai>
+Date:   Sun Aug 31 08:52:29 2025 +0000
+
+    I still see the issue in playing the quiz, we need to make sure that whe
+
+[33mcommit 2a083b22261815d2e558901b049392eca3358bae[m
+Author: Parag Agarwal <pagarwal@homegeek.ai>
+Date:   Sun Aug 31 08:49:53 2025 +0000
+
+    yes, we do not want an answer to be pre-selected
+
+[33mcommit d2f3b76f8c89e166b5832e3d43b5e272b294769a[m
+Author: Parag Agarwal <pagarwal@homegeek.ai>
+Date:   Sun Aug 31 08:46:53 2025 +0000
+
+    In the quiz, when we play the quiz and go from one question to another,
+
+[33mcommit 038afa23abea495de39f631e811c87f9b729afa0[m
+Author: Parag Agarwal <pagarwal@homegeek.ai>
+Date:   Sun Aug 31 08:37:40 2025 +0000
+
+    I see this error with the app, reported by NextJS, please fix it. The er
+
+[33mcommit c6e75f0723eebfcd0f5bc594c3b3f867f2eb65b5[m
+Author: Parag Agarwal <pagarwal@homegeek.ai>
+Date:   Sun Aug 31 08:36:05 2025 +0000
+
+    Add feature posture analysis, where camera is switched on, we records vi
+
+[33mcommit 612ef728a15cbb0be2c9bdca1c3c07ad302a4635[m
+Author: Parag Agarwal <pagarwal@homegeek.ai>
+Date:   Thu Aug 28 19:46:21 2025 +0000
+
+    When user is logging in for the first time, it sees a pop to fill out th
+
+[33mcommit 35ee5e160428767f3fe144a3e09c38c92ab1a330[m
+Author: Parag Agarwal <pagarwal@homegeek.ai>
+Date:   Thu Aug 28 19:43:07 2025 +0000
+
+    We want to change the flow of sign up. Now when we sign up, we do not wa
+
+[33mcommit 22e6dbf118cad6e55fa895b720c0eaf5b0885795[m
+Author: Parag Agarwal <pagarwal@homegeek.ai>
+Date:   Wed Aug 27 16:31:24 2025 +0000
+
+    Camera is still facing the user. Add ability to re-orient the camera
+
+[33mcommit fee47218e5a7fc5684f07f187878afdab2412ac4[m
+Author: Parag Agarwal <pagarwal@homegeek.ai>
+Date:   Wed Aug 27 16:18:10 2025 +0000
+
+    The camera is not using the front camera. Can u fix it
+
+[33mcommit b802101ae63d3996b9a757dcbfc34136d577939a[m
+Author: Parag Agarwal <pagarwal@homegeek.ai>
+Date:   Tue Aug 26 22:12:21 2025 +0000
+
+    When we save quiz, we should go back to Saved Quizes
+
+[33mcommit 51eee50201194ff6f871bb43314ac0a4d1d405e7[m
+Author: Parag Agarwal <pagarwal@homegeek.ai>
+Date:   Tue Aug 26 22:01:20 2025 +0000
+
+    we need to delete recommendations. We don't see to have enough permissio
+
+[33mcommit b854c2bfab683b28d6d0d2a344e7d6ebf55153be[m
+Author: Parag Agarwal <pagarwal@homegeek.ai>
+Date:   Tue Aug 26 21:56:05 2025 +0000
+
+    We want to add the option to delete the quiz
+
+[33mcommit bfe0c0aecb79458e08390d1414dedcd5e1d2fa4a[m
+Author: Parag Agarwal <pagarwal@homegeek.ai>
+Date:   Tue Aug 26 21:54:05 2025 +0000
+
+    Add update permissions to quiz
+
+[33mcommit 6ee7391ae860100c6d9d9c838c9491913268f54b[m
+Author: Parag Agarwal <pagarwal@homegeek.ai>
+Date:   Tue Aug 26 21:53:09 2025 +0000
+
+    You can rate a quiz as well. Rating gets saved. If rating is not saved,
+
+[33mcommit db5d34cff401be9ef67b8decbf7b213821fb0f48[m
+Author: Parag Agarwal <pagarwal@homegeek.ai>
+Date:   Tue Aug 26 21:49:19 2025 +0000
+
+    When playing the quiz we can quit as well. Also, when we save quiz, we s
+
+[33mcommit e95b8c0170952ddabd1b351e91f4e7aa9dd8075d[m
+Author: Parag Agarwal <pagarwal@homegeek.ai>
+Date:   Tue Aug 26 21:43:30 2025 +0000
+
+    Reading of previous saved quiz is not working
+
+[33mcommit 7e25fdc4c95963f4238eae91cb00e89de9de01da[m
+Author: Parag Agarwal <pagarwal@homegeek.ai>
+Date:   Tue Aug 26 21:40:16 2025 +0000
+
+    please fix this error
+
+[33mcommit 05b31f315279984d145507d0ad515a931078ce00[m
+Author: Parag Agarwal <pagarwal@homegeek.ai>
+Date:   Tue Aug 26 21:33:49 2025 +0000
+
+    File changes
+
+[33mcommit 2f507eb31b42aa9d8f838f52cefd1c39500b1502[m
+Author: Parag Agarwal <pagarwal@homegeek.ai>
+Date:   Tue Aug 26 21:29:44 2025 +0000
+
+    For health quiz, add options, max number of questions (default is 5). We
+
+[33mcommit d8e99b7b7a3be5dbb6e5f42e9a6cd8215fb6c2a1[m
+Author: Parag Agarwal <pagarwal@homegeek.ai>
+Date:   Tue Aug 26 21:23:58 2025 +0000
+
+    In recommendations, add habits, take input from user on their goals, and
+
+[33mcommit 5fdaea2e0df81f359eea1e6a79115d2e213c2e17[m
+Author: Parag Agarwal <pagarwal@homegeek.ai>
+Date:   Tue Aug 26 21:15:24 2025 +0000
+
+    For recommendation recipe, add juice option as well
+
+[33mcommit f0f1b47c5ec8a91a0a2a54a3b096834667ca4fb4[m[33m ([m[1;31morigin/main[m[33m)[m
+Author: Parag Agarwal <pagarwal@homegeek.ai>
+Date:   Tue Aug 26 18:10:55 2025 +0000
+
+    move market place below provider
+
+[33mcommit c6a2d1f7b431a3e5bb5b669b37741dba91583b0d[m
+Author: Parag Agarwal <pagarwal@homegeek.ai>
+Date:   Tue Aug 26 17:57:18 2025 +0000
+
+    When you print Recommendation report please print with details
+
+[33mcommit d1f7e99b422794ba66e6a3cda85635ddac3beee6[m
+Author: Parag Agarwal <pagarwal@homegeek.ai>
+Date:   Tue Aug 26 17:51:57 2025 +0000
+
+    In Reports add Recommendations report
+
+[33mcommit 2737ed47b6045dc935c540644289738063f0f500[m
+Author: Parag Agarwal <pagarwal@homegeek.ai>
+Date:   Tue Aug 26 17:50:25 2025 +0000
+
+    Provider should say,  chat/schedule with our providers for health consul
+
+[33mcommit 16e5205f693d52c34aeae4aafd107d32274e85be[m
+Author: Parag Agarwal <pagarwal@homegeek.ai>
+Date:   Tue Aug 26 17:47:15 2025 +0000
+
+    In feature reports, after we analyze the reports, its summary should be
+
+[33mcommit cc2d2c165d98e986d5966efff2cbfa0a74aa6179[m
+Author: Parag Agarwal <pagarwal@homegeek.ai>
+Date:   Tue Aug 26 17:44:40 2025 +0000
+
+    I see this error with the app, reported by NextJS, please fix it. The er
+
+[33mcommit de462cbd647a9e770f395751a5e4d37d49eb0f7f[m
+Author: Parag Agarwal <pagarwal@homegeek.ai>
+Date:   Tue Aug 26 17:43:06 2025 +0000
+
+    Add feature to test knowledge on heath. Choose from any topic and genera
+
+[33mcommit eb00de386134a19b84c8842a93181abf4bd87894[m
+Author: Parag Agarwal <pagarwal@homegeek.ai>
+Date:   Tue Aug 26 16:53:31 2025 +0000
+
+    Add feature, provider, under construction
+
+[33mcommit af43a7df41ca2840741fc477a031aa197f71b23e[m
+Author: Parag Agarwal <pagarwal@homegeek.ai>
+Date:   Tue Aug 26 16:48:00 2025 +0000
+
+    Remove stats on the pre-login page
+
+[33mcommit 679cafd6d969b6d2d9ce5a4106bbf5e853034ef7[m
+Author: Parag Agarwal <pagarwal@homegeek.ai>
+Date:   Tue Aug 26 16:46:23 2025 +0000
+
+    I see this error with the app, reported by NextJS, please fix it. The er
+
+[33mcommit 6d84d474ee91bc87d72b3afc87a3abbd6cdca7db[m
+Author: Parag Agarwal <pagarwal@homegeek.ai>
+Date:   Tue Aug 26 16:44:21 2025 +0000
+
+    I see this error with the app, reported by NextJS, please fix it. The er
+
+[33mcommit f279579cc1d94d703a81925f76b58f9639e2e38a[m
+Author: Parag Agarwal <pagarwal@homegeek.ai>
+Date:   Tue Aug 26 16:43:49 2025 +0000
+
+    I see this error with the app, reported by NextJS, please fix it. The er
+
+[33mcommit bdb1ef33f6f041c166cb4a59f4e0370b845ea27c[m
+Author: Parag Agarwal <pagarwal@homegeek.ai>
+Date:   Tue Aug 26 16:42:06 2025 +0000
+
+    On the pre-login page, publish user metrics (e.g. total meals, reports,
+
+[33mcommit 6c9c80e66af4ff34bef3791f3226177a7ba06eb8[m
+Author: Parag Agarwal <pagarwal@homegeek.ai>
+Date:   Tue Aug 26 16:39:32 2025 +0000
+
+    Please remove community from recommendation
+
+[33mcommit 846572e48677907b146f73c68cb6af516d1b1744[m
+Author: Parag Agarwal <pagarwal@homegeek.ai>
+Date:   Tue Aug 26 16:32:26 2025 +0000
+
+    By default we recommendations might not be public so they should not fai
+
+[33mcommit 2006ba3ef3da0c7a88db850ec555edba5a890b8b[m
+Author: Parag Agarwal <pagarwal@homegeek.ai>
+Date:   Tue Aug 26 16:27:16 2025 +0000
+
+    Fix issue
+
+[33mcommit 67b3a54ed7a5016921ace3b79bb2992192888de9[m
+Author: Parag Agarwal <pagarwal@homegeek.ai>
+Date:   Tue Aug 26 16:23:53 2025 +0000
+
+    Fix issue
+
+[33mcommit bfa32d2c093ce7e9e0ae3c8e44908c3e1652d535[m
+Author: Parag Agarwal <pagarwal@homegeek.ai>
+Date:   Tue Aug 26 16:23:00 2025 +0000
+
+    Any recommendation marked for community should appear can be seen by oth
+
+[33mcommit d04c8d494a14f0a2708ce6978ba1fb0fa28ed56c[m
+Author: Parag Agarwal <pagarwal@homegeek.ai>
+Date:   Tue Aug 26 10:23:11 2025 +0000
+
+    My recommendation, when we press view, it show the recommendation in pop
+
+[33mcommit c95758ec91192bd018cd087cb37f5e5a5077cdaf[m
+Author: Parag Agarwal <pagarwal@homegeek.ai>
+Date:   Tue Aug 26 10:20:08 2025 +0000
+
+    For recommendation, rating in my history does not work
+
+[33mcommit a7371e69bffe48f73fc81e9e423c36eaa09bf75c[m
+Author: Parag Agarwal <pagarwal@homegeek.ai>
+Date:   Tue Aug 26 10:17:08 2025 +0000
+
+    To recommendation, we add My History. This will be added to the left mos
+
+[33mcommit 42fda3b71d82de99689d0d90e0be6338c658186b[m
+Author: Parag Agarwal <pagarwal@homegeek.ai>
+Date:   Tue Aug 26 10:10:58 2025 +0000
+
+    In recommendation, remove my history
+
+[33mcommit e4e55c03ec991aa3ed949920dc188600adc47254[m
+Author: Parag Agarwal <pagarwal@homegeek.ai>
+Date:   Tue Aug 26 10:05:44 2025 +0000
+
+    Revert "create index"
+    
+    This reverts commit 6872dcdccca7bcbf62f5a1efc84316c63bc88d45.
+
+[33mcommit f3ac696aca617f8f07021ef96d744f501197a48a[m
+Author: Parag Agarwal <pagarwal@homegeek.ai>
+Date:   Tue Aug 26 10:04:58 2025 +0000
+
+    Revert "Revert previous change"
+    
+    This reverts commit 17d53d3c3bf7bc741d241050cfa328699cf0f234.
+
+[33mcommit 17d53d3c3bf7bc741d241050cfa328699cf0f234[m
+Author: Parag Agarwal <pagarwal@homegeek.ai>
+Date:   Tue Aug 26 10:02:52 2025 +0000
+
+    Revert previous change
+
+[33mcommit c0d4f797d33c11ae41e30d6e05f7c2f167fcbe41[m
+Author: Parag Agarwal <pagarwal@homegeek.ai>
+Date:   Tue Aug 26 09:56:53 2025 +0000
+
+    When we save mediation, we should add its name as well. Also we should g
+
+[33mcommit 6872dcdccca7bcbf62f5a1efc84316c63bc88d45[m
+Author: Parag Agarwal <pagarwal@homegeek.ai>
+Date:   Tue Aug 26 09:47:30 2025 +0000
+
+    create index
+
+[33mcommit 7d16ccb2390394a13162ea256acb2a7964351a94[m
+Author: Parag Agarwal <pagarwal@homegeek.ai>
+Date:   Tue Aug 26 09:46:00 2025 +0000
+
+    In recommendations, remove community tab.
+
+[33mcommit 4121be342d6e180dc31e8087c0156f44d8451575[m
+Author: Parag Agarwal <pagarwal@homegeek.ai>
+Date:   Tue Aug 26 09:42:16 2025 +0000
+
+    Add MyHistory to recommendations which is a summary of the saved recomme
+
+[33mcommit fa99194f138deaead5b5ee44dca3be71c5665437[m
+Author: Parag Agarwal <pagarwal@homegeek.ai>
+Date:   Tue Aug 26 09:38:35 2025 +0000
+
+    In recommendations, remove MyHistory and Community
+
+[33mcommit 3eda4591943579a436ac1fa1557f43262a907de0[m
+Author: Parag Agarwal <pagarwal@homegeek.ai>
+Date:   Tue Aug 26 09:36:08 2025 +0000
+
+    My History is not able to load, please fix
+
+[33mcommit 3031ad2a213df4676c8de35ac4d7aa08a05cae0a[m
+Author: Parag Agarwal <pagarwal@homegeek.ai>
+Date:   Tue Aug 26 09:31:15 2025 +0000
+
+    Commit latest manual change
+
+[33mcommit 90ddb8648dd5a994795469d49e48de6e4613f723[m
+Author: Parag Agarwal <pagarwal@homegeek.ai>
+Date:   Tue Aug 26 09:26:22 2025 +0000
+
+    revert last 2 commits
+
+[33mcommit 08187f7eb16ae252128f75eb9476246209b23834[m
+Author: Parag Agarwal <pagarwal@homegeek.ai>
+Date:   Tue Aug 26 09:24:05 2025 +0000
+
+    revert last commit
+
+[33mcommit f7fac81e131374be90d1f9f5c71f217e0e5cf3c4[m
+Author: Parag Agarwal <pagarwal@homegeek.ai>
+Date:   Tue Aug 26 09:21:57 2025 +0000
+
+    File changes
+
+[33mcommit f721527f7cad72e555e02c052783b7fbfa8afd5e[m
+Author: Parag Agarwal <pagarwal@homegeek.ai>
+Date:   Tue Aug 26 09:21:24 2025 +0000
+
+    Recommendations, my history, delete button is not working.
+
+[33mcommit 506943109bcbc2e48cfd56ae4d8c8a3eb7b48cee[m
+Author: Parag Agarwal <pagarwal@homegeek.ai>
+Date:   Tue Aug 26 09:15:58 2025 +0000
+
+    For recommendations, my history, view and delete create clutter, please
+
+[33mcommit d935fb6c25b58f3c12f51c1f27f753df22467386[m
+Author: Parag Agarwal <pagarwal@homegeek.ai>
+Date:   Tue Aug 26 09:09:41 2025 +0000
+
+    In profile, diet preferences are not required.
+
+[33mcommit c89ec3d18559b9ac49f76334d0fe6fe197a31017[m
+Author: Parag Agarwal <pagarwal@homegeek.ai>
+Date:   Tue Aug 26 09:06:59 2025 +0000
+
+    Delete button does not work
+
+[33mcommit 79a0d6fd855a146ebca686cabdcd313c7b2bf6f2[m
+Author: Parag Agarwal <pagarwal@homegeek.ai>
+Date:   Tue Aug 26 09:03:34 2025 +0000
+
+    The delete button in my history for recommendation is not working
+
+[33mcommit cd4f9ae32ea9976b336169ac0341ae6f868afc65[m
+Author: Parag Agarwal <pagarwal@homegeek.ai>
+Date:   Tue Aug 26 08:55:22 2025 +0000
+
+    When signing up, add height. Compute BMI using height and weight. When w
+
+[33mcommit f393807ee873edc2272cd2e67b0fab0354f07cf1[m
+Author: Parag Agarwal <pagarwal@homegeek.ai>
+Date:   Tue Aug 26 08:47:20 2025 +0000
+
+    Creating a comprehensive patient profile involves gathering a wide range
+
+[33mcommit b11cd91c95831dd4f44a3651107cc2821fd74fc1[m
+Author: Parag Agarwal <pagarwal@homegeek.ai>
+Date:   Mon Aug 25 22:23:10 2025 +0000
+
+    revert change
+
+[33mcommit 83b9b6ff3e9d193bada75c89a7d07de0fab568e4[m
+Author: Parag Agarwal <pagarwal@homegeek.ai>
+Date:   Mon Aug 25 22:22:11 2025 +0000
+
+    Move how it works up on the landing page
+
+[33mcommit c01b331488e8737c630274b9385277b143de592e[m
+Author: Parag Agarwal <pagarwal@homegeek.ai>
+Date:   Mon Aug 25 22:18:51 2025 +0000
+
+    Add feature Market Place: Under construction
+
+[33mcommit 33945c82c493af551d4effb1634f3b92dad5d1e5[m
+Author: Parag Agarwal <pagarwal@homegeek.ai>
+Date:   Mon Aug 25 22:16:58 2025 +0000
+
+    I see this error with the app, reported by NextJS, please fix it. The er
+
+[33mcommit 4475b567cdf07df5a77d2238dc60bfbc2b335fb1[m
+Author: Parag Agarwal <pagarwal@homegeek.ai>
+Date:   Mon Aug 25 22:09:26 2025 +0000
+
+    Why does this pop up when we goto recommendations?
+
+[33mcommit 2357221cece514f914cb9857826910951a0f405d[m
+Author: Parag Agarwal <pagarwal@homegeek.ai>
+Date:   Mon Aug 25 22:08:32 2025 +0000
+
+    When we login goto insights.
+
+[33mcommit f91d7fdc80a4ddebcf1227de0ea57a13b0086dc9[m
+Author: Parag Agarwal <pagarwal@homegeek.ai>
+Date:   Mon Aug 25 22:06:03 2025 +0000
+
+    The recommendation page, delete history is not working
+
+[33mcommit a1d8ebf65dff069b8fc2fe63af3a0bf6efa2ff37[m
+Author: Parag Agarwal <pagarwal@homegeek.ai>
+Date:   Mon Aug 25 22:00:20 2025 +0000
+
+    Please add the metric per user for added workout, meditation, recipe, fo
+
+[33mcommit 384fb8ffc1e0886b46dcc5454e1d50b339128b8b[m
+Author: Parag Agarwal <pagarwal@homegeek.ai>
+Date:   Mon Aug 25 21:58:26 2025 +0000
+
+    please fix the infinite loop
+
+[33mcommit 10c3af5c040f9aaa9e27452fb2e48b834a54b66a[m
+Author: Parag Agarwal <pagarwal@homegeek.ai>
+Date:   Mon Aug 25 21:55:07 2025 +0000
+
+    Revert the changes
+
+[33mcommit 46994b18dbded1f0a8380cbb2cd32d88bb61c9f1[m
+Author: Parag Agarwal <pagarwal@homegeek.ai>
+Date:   Mon Aug 25 21:52:39 2025 +0000
+
+    For workout recommendations, add location: outside
+
+[33mcommit 08b6b8c7126c25a7c41628ee8f0bb50973f8bc2f[m
+Author: Parag Agarwal <pagarwal@homegeek.ai>
+Date:   Mon Aug 25 21:47:31 2025 +0000
+
+    My history and Community are going in a loop. Please stop that
+
+[33mcommit 82c842780df2e1c5eada958ef28c57c41ebed96a[m
+Author: Parag Agarwal <pagarwal@homegeek.ai>
+Date:   Mon Aug 25 21:43:47 2025 +0000
+
+    File changes
+
+[33mcommit a3f5ee9fc21f5d0b23330035116f8ad755690d3b[m
+Author: Parag Agarwal <pagarwal@homegeek.ai>
+Date:   Mon Aug 25 21:41:19 2025 +0000
+
+    please revert this
+
+[33mcommit ac1a285119b8e5d7251ba8c8e3b600499fb7c945[m
+Author: Parag Agarwal <pagarwal@homegeek.ai>
+Date:   Mon Aug 25 21:38:49 2025 +0000
+
+    please fix this error
+
+[33mcommit f480e0236c2a82666811ede2961657893a3a75c3[m
+Author: Parag Agarwal <pagarwal@homegeek.ai>
+Date:   Mon Aug 25 21:35:59 2025 +0000
+
+    Do not show this error when fetching community data has no information
+
+[33mcommit ab50bd32dd8e36434acf4a06af34b6d86979369f[m
+Author: Parag Agarwal <pagarwal@homegeek.ai>
+Date:   Mon Aug 25 21:32:27 2025 +0000
+
+    For recommendation, when we mark something as public, it is shared acros
+
+[33mcommit 386e283a8c7dd33ac738322c90888971375e4545[m
+Author: Parag Agarwal <pagarwal@homegeek.ai>
+Date:   Mon Aug 25 21:28:53 2025 +0000
+
+    Remove See It in Action from the landing pahe
+
+[33mcommit e06bc1342c5ace8b37c9f75d9c0170320d9ac824[m
+Author: Parag Agarwal <pagarwal@homegeek.ai>
+Date:   Mon Aug 25 21:27:55 2025 +0000
+
+    Add how it works for the landing page.
+
+[33mcommit 490656454519c0aba7e252b2344570b791b06892[m
+Author: Parag Agarwal <pagarwal@homegeek.ai>
+Date:   Mon Aug 25 21:27:07 2025 +0000
+
+    I see this error with the app, reported by NextJS, please fix it. The er
+
+[33mcommit 7ec2de2bd6ec51247a22524cedb1fba04fcd7e2f[m
+Author: Parag Agarwal <pagarwal@homegeek.ai>
+Date:   Mon Aug 25 21:25:07 2025 +0000
+
+    still seeing permission issue on the landing page pre-login
+
+[33mcommit c7c130b43541862f2e1f179f6e5bee9a47f7fa7f[m
+Author: Parag Agarwal <pagarwal@homegeek.ai>
+Date:   Mon Aug 25 21:24:04 2025 +0000
+
+    fix permission issue
+
+[33mcommit da612b349e7f6102fc9b1e86fde1373f31a3f462[m
+Author: Parag Agarwal <pagarwal@homegeek.ai>
+Date:   Mon Aug 25 21:22:44 2025 +0000
+
+    Please let history data in recommendation be row by row. And let is pagi
+
+[33mcommit 47d3a1e919eb9bdd6703ccc0536d8c46dbf1b945[m
+Author: Parag Agarwal <pagarwal@homegeek.ai>
+Date:   Mon Aug 25 20:51:30 2025 +0000
+
+    please do not show Create new, only show the full part when selected. It
+
+[33mcommit 0f3cfd9ffcf21095dc7f8f7775a543bc7d1c4c7b[m
+Author: Parag Agarwal <pagarwal@homegeek.ai>
+Date:   Mon Aug 25 20:48:20 2025 +0000
+
+    Make all the recommendations creators collapsable. Show them when select
+
+[33mcommit 18108e64bfbffde01acb938eae4c7e9027027161[m
+Author: Parag Agarwal <pagarwal@homegeek.ai>
+Date:   Mon Aug 25 20:43:23 2025 +0000
+
+    When we goto Recommendation, please load recommendations history with su
+
+[33mcommit 3ab3b1cbc530c80a49b213584fb952b907f4014d[m
+Author: Parag Agarwal <pagarwal@homegeek.ai>
+Date:   Mon Aug 25 20:38:45 2025 +0000
+
+    please re-add
+
+[33mcommit fcad0e15d1fb07599b4af0a536409f1f181618f2[m
+Author: Parag Agarwal <pagarwal@homegeek.ai>
+Date:   Mon Aug 25 20:35:43 2025 +0000
+
+    please give permissions
+
+[33mcommit 5516e98b6d2c215313222c0ab9fb69e808a23166[m
+Author: Parag Agarwal <pagarwal@homegeek.ai>
+Date:   Mon Aug 25 20:35:10 2025 +0000
+
+    please give permission to save history
+
+[33mcommit 26bc951501ac6e31c4ae62da7ae5741765803621[m
+Author: Parag Agarwal <pagarwal@homegeek.ai>
+Date:   Mon Aug 25 20:33:31 2025 +0000
+
+    if data is not there please do not fail, just show empty
+
+[33mcommit ff3b0773e3a68df425a7bb0cb361f3e684468d39[m
+Author: Parag Agarwal <pagarwal@homegeek.ai>
+Date:   Mon Aug 25 20:31:09 2025 +0000
+
+    Any things in recommendation can be persisted to the database. Once pers
+
+[33mcommit 525d24e17dd80a817818d744b2473349feac13e9[m
+Author: Parag Agarwal <pagarwal@homegeek.ai>
+Date:   Mon Aug 25 20:26:37 2025 +0000
+
+    When you generate PDF, please mark it as powered by healthgeek and show
+
+[33mcommit 20292aa2d6f374f53eba14390a2fb15c5066d9cd[m
+Author: Parag Agarwal <pagarwal@homegeek.ai>
+Date:   Mon Aug 25 20:23:37 2025 +0000
+
+    I see this error with the app, reported by NextJS, please fix it. The er
+
+[33mcommit 3278ba12278d5fc46776850adf2ab31ac9fa9297[m
+Author: Parag Agarwal <pagarwal@homegeek.ai>
+Date:   Mon Aug 25 20:20:07 2025 +0000
+
+    I see this error with the app, reported by NextJS, please fix it. The er
+
+[33mcommit 52a87d8fcd8760ea3e3d73297ed9fa9030dd4f40[m
+Author: Parag Agarwal <pagarwal@homegeek.ai>
+Date:   Mon Aug 25 20:12:18 2025 +0000
+
+    We want to create a feature recommendations. In this we merge features 1
+
+[33mcommit e629c832e7e9ae9d28c3b1c485792fb36fad69f1[m
+Author: Parag Agarwal <pagarwal@homegeek.ai>
+Date:   Mon Aug 25 20:08:52 2025 +0000
+
+    Add feature Mediation. In this feature, we get input from user like time
+
+[33mcommit a02f198f5579eec0ccf2c1e3316e8231bb87add6[m
+Author: Parag Agarwal <pagarwal@homegeek.ai>
+Date:   Mon Aug 25 20:06:29 2025 +0000
+
+    Remove storing and showing history information for recipe and workout
+
+[33mcommit 32302855ef076dfd49461aeb6f5bf354e20ec66b[m
+Author: Parag Agarwal <pagarwal@homegeek.ai>
+Date:   Mon Aug 25 20:04:19 2025 +0000
+
+    Once recipe or workout is generated it get saved to history
+
+[33mcommit f2c11df2e37de9635aafaa6ab872f7f8ff7b1f01[m
+Author: Parag Agarwal <pagarwal@homegeek.ai>
+Date:   Mon Aug 25 20:01:27 2025 +0000
+
+    File changes
+
+[33mcommit a04ea62fee9d198b8832de90c1e3b0bc0aa6cd6a[m
+Author: Parag Agarwal <pagarwal@homegeek.ai>
+Date:   Mon Aug 25 19:59:19 2025 +0000
+
+    Why are we failing to store work out history
+
+[33mcommit 599fddc14efb5806b1b0e530e58de74e4577ede9[m
+Author: Parag Agarwal <pagarwal@homegeek.ai>
+Date:   Mon Aug 25 19:53:05 2025 +0000
+
+    When save history button is pressed for recipe we save it in recipe-hist
+
+[33mcommit 60671cf80178046c54402fa56f0d75cce0806536[m
+Author: Parag Agarwal <pagarwal@homegeek.ai>
+Date:   Mon Aug 25 19:50:23 2025 +0000
+
+    When you read recipe data, read it from recipe store. If data is not the
+
+[33mcommit 8d0d756bbc4684a0c523211cea379c8f0e9084fb[m
+Author: Parag Agarwal <pagarwal@homegeek.ai>
+Date:   Mon Aug 25 19:48:48 2025 +0000
+
+    When you save history for recipe, save it in recipe-history store
+
+[33mcommit be161903b501f7ade4c335dd2e241a860f11465f[m
+Author: Parag Agarwal <pagarwal@homegeek.ai>
+Date:   Mon Aug 25 19:45:34 2025 +0000
+
+    So I have created permissions for recipe-history and workout-history in
+
+[33mcommit 68bb5e32f84c72a4ca1878356e7b76597092b63b[m
+Author: Parag Agarwal <pagarwal@homegeek.ai>
+Date:   Mon Aug 25 19:41:10 2025 +0000
+
+    please fix FirebaseError: Missing or insufficient permissions.
+
+[33mcommit f60d0cbaf69427568ca8762458cb91869df177c9[m
+Author: Parag Agarwal <pagarwal@homegeek.ai>
+Date:   Mon Aug 25 19:39:23 2025 +0000
+
+    please fix firebase permissions for storing history
+
+[33mcommit b26568e2f07bb864f3396cf8be625fd494550cf1[m
+Author: Parag Agarwal <pagarwal@homegeek.ai>
+Date:   Mon Aug 25 19:36:37 2025 +0000
+
+    When there is not history do not show error for both recipe and workout
+
+[33mcommit 8a44b0fcdc504cd03b7259ca5aa547743d01cc59[m
+Author: Parag Agarwal <pagarwal@homegeek.ai>
+Date:   Mon Aug 25 19:34:30 2025 +0000
+
+    Make Recipe History go on top
+
+[33mcommit 2ae8451f178f7f1e9071383366b7f418d81437d5[m
+Author: Parag Agarwal <pagarwal@homegeek.ai>
+Date:   Mon Aug 25 19:33:12 2025 +0000
+
+    Make Workout History go on top
+
+[33mcommit 472ca50a628111813a8c8761b1ea4dcf0b66f7b6[m
+Author: Parag Agarwal <pagarwal@homegeek.ai>
+Date:   Mon Aug 25 19:32:02 2025 +0000
+
+    If we fail to fetch history then we should show as warning since data is
+
+[33mcommit 1c27affbf359ff92753cee28f6f2859ea1867bc8[m
+Author: Parag Agarwal <pagarwal@homegeek.ai>
+Date:   Mon Aug 25 19:30:20 2025 +0000
+
+    Fix permissions to save Workout and Recipe in database
+
+[33mcommit 175bdd00fa4f9deaa6ad4e0d00cc74d824fe6303[m
+Author: Parag Agarwal <pagarwal@homegeek.ai>
+Date:   Mon Aug 25 19:27:48 2025 +0000
+
+    Once generated, we want to save the workout and recipe in database. This
+
+[33mcommit 7277170eecc8aa397b34101446dd8701d03946b9[m
+Author: Parag Agarwal <pagarwal@homegeek.ai>
+Date:   Mon Aug 25 19:23:26 2025 +0000
+
+    Rename Analysis as Number Analysis
+
+[33mcommit b86ae3d1dd12fed72cf00a85db04e270b92e2c3b[m
+Author: Parag Agarwal <pagarwal@homegeek.ai>
+Date:   Mon Aug 25 19:22:25 2025 +0000
+
+    I see this error with the app, reported by NextJS, please fix it. The er
+
+[33mcommit 4ca69f8427025f71e5579bf0bf9bedb96defce58[m
+Author: Parag Agarwal <pagarwal@homegeek.ai>
+Date:   Mon Aug 25 19:21:34 2025 +0000
+
+    Delete the feature to maintain history
+
+[33mcommit 7e56248df4975d2cacd8bfd8cee89db5a76bb1f5[m
+Author: Parag Agarwal <pagarwal@homegeek.ai>
+Date:   Mon Aug 25 19:19:49 2025 +0000
+
+    We are not able to save our generation history. Seeing warnings, please
+
+[33mcommit b8417b2e88104390bac732bcc2990d1f9ae74db6[m
+Author: Parag Agarwal <pagarwal@homegeek.ai>
+Date:   Mon Aug 25 19:16:22 2025 +0000
+
+    Every time, we generate a recepie, workout, assesment for food, we want
+
+[33mcommit 5646eb07bfc0d9c5b93507539aa5771633e5d00f[m
+Author: Parag Agarwal <pagarwal@homegeek.ai>
+Date:   Mon Aug 25 19:12:29 2025 +0000
+
+    I see this error with the app, reported by NextJS, please fix it. The er
+
+[33mcommit 73b94a9278c94a5cbcaf4e348ed7de68101ee868[m
+Author: Parag Agarwal <pagarwal@homegeek.ai>
+Date:   Mon Aug 25 19:10:03 2025 +0000
+
+    Add feature "Workout" and based on my current scenario, recommend type o
+
+[33mcommit 30b007dda8d72b35b94dbf9afb0584d374b0f14d[m
+Author: Parag Agarwal <pagarwal@homegeek.ai>
+Date:   Mon Aug 25 19:07:08 2025 +0000
+
+    please rename, generate recipe to recipe
+
+[33mcommit 2802b9e63612794c69c5f889da8aca5ccc6e8fe9[m
+Author: Parag Agarwal <pagarwal@homegeek.ai>
+Date:   Mon Aug 25 19:05:50 2025 +0000
+
+    Remove recipie from Reports feature
+
+[33mcommit a5314f9af8ae71bdb33c3ad81e10999681ce0cfd[m
+Author: Parag Agarwal <pagarwal@homegeek.ai>
+Date:   Mon Aug 25 19:03:49 2025 +0000
+
+    I see this error with the app, reported by NextJS, please fix it. The er
+
+[33mcommit c4c499c76e93762d4fa91649b36807f5f73811fb[m
+Author: Parag Agarwal <pagarwal@homegeek.ai>
+Date:   Mon Aug 25 19:02:43 2025 +0000
+
+    Add feature to generate recipe. AI can first ask question like, breafast
+
+[33mcommit 21bb7a8527e5b7fca2f30313af85932f05e640eb[m
+Author: Parag Agarwal <pagarwal@homegeek.ai>
+Date:   Mon Aug 25 18:59:03 2025 +0000
+
+    I see this error with the app, reported by NextJS, please fix it. The er
+
+[33mcommit 44ac1fd06f27faac2890eec3fd121c3ecd9954c2[m
+Author: Parag Agarwal <pagarwal@homegeek.ai>
+Date:   Mon Aug 25 18:55:54 2025 +0000
+
+    For reports feature. Add ability to generate reports for 1) Track calori
+
+[33mcommit fa8f043a159130b89ff9c355fe6e052bbda567dd[m
+Author: Parag Agarwal <pagarwal@homegeek.ai>
+Date:   Mon Aug 25 18:53:00 2025 +0000
+
+    Move Profile to right corner. Also add settings and support
+
+[33mcommit 69046ff64ddc1847b1c9995cc8125448230dc33b[m
+Author: Parag Agarwal <pagarwal@homegeek.ai>
+Date:   Mon Aug 25 18:49:48 2025 +0000
+
+    In the insights add charts for numbers as well
+
+[33mcommit ff1ee88a94fac024c9cdbefd6f5428904c359753[m
+Author: Parag Agarwal <pagarwal@homegeek.ai>
+Date:   Mon Aug 25 18:47:43 2025 +0000
+
+    We should add a feature insight on top of side left bar. This should gra
+
+[33mcommit 245d12090f4600f027b70342c9b299fffd1eba1d[m
+Author: Parag Agarwal <pagarwal@homegeek.ai>
+Date:   Mon Aug 25 16:44:09 2025 +0000
+
+    Make the app pre-login page cleaner by removing contact us
+
+[33mcommit 5136c2128a6a810aba678382741b1f41489579b9[m
+Author: Parag Agarwal <pagarwal@homegeek.ai>
+Date:   Mon Aug 25 16:43:26 2025 +0000
+
+    Make the app pre-login page cleaner by removing Optimize for Suc
+
+[33mcommit 5f17b540a7a7a4e742724ef3491bf06caf6c9638[m
+Author: Parag Agarwal <pagarwal@homegeek.ai>
+Date:   Mon Aug 25 16:42:36 2025 +0000
+
+    Make the app pre-login page cleaner by removing features
+
+[33mcommit 6374e97f906839ed9b69b9190c43f1f72fa71d1c[m
+Author: Parag Agarwal <pagarwal@homegeek.ai>
+Date:   Mon Aug 25 16:41:31 2025 +0000
+
+    Make the app pre-login page cleaner by removing AI-Powered FAQ Generator
+
+[33mcommit eebb7b665b47f418e96cdf7435b1814c19752c23[m
+Author: Parag Agarwal <pagarwal@homegeek.ai>
+Date:   Mon Aug 25 16:22:26 2025 +0000
+
+    Analysis reports can be image or documents
+
+[33mcommit 5c17942d5afbfa1bd87cc31ebaa8dce3f19c855f[m
+Author: Parag Agarwal <pagarwal@homegeek.ai>
+Date:   Mon Aug 25 08:57:16 2025 +0000
+
+    Rename HealthGeek.ai in the pages with HealthGeek. Also landing page sho
+
+[33mcommit 5fb4572346d388d70a9c43c20b17cc2206a901b8[m
+Author: Parag Agarwal <pagarwal@homegeek.ai>
+Date:   Mon Aug 25 08:41:48 2025 +0000
+
+    FirebaseError: Missing or insufficient permissions.
+
+[33mcommit 3d6ed26060b68aa4cd90d49e0b80b90f7fec69fa[m
+Author: Parag Agarwal <pagarwal@homegeek.ai>
+Date:   Mon Aug 25 08:41:12 2025 +0000
+
+    Take Photo and Upload should be working for Track calorie
+
+[33mcommit fa6db2588cb6d4da81d5a1fe9bd4cad4467a7ae4[m
+Author: Parag Agarwal <pagarwal@homegeek.ai>
+Date:   Mon Aug 25 08:39:45 2025 +0000
+
+    FirebaseError: Missing or insufficient permissions.
+
+[33mcommit 77a923458838b3180508761c6b5a8cf7d85df926[m
+Author: Parag Agarwal <pagarwal@homegeek.ai>
+Date:   Mon Aug 25 08:39:06 2025 +0000
+
+    Track your meail, made sure upload photo works
+
+[33mcommit 470824ef268c2a7d614be93e777504989951b503[m
+Author: Parag Agarwal <pagarwal@homegeek.ai>
+Date:   Mon Aug 25 08:35:41 2025 +0000
+
+    Analysis History in Analysis is under construction
+
+[33mcommit 636188f6c2acbb2f6f0967516a2565b4c4e477c6[m
+Author: Parag Agarwal <pagarwal@homegeek.ai>
+Date:   Mon Aug 25 08:34:01 2025 +0000
+
+    We should use dark theme for UI on authentication and the application
+
+[33mcommit dc87707a6cdee33db5286c8d4560a8bff9a112fa[m
+Author: Parag Agarwal <pagarwal@homegeek.ai>
+Date:   Mon Aug 25 08:33:03 2025 +0000
+
+    In the analysis section, we upload a health report e.g. numbers, AI extr
+
+[33mcommit 18ff3dbe4e6d72cfefafe6e216f278faa7bb2bd8[m
+Author: Parag Agarwal <pagarwal@homegeek.ai>
+Date:   Mon Aug 25 08:29:07 2025 +0000
+
+    Food assessment is just for the user. User upload picture or takes pictu
+
+[33mcommit e65c63e89c692c63a90c0741811dd420e1f52211[m
+Author: Parag Agarwal <pagarwal@homegeek.ai>
+Date:   Mon Aug 25 08:26:54 2025 +0000
+
+    So Tracking calorie both the Track your meal and log can be given as tab
+
+[33mcommit 3f019e702f01bb3781afa72ff3e3a7132e40f963[m
+Author: Parag Agarwal <pagarwal@homegeek.ai>
+Date:   Mon Aug 25 08:22:45 2025 +0000
+
+    FirebaseError: Missing or insufficient permissions.
+
+[33mcommit 5d8431654b850be65450491a03f749ee49a8a1f0[m
+Author: Parag Agarwal <pagarwal@homegeek.ai>
+Date:   Mon Aug 25 08:21:31 2025 +0000
+
+    use dark theme
+
+[33mcommit 3fa4f5d5145172b85a5c1430f4d07b202217be11[m
+Author: Parag Agarwal <pagarwal@homegeek.ai>
+Date:   Mon Aug 25 08:20:44 2025 +0000
+
+    So when user profile is being setup. Based on their profile, we will set
+
+[33mcommit 96169b10ab0ac236e1fa0a5ac237b499816e86e1[m
+Author: Parag Agarwal <pagarwal@homegeek.ai>
+Date:   Mon Aug 25 08:14:02 2025 +0000
+
+    Add permissions
+
+[33mcommit 9a9ea2d1ea536aba9814b1bc5497fec32d6e66f8[m
+Author: Parag Agarwal <pagarwal@homegeek.ai>
+Date:   Mon Aug 25 08:13:12 2025 +0000
+
+    Based on our profile, we have a calorie count which we track per day. So
+
+[33mcommit f94b8059ba0decc2939d6a9318f2caa3b570d5b8[m
+Author: Parag Agarwal <pagarwal@homegeek.ai>
+Date:   Mon Aug 25 08:08:55 2025 +0000
+
+    move Analysis above reports
+
+[33mcommit 79c3213dc699327efa45657db6daf178342af2bd[m
+Author: Parag Agarwal <pagarwal@homegeek.ai>
+Date:   Mon Aug 25 08:08:23 2025 +0000
+
+    Add feature Analysis
+
+[33mcommit 8d5a3191975a61326e9395cc97c4503ea32c1edd[m
+Author: Parag Agarwal <pagarwal@homegeek.ai>
+Date:   Mon Aug 25 08:04:36 2025 +0000
+
+    I see this error with the app, reported by NextJS, please fix it. The er
+
+[33mcommit 295e0524d6e008e999920bcd62bcbc800859cc47[m
+Author: Parag Agarwal <pagarwal@homegeek.ai>
+Date:   Mon Aug 25 08:02:24 2025 +0000
+
+    We don't have permissions in database for profiles. Please add it
+
+[33mcommit 1fb812251228fc42f9b2c53187adbcddcc7e856f[m
+Author: Parag Agarwal <pagarwal@homegeek.ai>
+Date:   Mon Aug 25 08:01:08 2025 +0000
+
+    I see this error with the app, reported by NextJS, please fix it. The er
+
+[33mcommit 5370905aef05f4ba3908912e2a7e53404fc0e45f[m
+Author: Parag Agarwal <pagarwal@homegeek.ai>
+Date:   Mon Aug 25 07:58:48 2025 +0000
+
+    Add authentication. For Setup, we get user id and password, also get pro
+
+[33mcommit dbac72093a2892175defc8853830e6681dec52be[m
+Author: Parag Agarwal <pagarwal@homegeek.ai>
+Date:   Mon Aug 25 07:49:50 2025 +0000
+
+    File changes
+
+[33mcommit 239e330a9ea6ee0bf9eea24b38fe0ecfed9fce2c[m
+Author: Parag Agarwal <pagarwal@homegeek.ai>
+Date:   Mon Aug 25 07:49:29 2025 +0000
+
+    Set up Firebase Backend
+
+[33mcommit 204abc40bd50b503a24b3e93eabac6803243b267[m
+Author: Parag Agarwal <pagarwal@homegeek.ai>
+Date:   Mon Aug 25 07:47:24 2025 +0000
+
+    Initial prototype
+
+[33mcommit 72c76ab66ca5eccedabe4c0ebc6de44907c6a46b[m
+Author: Firebase Studio <noreply@firebase.studio>
+Date:   Thu Aug 14 16:08:13 2025 +0000
+
+    Initialized workspace with Firebase Studio
