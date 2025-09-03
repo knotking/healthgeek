@@ -4,7 +4,7 @@
 import { useState, useRef, useEffect, useCallback } from 'react';
 import { useAuthState } from 'react-firebase-hooks/auth';
 import { auth, db } from '@/lib/firebase';
-import { doc, getDoc, collection, addDoc, query, where, getDocs, Timestamp, orderBy, limit, startAt, endAt, startOfDay, endOfDay } from 'firebase/firestore';
+import { doc, getDoc, collection, addDoc, query, where, getDocs, Timestamp, orderBy, limit, startAt, endAt } from 'firebase/firestore';
 import { analyzeFood, FoodAnalysisOutput } from '@/ai/flows/food-analyzer';
 import { Button } from '@/components/ui/button';
 import {
@@ -342,14 +342,17 @@ function CalorieTracker() {
   const fetchDailyLog = useCallback(async () => {
     if (user) {
       setLoading(true);
-      const today = startOfDay(new Date());
-      const tomorrow = endOfDay(new Date());
+      const today = new Date();
+      today.setHours(0, 0, 0, 0);
+
+      const tomorrow = new Date(today);
+      tomorrow.setDate(tomorrow.getDate() + 1);
 
       const q = query(
         collection(db, 'food-log'),
         where('userId', '==', user.uid),
         where('timestamp', '>=', Timestamp.fromDate(today)),
-        where('timestamp', '<=', Timestamp.fromDate(tomorrow)),
+        where('timestamp', '<', Timestamp.fromDate(tomorrow)),
         orderBy('timestamp', 'desc')
       );
       const querySnapshot = await getDocs(q);
@@ -900,3 +903,5 @@ export default function TrackingPage() {
     </Tabs>
   )
 }
+
+    
