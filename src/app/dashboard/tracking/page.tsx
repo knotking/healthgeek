@@ -450,29 +450,29 @@ function CalorieTracker() {
   
   return (
     <>
-      <Tabs defaultValue="today" value={activeTab} onValueChange={setActiveTab} className="w-full">
-        <TabsList className="grid w-full grid-cols-2">
-          <TabsTrigger value="today">Today's Log</TabsTrigger>
-          <TabsTrigger value="history">History</TabsTrigger>
-        </TabsList>
-        <TabsContent value="today" className="mt-4">
-          <Card>
-            <CardHeader>
-              <div className="flex justify-between items-center">
-                <div>
-                  <CardTitle className="flex items-center gap-2"><List/>Today's Food Log</CardTitle>
-                  {calorieTarget > 0 ? (
-                    <CardDescription>Your target for today is {calorieTarget} kcal.</CardDescription>
-                  ) : (
-                    <CardDescription>Set your profile to see a daily calorie target.</CardDescription>
-                  )}
-                </div>
-                <Button onClick={() => setIsAnalysisDialogOpen(true)} disabled={authLoading || !profile}>
-                  <PlusCircle className="mr-2 h-4 w-4" /> Track New Meal
-                </Button>
-              </div>
-            </CardHeader>
-            <CardContent>
+      <Card>
+        <CardHeader>
+          <div className="flex justify-between items-center">
+            <div>
+              <CardTitle className="flex items-center gap-2"><Utensils />Calorie Tracking</CardTitle>
+              {calorieTarget > 0 ? (
+                <CardDescription>Your target for today is {calorieTarget} kcal.</CardDescription>
+              ) : (
+                <CardDescription>Set your profile to see a daily calorie target.</CardDescription>
+              )}
+            </div>
+            <Button onClick={() => setIsAnalysisDialogOpen(true)} disabled={authLoading || !profile}>
+              <PlusCircle className="mr-2 h-4 w-4" /> Track New Meal
+            </Button>
+          </div>
+        </CardHeader>
+        <CardContent>
+          <Tabs defaultValue="today" value={activeTab} onValueChange={setActiveTab} className="w-full">
+            <TabsList className="grid w-full grid-cols-2">
+              <TabsTrigger value="today">Today's Log</TabsTrigger>
+              <TabsTrigger value="history">History</TabsTrigger>
+            </TabsList>
+            <TabsContent value="today" className="mt-4">
               {loading && <div className="flex justify-center py-8"><Loader2 className="h-6 w-6 animate-spin"/></div>}
               {!loading && (
                 <>
@@ -521,17 +521,9 @@ function CalorieTracker() {
                   )}
                 </>
               )}
-            </CardContent>
-          </Card>
-        </TabsContent>
-        <TabsContent value="history" className="mt-4">
-          <Card>
-            <CardHeader>
-              <CardTitle>Log History</CardTitle>
-              <CardDescription>Review your past food logs. Showing 10 most recent by default.</CardDescription>
-            </CardHeader>
-            <CardContent className="space-y-4">
-             <div className="relative">
+            </TabsContent>
+            <TabsContent value="history" className="mt-4">
+             <div className="relative mb-4">
                 <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
                 <Input
                     placeholder="Search by food name..."
@@ -579,10 +571,10 @@ function CalorieTracker() {
                   <p className="text-muted-foreground text-center py-16">No food logs found.</p>
                 )
               )}
-            </CardContent>
-          </Card>
-        </TabsContent>
-      </Tabs>
+            </TabsContent>
+          </Tabs>
+        </CardContent>
+      </Card>
       <FoodAnalysisDialog 
         open={isAnalysisDialogOpen} 
         onOpenChange={setIsAnalysisDialogOpen} 
@@ -699,8 +691,31 @@ function MeditationTracker() {
   const [user, authLoading] = useAuthState(auth);
   const { toast } = useToast();
   const [loading, setLoading] = useState(true);
+  const [dailyLog, setDailyLog] = useState<MeditationLog[]>([]);
   const [historyLog, setHistoryLog] = useState<MeditationLog[]>([]);
   const [searchQuery, setSearchQuery] = useState('');
+  const [activeTab, setActiveTab] = useState('today');
+
+  const fetchDailyLog = useCallback(async () => {
+    if (user) {
+      setLoading(true);
+      const today = new Date();
+      today.setHours(0, 0, 0, 0);
+      const tomorrow = new Date(today);
+      tomorrow.setDate(tomorrow.getDate() + 1);
+
+      const q = query(
+        collection(db, 'meditation-log'),
+        where('userId', '==', user.uid),
+        where('timestamp', '>=', Timestamp.fromDate(today)),
+        where('timestamp', '<', Timestamp.fromDate(tomorrow)),
+        orderBy('timestamp', 'desc')
+      );
+      const querySnapshot = await getDocs(q);
+      setDailyLog(querySnapshot.docs.map(doc => ({ id: doc.id, ...doc.data(), timestamp: (doc.data().timestamp as Timestamp).toDate() })) as MeditationLog[]);
+      setLoading(false);
+    }
+  }, [user]);
 
   const fetchHistory = useCallback(async (searchString?: string) => {
     if (user) {
@@ -718,22 +733,67 @@ function MeditationTracker() {
     }
   }, [user]);
 
+  useEffect(() => {
+    if (!authLoading && user) {
+        if(activeTab === 'today') {
+            fetchDailyLog();
+        } else if (activeTab === 'history') {
+            if (searchQuery) {
+                fetchHistory(searchQuery);
+            } else {
+                fetchHistory();
+            }
+        }
+    }
+  }, [user, authLoading, fetchDailyLog, fetchHistory, activeTab, searchQuery]);
+
   const handleDelete = async (logId: string) => {
     try {
         await deleteDoc(doc(db, "meditation-log", logId));
         toast({ title: "Log Deleted", description: "The meditation log entry has been removed." });
-        fetchHistory(searchQuery);
+        if (activeTab === 'today') fetchDailyLog();
+        else fetchHistory(searchQuery);
     } catch (error: any) {
         toast({ title: "Delete Failed", description: error.message, variant: "destructive" });
     }
   };
   
-  useEffect(() => {
-    const debounceTimer = setTimeout(() => {
-        if (!authLoading && user) fetchHistory(searchQuery);
-    }, 500);
-    return () => clearTimeout(debounceTimer);
-  }, [user, authLoading, fetchHistory, searchQuery]);
+  const handleMeditationLogged = () => {
+    fetchDailyLog();
+  }
+  
+  const renderLogList = (logs: MeditationLog[]) => (
+    logs.length > 0 ? (
+      <ul className="space-y-3 max-h-[60vh] overflow-y-auto pr-2">
+        {logs.map(log => (
+          <li key={log.id} className="flex justify-between items-start p-4 bg-muted/50 rounded-lg">
+            <div className="flex-1">
+              <p className="font-semibold">{log.meditationType}</p>
+              <p className="text-sm text-muted-foreground flex items-center gap-1.5 mt-1"><Clock size={14}/> {log.duration} minutes &bull; {log.timestamp.toLocaleDateString()}</p>
+              {log.description && <p className="text-sm text-muted-foreground flex items-start gap-1.5 mt-2"><BookText size={14} className="mt-0.5 shrink-0"/><span>{log.description}</span></p>}
+            </div>
+            <AlertDialog>
+                <AlertDialogTrigger asChild>
+                    <Button variant="ghost" size="icon" className="h-8 w-8 text-muted-foreground hover:text-destructive"><Trash2 size={16}/></Button>
+                </AlertDialogTrigger>
+                <AlertDialogContent>
+                    <AlertDialogHeader>
+                        <AlertDialogTitle>Are you sure?</AlertDialogTitle>
+                        <AlertDialogDescription>This action cannot be undone. This will permanently delete this meditation log entry.</AlertDialogDescription>
+                    </AlertDialogHeader>
+                    <AlertDialogFooter>
+                        <AlertDialogCancel>Cancel</AlertDialogCancel>
+                        <AlertDialogAction onClick={() => handleDelete(log.id)}>Delete</AlertDialogAction>
+                    </AlertDialogFooter>
+                </AlertDialogContent>
+            </AlertDialog>
+          </li>
+        ))}
+      </ul>
+    ) : (
+      <p className="text-muted-foreground text-center py-16">{searchQuery ? 'No meditations found.' : (activeTab === 'today' ? 'No meditations logged today.' : 'No meditations logged yet.')}</p>
+    )
+  );
 
   return (
     <Card>
@@ -743,47 +803,26 @@ function MeditationTracker() {
             <CardTitle className="flex items-center gap-2"><Brain />Meditation Log</CardTitle>
             <CardDescription>Track your meditation sessions to build a consistent practice.</CardDescription>
           </div>
-          <AddMeditationDialog onMeditationLogged={() => fetchHistory()} />
+          <AddMeditationDialog onMeditationLogged={handleMeditationLogged} />
         </div>
       </CardHeader>
       <CardContent>
-        <div className="relative mb-6">
-          <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-          <Input placeholder="Search by type..." className="pl-9" value={searchQuery} onChange={(e) => setSearchQuery(e.target.value)} />
-        </div>
-        {loading && <div className="flex justify-center py-8"><Loader2 className="h-6 w-6 animate-spin"/></div>}
-        {!loading && (
-          historyLog.length > 0 ? (
-            <ul className="space-y-3 max-h-[60vh] overflow-y-auto pr-2">
-              {historyLog.map(log => (
-                <li key={log.id} className="flex justify-between items-start p-4 bg-muted/50 rounded-lg">
-                  <div className="flex-1">
-                    <p className="font-semibold">{log.meditationType}</p>
-                    <p className="text-sm text-muted-foreground flex items-center gap-1.5 mt-1"><Clock size={14}/> {log.duration} minutes &bull; {log.timestamp.toLocaleDateString()}</p>
-                    {log.description && <p className="text-sm text-muted-foreground flex items-start gap-1.5 mt-2"><BookText size={14} className="mt-0.5 shrink-0"/><span>{log.description}</span></p>}
-                  </div>
-                  <AlertDialog>
-                      <AlertDialogTrigger asChild>
-                          <Button variant="ghost" size="icon" className="h-8 w-8 text-muted-foreground hover:text-destructive"><Trash2 size={16}/></Button>
-                      </AlertDialogTrigger>
-                      <AlertDialogContent>
-                          <AlertDialogHeader>
-                              <AlertDialogTitle>Are you sure?</AlertDialogTitle>
-                              <AlertDialogDescription>This action cannot be undone. This will permanently delete this meditation log entry.</AlertDialogDescription>
-                          </AlertDialogHeader>
-                          <AlertDialogFooter>
-                              <AlertDialogCancel>Cancel</AlertDialogCancel>
-                              <AlertDialogAction onClick={() => handleDelete(log.id)}>Delete</AlertDialogAction>
-                          </AlertDialogFooter>
-                      </AlertDialogContent>
-                  </AlertDialog>
-                </li>
-              ))}
-            </ul>
-          ) : (
-            <p className="text-muted-foreground text-center py-16">{searchQuery ? 'No meditations found.' : 'No meditations logged yet.'}</p>
-          )
-        )}
+        <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
+            <TabsList className="grid w-full grid-cols-2">
+              <TabsTrigger value="today">Today's Log</TabsTrigger>
+              <TabsTrigger value="history">History</TabsTrigger>
+            </TabsList>
+            <TabsContent value="today" className="mt-4">
+                {loading ? <div className="flex justify-center py-8"><Loader2 className="h-6 w-6 animate-spin"/></div> : renderLogList(dailyLog)}
+            </TabsContent>
+            <TabsContent value="history" className="mt-4">
+                <div className="relative mb-6">
+                  <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                  <Input placeholder="Search by type..." className="pl-9" value={searchQuery} onChange={(e) => setSearchQuery(e.target.value)} />
+                </div>
+                {loading ? <div className="flex justify-center py-8"><Loader2 className="h-6 w-6 animate-spin"/></div> : renderLogList(historyLog)}
+            </TabsContent>
+        </Tabs>
       </CardContent>
     </Card>
   );
@@ -887,8 +926,31 @@ function WorkoutTracker() {
   const [user, authLoading] = useAuthState(auth);
   const { toast } = useToast();
   const [loading, setLoading] = useState(true);
+  const [dailyLog, setDailyLog] = useState<WorkoutLog[]>([]);
   const [historyLog, setHistoryLog] = useState<WorkoutLog[]>([]);
   const [searchQuery, setSearchQuery] = useState('');
+  const [activeTab, setActiveTab] = useState('today');
+
+  const fetchDailyLog = useCallback(async () => {
+    if (user) {
+      setLoading(true);
+      const today = new Date();
+      today.setHours(0, 0, 0, 0);
+      const tomorrow = new Date(today);
+      tomorrow.setDate(tomorrow.getDate() + 1);
+
+      const q = query(
+        collection(db, 'workout-log'),
+        where('userId', '==', user.uid),
+        where('timestamp', '>=', Timestamp.fromDate(today)),
+        where('timestamp', '<', Timestamp.fromDate(tomorrow)),
+        orderBy('timestamp', 'desc')
+      );
+      const querySnapshot = await getDocs(q);
+      setDailyLog(querySnapshot.docs.map(doc => ({ id: doc.id, ...doc.data(), timestamp: (doc.data().timestamp as Timestamp).toDate() })) as WorkoutLog[]);
+      setLoading(false);
+    }
+  }, [user]);
 
   const fetchHistory = useCallback(async (searchString?: string) => {
     if (user) {
@@ -906,22 +968,73 @@ function WorkoutTracker() {
     }
   }, [user]);
 
+  useEffect(() => {
+    if (!authLoading && user) {
+        if(activeTab === 'today') {
+            fetchDailyLog();
+        } else if (activeTab === 'history') {
+            if (searchQuery) {
+                fetchHistory(searchQuery);
+            } else {
+                fetchHistory();
+            }
+        }
+    }
+  }, [user, authLoading, fetchDailyLog, fetchHistory, activeTab, searchQuery]);
+
   const handleDelete = async (logId: string) => {
     try {
         await deleteDoc(doc(db, "workout-log", logId));
         toast({ title: "Log Deleted", description: "The workout log entry has been removed." });
-        fetchHistory(searchQuery);
+        if (activeTab === 'today') fetchDailyLog();
+        else fetchHistory(searchQuery);
     } catch (error: any) {
         toast({ title: "Delete Failed", description: error.message, variant: "destructive" });
     }
   };
   
-  useEffect(() => {
-    const debounceTimer = setTimeout(() => {
-      if (!authLoading && user) fetchHistory(searchQuery);
-    }, 500);
-    return () => clearTimeout(debounceTimer);
-  }, [user, authLoading, fetchHistory, searchQuery]);
+  const handleWorkoutLogged = () => {
+    fetchDailyLog();
+  };
+
+  const renderLogList = (logs: WorkoutLog[]) => (
+    logs.length > 0 ? (
+      <ul className="space-y-3 max-h-[60vh] overflow-y-auto pr-2">
+        {logs.map(log => (
+          <li key={log.id} className="flex flex-col sm:flex-row justify-between items-start p-4 bg-muted/50 rounded-lg">
+            <div className="flex-1 mb-2 sm:mb-0">
+              <p className="font-semibold">{log.workoutType}</p>
+              <p className="text-sm text-muted-foreground">{log.timestamp.toLocaleDateString()}</p>
+              {log.notes && <p className="text-sm text-muted-foreground flex items-start gap-1.5 mt-2"><BookText size={14} className="mt-0.5 shrink-0"/><span>{log.notes}</span></p>}
+            </div>
+            <div className="flex items-center gap-4">
+              <div className="flex items-center gap-4 text-sm font-medium">
+                <span className="flex items-center gap-1.5"><Clock size={14}/> {log.duration} min</span>
+                {log.caloriesBurned && log.caloriesBurned > 0 && <span className="flex items-center gap-1.5"><Flame size={14}/> {log.caloriesBurned} kcal</span>}
+              </div>
+              <AlertDialog>
+                  <AlertDialogTrigger asChild>
+                      <Button variant="ghost" size="icon" className="h-8 w-8 text-muted-foreground hover:text-destructive"><Trash2 size={16}/></Button>
+                  </AlertDialogTrigger>
+                  <AlertDialogContent>
+                      <AlertDialogHeader>
+                          <AlertDialogTitle>Are you sure?</AlertDialogTitle>
+                          <AlertDialogDescription>This action cannot be undone. This will permanently delete this workout log entry.</AlertDialogDescription>
+                      </AlertDialogHeader>
+                      <AlertDialogFooter>
+                          <AlertDialogCancel>Cancel</AlertDialogCancel>
+                          <AlertDialogAction onClick={() => handleDelete(log.id)}>Delete</AlertDialogAction>
+                      </AlertDialogFooter>
+                  </AlertDialogContent>
+              </AlertDialog>
+            </div>
+          </li>
+        ))}
+      </ul>
+    ) : (
+      <p className="text-muted-foreground text-center py-16">{searchQuery ? 'No workouts found.' : (activeTab === 'today' ? 'No workouts logged today.' : 'No workouts logged yet.')}</p>
+    )
+  );
 
   return (
     <Card>
@@ -931,53 +1044,26 @@ function WorkoutTracker() {
             <CardTitle className="flex items-center gap-2"><Dumbbell />Workout Log</CardTitle>
             <CardDescription>Track your workouts to monitor progress.</CardDescription>
           </div>
-          <AddWorkoutDialog onWorkoutLogged={() => fetchHistory()} />
+          <AddWorkoutDialog onWorkoutLogged={handleWorkoutLogged} />
         </div>
       </CardHeader>
       <CardContent>
-        <div className="relative mb-6">
-          <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-          <Input placeholder="Search by workout type..." className="pl-9" value={searchQuery} onChange={(e) => setSearchQuery(e.target.value)} />
-        </div>
-        {loading && <div className="flex justify-center py-8"><Loader2 className="h-6 w-6 animate-spin"/></div>}
-        {!loading && (
-          historyLog.length > 0 ? (
-            <ul className="space-y-3 max-h-[60vh] overflow-y-auto pr-2">
-              {historyLog.map(log => (
-                <li key={log.id} className="flex flex-col sm:flex-row justify-between items-start p-4 bg-muted/50 rounded-lg">
-                  <div className="flex-1 mb-2 sm:mb-0">
-                    <p className="font-semibold">{log.workoutType}</p>
-                    <p className="text-sm text-muted-foreground">{log.timestamp.toLocaleDateString()}</p>
-                    {log.notes && <p className="text-sm text-muted-foreground flex items-start gap-1.5 mt-2"><BookText size={14} className="mt-0.5 shrink-0"/><span>{log.notes}</span></p>}
-                  </div>
-                  <div className="flex items-center gap-4">
-                    <div className="flex items-center gap-4 text-sm font-medium">
-                      <span className="flex items-center gap-1.5"><Clock size={14}/> {log.duration} min</span>
-                      {log.caloriesBurned && log.caloriesBurned > 0 && <span className="flex items-center gap-1.5"><Flame size={14}/> {log.caloriesBurned} kcal</span>}
-                    </div>
-                    <AlertDialog>
-                        <AlertDialogTrigger asChild>
-                            <Button variant="ghost" size="icon" className="h-8 w-8 text-muted-foreground hover:text-destructive"><Trash2 size={16}/></Button>
-                        </AlertDialogTrigger>
-                        <AlertDialogContent>
-                            <AlertDialogHeader>
-                                <AlertDialogTitle>Are you sure?</AlertDialogTitle>
-                                <AlertDialogDescription>This action cannot be undone. This will permanently delete this workout log entry.</AlertDialogDescription>
-                            </AlertDialogHeader>
-                            <AlertDialogFooter>
-                                <AlertDialogCancel>Cancel</AlertDialogCancel>
-                                <AlertDialogAction onClick={() => handleDelete(log.id)}>Delete</AlertDialogAction>
-                            </AlertDialogFooter>
-                        </AlertDialogContent>
-                    </AlertDialog>
-                  </div>
-                </li>
-              ))}
-            </ul>
-          ) : (
-            <p className="text-muted-foreground text-center py-16">{searchQuery ? 'No workouts found.' : 'No workouts logged yet.'}</p>
-          )
-        )}
+        <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
+            <TabsList className="grid w-full grid-cols-2">
+              <TabsTrigger value="today">Today's Log</TabsTrigger>
+              <TabsTrigger value="history">History</TabsTrigger>
+            </TabsList>
+            <TabsContent value="today" className="mt-4">
+                {loading ? <div className="flex justify-center py-8"><Loader2 className="h-6 w-6 animate-spin"/></div> : renderLogList(dailyLog)}
+            </TabsContent>
+            <TabsContent value="history" className="mt-4">
+                <div className="relative mb-6">
+                  <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                  <Input placeholder="Search by workout type..." className="pl-9" value={searchQuery} onChange={(e) => setSearchQuery(e.target.value)} />
+                </div>
+                {loading ? <div className="flex justify-center py-8"><Loader2 className="h-6 w-6 animate-spin"/></div> : renderLogList(historyLog)}
+            </TabsContent>
+        </Tabs>
       </CardContent>
     </Card>
   );
