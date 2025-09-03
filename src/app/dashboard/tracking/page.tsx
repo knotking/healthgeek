@@ -4,7 +4,7 @@
 import { useState, useRef, useEffect, useCallback } from 'react';
 import { useAuthState } from 'react-firebase-hooks/auth';
 import { auth, db } from '@/lib/firebase';
-import { doc, getDoc, collection, addDoc, query, where, getDocs, Timestamp, orderBy, limit, startAt, endAt } from 'firebase/firestore';
+import { doc, getDoc, collection, addDoc, query, where, getDocs, Timestamp, orderBy, limit, startAt, endAt, deleteDoc } from 'firebase/firestore';
 import { analyzeFood, FoodAnalysisOutput } from '@/ai/flows/food-analyzer';
 import { Button } from '@/components/ui/button';
 import {
@@ -15,12 +15,13 @@ import {
   CardDescription,
 } from '@/components/ui/card';
 import { useToast } from '@/hooks/use-toast';
-import { Loader2, Camera, Upload, Utensils, Zap, HeartPulse, List, AlertTriangle, VideoOff, RefreshCw, PlusCircle, Search, Brain, Clock, BookText, Dumbbell, Flame } from 'lucide-react';
+import { Loader2, Camera, Upload, Utensils, Zap, HeartPulse, List, AlertTriangle, VideoOff, RefreshCw, PlusCircle, Search, Brain, Clock, BookText, Dumbbell, Flame, Trash2 } from 'lucide-react';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import Image from 'next/image';
 import { Progress } from '@/components/ui/progress';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter, DialogTrigger, DialogClose } from '@/components/ui/dialog';
+import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from '@/components/ui/alert-dialog';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
@@ -405,6 +406,18 @@ function CalorieTracker() {
     setHistoryLog(logs);
     setLoading(false);
   }, [user]);
+  
+  const handleDelete = async (logId: string) => {
+    try {
+        await deleteDoc(doc(db, "food-log", logId));
+        toast({ title: "Log Deleted", description: "The food log entry has been removed." });
+        if(activeTab === 'today') fetchDailyLog();
+        else fetchInitialHistory();
+    } catch (error: any) {
+        toast({ title: "Delete Failed", description: error.message, variant: "destructive" });
+    }
+  };
+
 
   useEffect(() => {
     if (!authLoading && user) {
@@ -481,7 +494,24 @@ function CalorieTracker() {
                               <p className="font-semibold">{log.foodName}</p>
                               <p className="text-sm text-muted-foreground">{log.timestamp.toLocaleTimeString()}</p>
                             </div>
-                            <p className="font-medium">{log.calories} kcal</p>
+                            <div className="flex items-center gap-2">
+                                <p className="font-medium">{log.calories} kcal</p>
+                                <AlertDialog>
+                                    <AlertDialogTrigger asChild>
+                                        <Button variant="ghost" size="icon" className="h-8 w-8 text-muted-foreground hover:text-destructive"><Trash2 size={16}/></Button>
+                                    </AlertDialogTrigger>
+                                    <AlertDialogContent>
+                                        <AlertDialogHeader>
+                                            <AlertDialogTitle>Are you sure?</AlertDialogTitle>
+                                            <AlertDialogDescription>This action cannot be undone. This will permanently delete this food log entry.</AlertDialogDescription>
+                                        </AlertDialogHeader>
+                                        <AlertDialogFooter>
+                                            <AlertDialogCancel>Cancel</AlertDialogCancel>
+                                            <AlertDialogAction onClick={() => handleDelete(log.id)}>Delete</AlertDialogAction>
+                                        </AlertDialogFooter>
+                                    </AlertDialogContent>
+                                </AlertDialog>
+                            </div>
                           </li>
                         ))}
                       </ul>
@@ -523,7 +553,24 @@ function CalorieTracker() {
                                 <p className="font-semibold">{log.foodName}</p>
                                 <p className="text-sm text-muted-foreground">{log.timestamp.toLocaleString()}</p>
                               </div>
-                              <p className="font-medium">{log.calories} kcal</p>
+                              <div className="flex items-center gap-2">
+                                <p className="font-medium">{log.calories} kcal</p>
+                                <AlertDialog>
+                                    <AlertDialogTrigger asChild>
+                                        <Button variant="ghost" size="icon" className="h-8 w-8 text-muted-foreground hover:text-destructive"><Trash2 size={16}/></Button>
+                                    </AlertDialogTrigger>
+                                    <AlertDialogContent>
+                                        <AlertDialogHeader>
+                                            <AlertDialogTitle>Are you sure?</AlertDialogTitle>
+                                            <AlertDialogDescription>This action cannot be undone. This will permanently delete this food log entry.</AlertDialogDescription>
+                                        </AlertDialogHeader>
+                                        <AlertDialogFooter>
+                                            <AlertDialogCancel>Cancel</AlertDialogCancel>
+                                            <AlertDialogAction onClick={() => handleDelete(log.id)}>Delete</AlertDialogAction>
+                                        </AlertDialogFooter>
+                                    </AlertDialogContent>
+                                </AlertDialog>
+                              </div>
                             </li>
                           ))}
                         </ul>
@@ -650,6 +697,7 @@ function AddMeditationDialog({ onMeditationLogged }: { onMeditationLogged: () =>
 
 function MeditationTracker() {
   const [user, authLoading] = useAuthState(auth);
+  const { toast } = useToast();
   const [loading, setLoading] = useState(true);
   const [historyLog, setHistoryLog] = useState<MeditationLog[]>([]);
   const [searchQuery, setSearchQuery] = useState('');
@@ -669,6 +717,16 @@ function MeditationTracker() {
       setLoading(false);
     }
   }, [user]);
+
+  const handleDelete = async (logId: string) => {
+    try {
+        await deleteDoc(doc(db, "meditation-log", logId));
+        toast({ title: "Log Deleted", description: "The meditation log entry has been removed." });
+        fetchHistory(searchQuery);
+    } catch (error: any) {
+        toast({ title: "Delete Failed", description: error.message, variant: "destructive" });
+    }
+  };
   
   useEffect(() => {
     const debounceTimer = setTimeout(() => {
@@ -704,6 +762,21 @@ function MeditationTracker() {
                     <p className="text-sm text-muted-foreground flex items-center gap-1.5 mt-1"><Clock size={14}/> {log.duration} minutes &bull; {log.timestamp.toLocaleDateString()}</p>
                     {log.description && <p className="text-sm text-muted-foreground flex items-start gap-1.5 mt-2"><BookText size={14} className="mt-0.5 shrink-0"/><span>{log.description}</span></p>}
                   </div>
+                  <AlertDialog>
+                      <AlertDialogTrigger asChild>
+                          <Button variant="ghost" size="icon" className="h-8 w-8 text-muted-foreground hover:text-destructive"><Trash2 size={16}/></Button>
+                      </AlertDialogTrigger>
+                      <AlertDialogContent>
+                          <AlertDialogHeader>
+                              <AlertDialogTitle>Are you sure?</AlertDialogTitle>
+                              <AlertDialogDescription>This action cannot be undone. This will permanently delete this meditation log entry.</AlertDialogDescription>
+                          </AlertDialogHeader>
+                          <AlertDialogFooter>
+                              <AlertDialogCancel>Cancel</AlertDialogCancel>
+                              <AlertDialogAction onClick={() => handleDelete(log.id)}>Delete</AlertDialogAction>
+                          </AlertDialogFooter>
+                      </AlertDialogContent>
+                  </AlertDialog>
                 </li>
               ))}
             </ul>
@@ -812,6 +885,7 @@ function AddWorkoutDialog({ onWorkoutLogged }: { onWorkoutLogged: () => void }) 
 
 function WorkoutTracker() {
   const [user, authLoading] = useAuthState(auth);
+  const { toast } = useToast();
   const [loading, setLoading] = useState(true);
   const [historyLog, setHistoryLog] = useState<WorkoutLog[]>([]);
   const [searchQuery, setSearchQuery] = useState('');
@@ -831,6 +905,16 @@ function WorkoutTracker() {
       setLoading(false);
     }
   }, [user]);
+
+  const handleDelete = async (logId: string) => {
+    try {
+        await deleteDoc(doc(db, "workout-log", logId));
+        toast({ title: "Log Deleted", description: "The workout log entry has been removed." });
+        fetchHistory(searchQuery);
+    } catch (error: any) {
+        toast({ title: "Delete Failed", description: error.message, variant: "destructive" });
+    }
+  };
   
   useEffect(() => {
     const debounceTimer = setTimeout(() => {
@@ -860,15 +944,32 @@ function WorkoutTracker() {
           historyLog.length > 0 ? (
             <ul className="space-y-3 max-h-[60vh] overflow-y-auto pr-2">
               {historyLog.map(log => (
-                <li key={log.id} className="flex flex-col sm:flex-row justify-between items-start sm:items-center p-4 bg-muted/50 rounded-lg">
+                <li key={log.id} className="flex flex-col sm:flex-row justify-between items-start p-4 bg-muted/50 rounded-lg">
                   <div className="flex-1 mb-2 sm:mb-0">
                     <p className="font-semibold">{log.workoutType}</p>
                     <p className="text-sm text-muted-foreground">{log.timestamp.toLocaleDateString()}</p>
                     {log.notes && <p className="text-sm text-muted-foreground flex items-start gap-1.5 mt-2"><BookText size={14} className="mt-0.5 shrink-0"/><span>{log.notes}</span></p>}
                   </div>
-                  <div className="flex items-center gap-4 text-sm font-medium">
-                    <span className="flex items-center gap-1.5"><Clock size={14}/> {log.duration} min</span>
-                    {log.caloriesBurned && log.caloriesBurned > 0 && <span className="flex items-center gap-1.5"><Flame size={14}/> {log.caloriesBurned} kcal</span>}
+                  <div className="flex items-center gap-4">
+                    <div className="flex items-center gap-4 text-sm font-medium">
+                      <span className="flex items-center gap-1.5"><Clock size={14}/> {log.duration} min</span>
+                      {log.caloriesBurned && log.caloriesBurned > 0 && <span className="flex items-center gap-1.5"><Flame size={14}/> {log.caloriesBurned} kcal</span>}
+                    </div>
+                    <AlertDialog>
+                        <AlertDialogTrigger asChild>
+                            <Button variant="ghost" size="icon" className="h-8 w-8 text-muted-foreground hover:text-destructive"><Trash2 size={16}/></Button>
+                        </AlertDialogTrigger>
+                        <AlertDialogContent>
+                            <AlertDialogHeader>
+                                <AlertDialogTitle>Are you sure?</AlertDialogTitle>
+                                <AlertDialogDescription>This action cannot be undone. This will permanently delete this workout log entry.</AlertDialogDescription>
+                            </AlertDialogHeader>
+                            <AlertDialogFooter>
+                                <AlertDialogCancel>Cancel</AlertDialogCancel>
+                                <AlertDialogAction onClick={() => handleDelete(log.id)}>Delete</AlertDialogAction>
+                            </AlertDialogFooter>
+                        </AlertDialogContent>
+                    </AlertDialog>
                   </div>
                 </li>
               ))}
@@ -903,5 +1004,3 @@ export default function TrackingPage() {
     </Tabs>
   )
 }
-
-    
