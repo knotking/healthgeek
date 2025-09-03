@@ -7,14 +7,14 @@ import { useAuthState } from 'react-firebase-hooks/auth';
 import { auth, db } from '@/lib/firebase';
 import { collection, addDoc, doc, getDoc, query, where, orderBy, getDocs, deleteDoc, Timestamp, serverTimestamp, updateDoc, limit } from 'firebase/firestore';
 import { useToast } from '@/hooks/use-toast';
-import { Loader2 as Loader2Common, MoreHorizontal } from 'lucide-react';
+import { Loader2 as Loader2Common, MoreHorizontal, Search, ArrowLeft } from 'lucide-react';
 import { Button as ButtonCommon } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription, CardFooter } from '@/components/ui/card';
 import { Badge as BadgeCommon } from '@/components/ui/badge';
+import { Input } from '@/components/ui/input';
 import jsPDF from 'jspdf';
 import 'jspdf-autotable';
 import { AnimatePresence, motion } from 'framer-motion';
-import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from '@/components/ui/accordion';
 import { BrainCircuit, ChefHat, Dumbbell, User, Trash2, Heart, Star, Eye, Sparkles } from 'lucide-react';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter, DialogTrigger } from '@/components/ui/dialog';
@@ -618,15 +618,15 @@ function MeditationGenerator({ onSave }: { onSave: () => void }) {
                 data: meditationResult,
                 isPublic,
                 timestamp: serverTimestamp(),
-                rating: 0,
-            });
-            toast({ title: 'Success', description: 'Meditation saved to your history.' });
-            onSave();
-        } catch (e: any) {
-            toast({ title: 'Save Failed', description: e.message, variant: 'destructive' });
-        } finally {
-            setIsSaving(false);
-        }
+            rating: 0,
+        });
+        toast({ title: 'Success', description: 'Meditation saved to your history.' });
+        onSave();
+    } catch (e: any) {
+        toast({ title: 'Save Failed', description: e.message, variant: 'destructive' });
+    } finally {
+        setIsSaving(false);
+    }
     }
 
     function handleDownloadPdf() {
@@ -1058,8 +1058,11 @@ function HabitGenerator({ onSave }: { onSave: () => void }) {
 
 
 
-const Generators = ({ onGenerate }: { onGenerate: () => void }) => (
+const Generators = ({ onGenerate, onBack }: { onGenerate: () => void, onBack: () => void }) => (
     <div className="space-y-6 max-w-4xl mx-auto">
+        <ButtonCommon variant="outline" onClick={onBack} className="mb-4">
+            <ArrowLeft className="mr-2 h-4 w-4" /> Back to History
+        </ButtonCommon>
         <Tabs defaultValue="workout" className="w-full">
             <TabsList className="grid w-full grid-cols-4">
                 <TabsTrigger value="workout">
@@ -1096,7 +1099,7 @@ const Generators = ({ onGenerate }: { onGenerate: () => void }) => (
 );
 
 
-const MyHistory = ({ history, loading, onDelete, onView, onRate }: { history: any[], loading: boolean, onDelete: (id: string) => void, onView: (item: any) => void, onRate: (id: string, rating: number) => void }) => {
+const MyHistory = ({ history, loading, onDelete, onView, onRate, onNew, onSearch }: { history: any[], loading: boolean, onDelete: (id: string) => void, onView: (item: any) => void, onRate: (id: string, rating: number) => void, onNew: () => void, onSearch: (term: string) => void }) => {
     
     const typeIcon = (type: string) => {
         switch (type) {
@@ -1131,47 +1134,59 @@ const MyHistory = ({ history, loading, onDelete, onView, onRate }: { history: an
             default: return 'Unknown';
         }
     }
-
-    if (loading) {
-        return <div className="flex justify-center py-12"><Loader2Common className="h-8 w-8 animate-spin" /></div>;
-    }
-
-    if (history.length === 0) {
-        return <div className="text-center py-12 text-muted-foreground">You haven't saved any recommendations yet.</div>
-    }
     
     return (
         <Card>
-            <CardHeader>
-                <CardTitle>My Saved Recommendations</CardTitle>
-                <CardDescription>Here are all the recommendations you have saved.</CardDescription>
+            <CardHeader className="flex flex-col md:flex-row md:items-center md:justify-between">
+                <div>
+                    <CardTitle>My Saved Recommendations</CardTitle>
+                    <CardDescription>Here are all the recommendations you have saved.</CardDescription>
+                </div>
+                <ButtonCommon onClick={onNew}>
+                    <Sparkles className="mr-2 h-4 w-4" />
+                    New Recommendation
+                </ButtonCommon>
             </CardHeader>
             <CardContent>
-                <div className="space-y-4">
-                    {history.map((item) => (
-                         <Card key={item.id} className="flex items-center justify-between p-4">
-                            <div className="flex items-center gap-4">
-                                {typeIcon(item.type)}
-                                <div>
-                                    <p className="font-semibold">{getItemName(item)}</p>
-                                    <p className="text-sm text-muted-foreground capitalize">{item.type}</p>
-                                </div>
-                            </div>
-                             <div className="flex items-center gap-4">
-                                {renderRating(item)}
-                                <DropdownMenu>
-                                    <DropdownMenuTrigger asChild>
-                                        <ButtonCommon variant="ghost" size="icon"><MoreHorizontal /></ButtonCommon>
-                                    </DropdownMenuTrigger>
-                                    <DropdownMenuContent>
-                                        <DropdownMenuItem onClick={() => onView(item)}><Eye className="mr-2"/>View</DropdownMenuItem>
-                                        <DropdownMenuItem onClick={() => onDelete(item.id)} className="text-red-500 focus:text-red-500"><Trash2 className="mr-2"/>Delete</DropdownMenuItem>
-                                    </DropdownMenuContent>
-                                </DropdownMenu>
-                             </div>
-                        </Card>
-                    ))}
+                <div className="relative mb-6">
+                    <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                    <Input
+                        placeholder="Search by tags..."
+                        className="pl-9"
+                        onChange={(e) => onSearch(e.target.value)}
+                    />
                 </div>
+                {loading ? (
+                     <div className="flex justify-center py-12"><Loader2Common className="h-8 w-8 animate-spin" /></div>
+                ) : history.length === 0 ? (
+                    <div className="text-center py-12 text-muted-foreground">You haven't saved any recommendations yet.</div>
+                ) : (
+                    <div className="space-y-4">
+                        {history.map((item) => (
+                             <Card key={item.id} className="flex items-center justify-between p-4">
+                                <div className="flex items-center gap-4">
+                                    {typeIcon(item.type)}
+                                    <div>
+                                        <p className="font-semibold">{getItemName(item)}</p>
+                                        <p className="text-sm text-muted-foreground capitalize">{item.type}</p>
+                                    </div>
+                                </div>
+                                 <div className="flex items-center gap-4">
+                                    {renderRating(item)}
+                                    <DropdownMenu>
+                                        <DropdownMenuTrigger asChild>
+                                            <ButtonCommon variant="ghost" size="icon"><MoreHorizontal /></ButtonCommon>
+                                        </DropdownMenuTrigger>
+                                        <DropdownMenuContent>
+                                            <DropdownMenuItem onClick={() => onView(item)}><Eye className="mr-2"/>View</DropdownMenuItem>
+                                            <DropdownMenuItem onClick={() => onDelete(item.id)} className="text-red-500 focus:text-red-500"><Trash2 className="mr-2"/>Delete</DropdownMenuItem>
+                                        </DropdownMenuContent>
+                                    </DropdownMenu>
+                                 </div>
+                            </Card>
+                        ))}
+                    </div>
+                )}
             </CardContent>
         </Card>
     )
@@ -1283,7 +1298,8 @@ export default function RecommendationsPage() {
   const [historyLoading, setHistoryLoading] = useState(true);
   const [selectedItem, setSelectedItem] = useState<any | null>(null);
   const [isViewModalOpen, setIsViewModalOpen] = useState(false);
-  const [activeTab, setActiveTab] = useState("history");
+  const [view, setView] = useState<'history' | 'generators'>('history');
+  const [searchQuery, setSearchQuery] = useState('');
 
   const fetchMyHistory = useCallback(async () => {
     if (!user) return;
@@ -1301,12 +1317,12 @@ export default function RecommendationsPage() {
   }, [user, toast]);
 
   useEffect(() => {
-    if (activeTab === "history" && user) {
+    if (user) {
         fetchMyHistory();
     } else if (!authLoading && !user) {
         setHistoryLoading(false);
     }
-  }, [user, authLoading, fetchMyHistory, activeTab]);
+  }, [user, authLoading, fetchMyHistory]);
 
   const handleDelete = async (id: string) => {
     try {
@@ -1325,7 +1341,7 @@ export default function RecommendationsPage() {
   
   const handleGenerated = () => {
     fetchMyHistory();
-    setActiveTab("history");
+    setView("history");
   };
 
   const handleRate = async (id: string, rating: number) => {
@@ -1340,21 +1356,30 @@ export default function RecommendationsPage() {
         toast({ title: "Rating failed", description: e.message, variant: "destructive" });
     }
   };
+
+  const filteredHistory = useMemo(() => {
+    if (!searchQuery) return myHistory;
+    const lowercasedQuery = searchQuery.toLowerCase();
+    return myHistory.filter(item => 
+        item.data.tags?.some((tag: string) => tag.toLowerCase().includes(lowercasedQuery))
+    );
+  }, [myHistory, searchQuery]);
   
   return (
     <>
-      <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
-        <TabsList className="grid w-full grid-cols-2">
-          <TabsTrigger value="history">My History</TabsTrigger>
-          <TabsTrigger value="generators">Generators</TabsTrigger>
-        </TabsList>
-        <TabsContent value="history">
-            <MyHistory history={myHistory} loading={historyLoading} onDelete={handleDelete} onView={handleView} onRate={handleRate} />
-        </TabsContent>
-        <TabsContent value="generators">
-            <Generators onGenerate={handleGenerated} />
-        </TabsContent>
-      </Tabs>
+      {view === 'history' ? (
+          <MyHistory 
+              history={filteredHistory} 
+              loading={historyLoading} 
+              onDelete={handleDelete} 
+              onView={handleView} 
+              onRate={handleRate} 
+              onNew={() => setView('generators')}
+              onSearch={setSearchQuery}
+          />
+      ) : (
+          <Generators onGenerate={handleGenerated} onBack={() => setView('history')} />
+      )}
 
       <Dialog open={isViewModalOpen} onOpenChange={setIsViewModalOpen}>
         <DialogContent className="max-w-3xl max-h-[90vh] overflow-y-auto">
