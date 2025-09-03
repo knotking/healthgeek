@@ -1,42 +1,41 @@
+
 rules_version = '2';
 
 service cloud.firestore {
   match /databases/{database}/documents {
-
     // Users can only read and write their own profile
     match /profiles/{userId} {
-      allow read, write: if request.auth.uid == userId;
-    }
-
-    // Users can only read and write their own health reports
-    match /health-reports/{reportId} {
-      allow read, write: if request.auth.uid == resource.data.userId;
+      allow read, write: if request.auth != null && request.auth.uid == userId;
     }
     
-    // Users can only read and write their own food logs
+    // Users can only manage their own health reports
+    match /health-reports/{reportId} {
+      allow read, create, delete, update: if request.auth != null && request.auth.uid == request.resource.data.userId;
+    }
+    
+    // Users can only manage their own food logs
     match /food-log/{logId} {
-      allow read, write: if request.auth.uid == resource.data.userId;
+      allow read, create, delete, update: if request.auth != null && request.auth.uid == request.resource.data.userId;
     }
-
-    // Users can only read and write their own saved quizzes
-    match /saved-quizzes/{quizId} {
-        allow read, write: if request.auth.uid == resource.data.userId;
-    }
-
-    // Users can read public recommendations, but only write/delete their own
-    match /recommendation-history/{recommendationId} {
-        allow read: if resource.data.isPublic == true || request.auth.uid == resource.data.userId;
-        allow write: if request.auth.uid == resource.data.userId;
-    }
-
-    // Users can only read and write their own meditation logs
+    
+    // Users can only manage their own meditation logs
     match /meditation-log/{logId} {
-        allow read, write: if request.auth.uid == resource.data.userId;
+      allow read, create, delete, update: if request.auth != null && request.auth.uid == request.resource.data.userId;
     }
-
-    // Users can only read and write their own workout logs
+    
+    // Users can only manage their own workout logs
     match /workout-log/{logId} {
-        allow read, write: if request.auth.uid == resource.data.userId;
+      allow read, create, delete, update: if request.auth != null && request.auth.uid == request.resource.data.userId;
+    }
+    
+    // Users can only manage their own saved quizzes
+    match /saved-quizzes/{quizId} {
+      allow read, create, delete, update: if request.auth != null && request.auth.uid == request.resource.data.userId;
+    }
+    
+    // Users can only manage their own recommendation history
+    match /recommendation-history/{recId} {
+      allow read, create, delete, update: if request.auth != null && request.auth.uid == request.resource.data.userId;
     }
   }
 }
