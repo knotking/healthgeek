@@ -1,45 +1,42 @@
-
 rules_version = '2';
 
 service cloud.firestore {
   match /databases/{database}/documents {
 
-    // Users can only read and write to their own profile
+    // Users can only read and write their own profile
     match /profiles/{userId} {
-      allow read, update: if request.auth.uid == userId;
-      allow create: if request.auth.uid != null;
+      allow read, write: if request.auth.uid == userId;
     }
 
-    // Users can only read and write to their own health reports
+    // Users can only read and write their own health reports
     match /health-reports/{reportId} {
-      allow read, create, update, delete: if request.auth.uid == request.resource.data.userId;
+      allow read, write: if request.auth.uid == resource.data.userId;
     }
     
     // Users can only read and write their own food logs
     match /food-log/{logId} {
-        allow read, create, update, delete: if request.auth.uid == request.resource.data.userId;
+      allow read, write: if request.auth.uid == resource.data.userId;
     }
 
-    // Users can only read and write to their own saved quizzes
+    // Users can only read and write their own saved quizzes
     match /saved-quizzes/{quizId} {
-        allow read, create, update, delete: if request.auth.uid == request.resource.data.userId;
-    }
-    
-    // Users can only read and write to their own recommendation history
-    match /recommendation-history/{recId} {
-        allow read, create, update, delete: if request.auth.uid == request.resource.data.userId;
-        // Allow public reads if isPublic is true
-        allow read: if resource.data.isPublic == true;
+        allow read, write: if request.auth.uid == resource.data.userId;
     }
 
-    // Users can only read and write to their own meditation logs
+    // Users can read public recommendations, but only write/delete their own
+    match /recommendation-history/{recommendationId} {
+        allow read: if resource.data.isPublic == true || request.auth.uid == resource.data.userId;
+        allow write: if request.auth.uid == resource.data.userId;
+    }
+
+    // Users can only read and write their own meditation logs
     match /meditation-log/{logId} {
-        allow read, create, update, delete: if request.auth.uid == request.resource.data.userId;
+        allow read, write: if request.auth.uid == resource.data.userId;
     }
 
-    // Users can only read and write to their own workout logs
+    // Users can only read and write their own workout logs
     match /workout-log/{logId} {
-        allow read, create, update, delete: if request.auth.uid == request.resource.data.userId;
+        allow read, write: if request.auth.uid == resource.data.userId;
     }
   }
 }
