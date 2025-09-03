@@ -166,18 +166,10 @@ export default function DashboardLayout({
               </SidebarMenuButton>
             </SidebarMenuItem>
             <SidebarMenuItem>
-              <SidebarMenuButton asChild isActive={pathname.startsWith('/dashboard/food-analysis')}>
-                <Link href="/dashboard/food-analysis">
-                  <UtensilsCrossed />
-                  Food Analysis
-                </Link>
-              </SidebarMenuButton>
-            </SidebarMenuItem>
-            <SidebarMenuItem>
               <SidebarMenuButton asChild isActive={pathname.startsWith('/dashboard/analysis')}>
                 <Link href="/dashboard/analysis">
                   <ClipboardList />
-                  Number Analysis
+                  Analysis
                 </Link>
               </SidebarMenuButton>
             </SidebarMenuItem>
@@ -186,14 +178,6 @@ export default function DashboardLayout({
                 <Link href="/dashboard/health-quiz">
                   <BrainCircuit />
                   Health Quiz
-                </Link>
-              </SidebarMenuButton>
-            </SidebarMenuItem>
-             <SidebarMenuItem>
-              <SidebarMenuButton asChild isActive={pathname.startsWith('/dashboard/posture-analysis')}>
-                <Link href="/dashboard/posture-analysis">
-                  <PersonStanding />
-                  Posture Analysis
                 </Link>
               </SidebarMenuButton>
             </SidebarMenuItem>
@@ -278,5 +262,3 @@ export default function DashboardLayout({
     </SidebarProvider>
   );
 }
-
-    
