@@ -1,41 +1,51 @@
 
 rules_version = '2';
-
 service cloud.firestore {
   match /databases/{database}/documents {
-    // Users can only read and write their own profile
+
+    // Helper function to check if the user is authenticated
+    function isAuthenticated() {
+      return request.auth != null;
+    }
+
+    // Helper function to check if the user is the owner of the document
+    function isOwner(userId) {
+      return request.auth.uid == userId;
+    }
+
+    // Profiles: Users can read and write to their own profile
     match /profiles/{userId} {
-      allow read, write: if request.auth != null && request.auth.uid == userId;
+      allow read, write: if isAuthenticated() && isOwner(userId);
     }
-    
-    // Users can only manage their own health reports
-    match /health-reports/{reportId} {
-      allow read, create, delete, update: if request.auth != null && request.auth.uid == request.resource.data.userId;
-    }
-    
-    // Users can only manage their own food logs
+
+    // Food Logs: Users can manage their own food logs
     match /food-log/{logId} {
-      allow read, create, delete, update: if request.auth != null && request.auth.uid == request.resource.data.userId;
+      allow read, create, update, delete: if isAuthenticated() && isOwner(request.resource.data.userId);
     }
-    
-    // Users can only manage their own meditation logs
-    match /meditation-log/{logId} {
-      allow read, create, delete, update: if request.auth != null && request.auth.uid == request.resource.data.userId;
+
+    // Health Reports: Users can manage their own health reports
+    match /health-reports/{reportId} {
+      allow read, create, update, delete: if isAuthenticated() && isOwner(request.resource.data.userId);
     }
-    
-    // Users can only manage their own workout logs
-    match /workout-log/{logId} {
-      allow read, create, delete, update: if request.auth != null && request.auth.uid == request.resource.data.userId;
-    }
-    
-    // Users can only manage their own saved quizzes
-    match /saved-quizzes/{quizId} {
-      allow read, create, delete, update: if request.auth != null && request.auth.uid == request.resource.data.userId;
-    }
-    
-    // Users can only manage their own recommendation history
+
+    // Recommendation History: Users can manage their own saved recommendations
     match /recommendation-history/{recId} {
-      allow read, create, delete, update: if request.auth != null && request.auth.uid == request.resource.data.userId;
+        allow read, create, update, delete: if isAuthenticated() && isOwner(request.resource.data.userId);
+    }
+
+    // Saved Quizzes: Users can manage their own saved quizzes
+    match /saved-quizzes/{quizId} {
+      allow read, create, update, delete: if isAuthenticated() && isOwner(request.resource.data.userId);
+    }
+    
+    // Workout Logs: Users can manage their own workout logs
+    match /workout-log/{workoutId} {
+        allow read, create, update, delete: if isAuthenticated() && isOwner(request.resource.data.userId);
+    }
+
+    // Meditation Logs: Users can manage their own meditation logs
+    match /meditation-log/{meditationId} {
+        allow read, create, update, delete: if isAuthenticated() && isOwner(request.resource.data.userId);
     }
   }
 }
