@@ -25,6 +25,30 @@ interface FoodLog {
   calories: number;
 }
 
+interface WorkoutLog {
+    id: string;
+    timestamp: Timestamp;
+    workoutType: string;
+    duration: number;
+    caloriesBurned?: number;
+    notes?: string;
+}
+
+interface MeditationLog {
+    id: string;
+    timestamp: Timestamp;
+    meditationType: string;
+    duration: number;
+    description?: string;
+}
+
+interface HealthReport {
+    id: string;
+    timestamp: Timestamp;
+    summary: string;
+    extractedMetrics: { name: string; value: string; interpretation: string }[];
+}
+
 interface Recommendation {
     id: string;
     timestamp: Timestamp;
@@ -42,7 +66,7 @@ export default function ReportsPage() {
   const [user, authLoading] = useAuthState(auth);
   const { toast } = useToast();
   const [loading, setLoading] = useState(false);
-  const [reportLoading, setReportLoading] = useState<'calorie' | 'recommendation' | null>(null);
+  const [reportLoading, setReportLoading] = useState<'calorie' | 'recommendation' | 'workout' | 'meditation' | 'health' | null>(null);
   const [profile, setProfile] = useState<UserProfile | null>(null);
   const [date, setDate] = useState<DateRange | undefined>({
     from: addDays(new Date(), -29),
@@ -304,6 +328,166 @@ export default function ReportsPage() {
         setReportLoading(null);
     }
   }
+
+  const handleGenerateWorkoutReport = async () => {
+    if (!user || !date?.from || !date?.to || !profile) return;
+    setReportLoading('workout');
+    try {
+        const q = query(
+            collection(db, 'workout-log'),
+            where('userId', '==', user.uid),
+            where('timestamp', '>=', Timestamp.fromDate(date.from)),
+            where('timestamp', '<=', Timestamp.fromDate(date.to)),
+            orderBy('timestamp', 'asc')
+        );
+        const querySnapshot = await getDocs(q);
+        const logs = querySnapshot.docs.map(doc => doc.data() as WorkoutLog);
+
+        if (logs.length === 0) {
+            toast({ title: 'No Data', description: 'No workout logs found in the selected date range.' });
+            return;
+        }
+
+        const doc = new jsPDF();
+        doc.setFontSize(18);
+        doc.text("Workout Log Report", 14, 22);
+        doc.setFontSize(11);
+        doc.text(`User: ${profile.name}`, 14, 30);
+        doc.text(`Period: ${format(date.from, "PPP")} to ${format(date.to, "PPP")}`, 14, 36);
+
+        const tableColumn = ["Date", "Type", "Duration (min)", "Calories Burned", "Notes"];
+        const tableRows = logs.map(log => [
+            format((log.timestamp as Timestamp).toDate(), 'yyyy-MM-dd HH:mm'),
+            log.workoutType,
+            log.duration,
+            log.caloriesBurned || 'N/A',
+            log.notes || 'N/A'
+        ]);
+
+        (doc as any).autoTable({
+            head: [tableColumn],
+            body: tableRows,
+            startY: 50,
+        });
+
+        doc.save(`Workout_Report_${profile.name}_${format(new Date(), 'yyyy-MM-dd')}.pdf`);
+
+    } catch (e: any) {
+        toast({ title: 'Report Generation Failed', description: e.message || 'An error occurred.', variant: 'destructive' });
+    } finally {
+        setReportLoading(null);
+    }
+  };
+
+  const handleGenerateMeditationReport = async () => {
+    if (!user || !date?.from || !date?.to || !profile) return;
+    setReportLoading('meditation');
+    try {
+        const q = query(
+            collection(db, 'meditation-log'),
+            where('userId', '==', user.uid),
+            where('timestamp', '>=', Timestamp.fromDate(date.from)),
+            where('timestamp', '<=', Timestamp.fromDate(date.to)),
+            orderBy('timestamp', 'asc')
+        );
+        const querySnapshot = await getDocs(q);
+        const logs = querySnapshot.docs.map(doc => doc.data() as MeditationLog);
+
+        if (logs.length === 0) {
+            toast({ title: 'No Data', description: 'No meditation logs found in the selected date range.' });
+            return;
+        }
+
+        const doc = new jsPDF();
+        doc.setFontSize(18);
+        doc.text("Meditation Log Report", 14, 22);
+        doc.setFontSize(11);
+        doc.text(`User: ${profile.name}`, 14, 30);
+        doc.text(`Period: ${format(date.from, "PPP")} to ${format(date.to, "PPP")}`, 14, 36);
+
+        const tableColumn = ["Date", "Type", "Duration (min)", "Description"];
+        const tableRows = logs.map(log => [
+            format((log.timestamp as Timestamp).toDate(), 'yyyy-MM-dd HH:mm'),
+            log.meditationType,
+            log.duration,
+            log.description || 'N/A'
+        ]);
+
+        (doc as any).autoTable({
+            head: [tableColumn],
+            body: tableRows,
+            startY: 50,
+        });
+
+        doc.save(`Meditation_Report_${profile.name}_${format(new Date(), 'yyyy-MM-dd')}.pdf`);
+    } catch (e: any) {
+        toast({ title: 'Report Generation Failed', description: e.message, variant: 'destructive' });
+    } finally {
+        setReportLoading(null);
+    }
+  };
+
+  const handleGenerateHealthReport = async () => {
+    if (!user || !date?.from || !date?.to || !profile) return;
+    setReportLoading('health');
+    try {
+        const q = query(
+            collection(db, 'health-reports'),
+            where('userId', '==', user.uid),
+            where('timestamp', '>=', Timestamp.fromDate(date.from)),
+            where('timestamp', '<=', Timestamp.fromDate(date.to)),
+            orderBy('timestamp', 'asc')
+        );
+        const querySnapshot = await getDocs(q);
+        const reports = querySnapshot.docs.map(doc => doc.data() as HealthReport);
+
+        if (reports.length === 0) {
+            toast({ title: 'No Data', description: 'No health reports found in the selected date range.' });
+            return;
+        }
+
+        const doc = new jsPDF();
+        let finalY = 0;
+
+        doc.setFontSize(18);
+        doc.text("Health Numbers Report", 14, 22);
+        doc.setFontSize(11);
+        doc.text(`User: ${profile.name}`, 14, 30);
+        doc.text(`Period: ${format(date.from, "PPP")} to ${format(date.to, "PPP")}`, 14, 36);
+        finalY = 40;
+
+        reports.forEach((report, index) => {
+            if (index > 0) doc.addPage();
+            finalY = 20;
+            doc.setFontSize(14);
+            doc.text(`Report from: ${format((report.timestamp as Timestamp).toDate(), 'PPP')}`, 14, finalY);
+            finalY += 10;
+            
+            doc.setFontSize(11);
+            const summaryLines = doc.splitTextToSize(report.summary, 180);
+            doc.text(summaryLines, 14, finalY);
+            finalY += summaryLines.length * 5 + 5;
+
+
+            const tableColumn = ["Metric", "Value", "Interpretation"];
+            const tableRows = report.extractedMetrics.map(metric => [metric.name, metric.value, metric.interpretation]);
+
+            (doc as any).autoTable({
+                head: [tableColumn],
+                body: tableRows,
+                startY: finalY,
+            });
+            finalY = (doc as any).lastAutoTable.finalY + 10;
+        });
+
+        doc.save(`Health_Numbers_Report_${profile.name}_${format(new Date(), 'yyyy-MM-dd')}.pdf`);
+
+    } catch (e: any) {
+        toast({ title: 'Report Generation Failed', description: e.message || 'An error occurred.', variant: 'destructive' });
+    } finally {
+        setReportLoading(null);
+    }
+  };
   
   if (loading) {
     return <div className="flex justify-center"><Loader2 className="h-8 w-8 animate-spin" /></div>
@@ -384,9 +568,43 @@ export default function ReportsPage() {
                     </Button>
                 </CardContent>
             </Card>
+            <Card>
+                <CardHeader>
+                    <CardTitle>Workout Log Report</CardTitle>
+                    <CardDescription>Generate a PDF of your workout logs for the selected period.</CardDescription>
+                </CardHeader>
+                <CardContent>
+                    <Button onClick={handleGenerateWorkoutReport} disabled={!!reportLoading}>
+                    {reportLoading === 'workout' ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <FileDown className="mr-2 h-4 w-4" />}
+                    Generate PDF
+                    </Button>
+                </CardContent>
+            </Card>
+            <Card>
+                <CardHeader>
+                    <CardTitle>Meditation Log Report</CardTitle>
+                    <CardDescription>Generate a PDF of your meditation logs for the selected period.</CardDescription>
+                </CardHeader>
+                <CardContent>
+                    <Button onClick={handleGenerateMeditationReport} disabled={!!reportLoading}>
+                    {reportLoading === 'meditation' ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <FileDown className="mr-2 h-4 w-4" />}
+                    Generate PDF
+                    </Button>
+                </CardContent>
+            </Card>
+            <Card>
+                <CardHeader>
+                    <CardTitle>Health Numbers Report</CardTitle>
+                    <CardDescription>Generate a PDF of your analyzed health reports.</CardDescription>
+                </CardHeader>
+                <CardContent>
+                    <Button onClick={handleGenerateHealthReport} disabled={!!reportLoading}>
+                    {reportLoading === 'health' ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <FileDown className="mr-2 h-4 w-4" />}
+                    Generate PDF
+                    </Button>
+                </CardContent>
+            </Card>
         </div>
     </div>
   );
 }
-
-    
