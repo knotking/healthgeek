@@ -4,23 +4,23 @@ import { UserPlus, FileScan, Sparkles, LineChart } from "lucide-react";
 const steps = [
   {
     icon: <UserPlus className="w-12 h-12 text-primary" />,
-    title: "1. Create Your Profile",
-    description: "Sign up and provide your health details, goals, and dietary preferences. This creates a personalized baseline for our AI.",
+    title: "1. Set Up Your Profile",
+    description: "Provide your health details, goals, and dietary preferences to create a personalized baseline for our AI agents.",
   },
   {
     icon: <FileScan className="w-12 h-12 text-primary" />,
-    title: "2. Analyze & Track",
-    description: "Snap a photo of your meal or upload a health report. Our AI instantly analyzes the content and logs your data.",
+    title: "2. Gain Deep Insights",
+    description: "Analyze health reports, snap photos of your meals for nutritional info, or record a video to get expert posture feedback.",
   },
   {
     icon: <Sparkles className="w-12 h-12 text-primary" />,
-    title: "3. Get Recommendations",
-    description: "Receive AI-generated meal plans, workout routines, and meditation guides tailored specifically to your health profile.",
+    title: "3. Get AI-Powered Guidance",
+    description: "Receive tailored workout plans, recipes, meditation scripts, and actionable habit recommendations from our specialized AI agents.",
   },
   {
     icon: <LineChart className="w-12 h-12 text-primary" />,
-    title: "4. Monitor Your Progress",
-    description: "Visualize your journey with insightful charts and reports, helping you stay motivated and make informed decisions.",
+    title: "4. Track & Progress",
+    description: "Visualize your journey with insightful charts, generate detailed reports, and test your knowledge with health quizzes to stay motivated.",
   },
 ];
 
