@@ -1,44 +1,33 @@
 rules_version = '2';
 service cloud.firestore {
   match /databases/{database}/documents {
-
-    // Helper function to check if the user is the owner of the document
-    function isOwner(userId) {
-      return request.auth != null && request.auth.uid == userId;
-    }
-
-    // Profiles: Users can only read and write their own profile.
     match /profiles/{userId} {
-      allow read, write: if isOwner(userId);
+      allow read, write: if request.auth.uid == userId;
     }
 
-    // Health Reports: Users can create, read, update, and delete their own health reports.
     match /health-reports/{reportId} {
-      allow read, write: if isOwner(request.resource.data.userId) || isOwner(resource.data.userId);
+      allow read, create, update, delete: if request.auth.uid == request.resource.data.userId;
     }
 
-    // Food Logs: Users can create, read, update, and delete their own food logs.
     match /food-log/{logId} {
-       allow read, write: if isOwner(request.resource.data.userId) || isOwner(resource.data.userId);
+      allow read, create, update, delete: if request.auth.uid == request.resource.data.userId;
     }
-
-    // Saved Quizzes: Users can create, read, update, and delete their own saved quizzes.
+    
     match /saved-quizzes/{quizId} {
-        allow read, write: if isOwner(request.resource.data.userId) || isOwner(resource.data.userId);
+      allow read, create, update, delete: if request.auth.uid == request.resource.data.userId;
     }
 
-    // Recommendation History (workouts, meditations, recipes, habits):
-    // Users can create, read, update, and delete their own recommendations.
-    // Allow community to read public recommendations.
     match /recommendation-history/{recommendationId} {
-      allow create: if isOwner(request.resource.data.userId);
-      allow read: if resource.data.isPublic == true || isOwner(resource.data.userId);
-      allow update, delete: if isOwner(resource.data.userId);
+        allow read, create, update, delete: if request.auth.uid == request.resource.data.userId;
+        allow read: if resource.data.isPublic == true;
     }
 
-    // Meditation Logs: Users can create, read, update, and delete their own meditation logs.
     match /meditation-log/{logId} {
-      allow read, write: if isOwner(request.resource.data.userId) || isOwner(resource.data.userId);
+      allow read, create, update, delete: if request.auth.uid == request.resource.data.userId;
+    }
+
+    match /workout-log/{logId} {
+      allow read, create, update, delete: if request.auth.uid == request.resource.data.userId;
     }
   }
 }

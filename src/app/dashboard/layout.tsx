@@ -30,7 +30,7 @@ import {
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from '@/components/ui/dialog';
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Logo } from '@/components/logo';
-import { User, BarChart, UtensilsCrossed, Book, LogOut, Loader2, ClipboardList, PieChart, Settings, LifeBuoy, ChevronUp, Sparkles, Store, Handshake, BrainCircuit, PersonStanding, Brain } from 'lucide-react';
+import { User, BarChart, UtensilsCrossed, Book, LogOut, Loader2, ClipboardList, PieChart, Settings, LifeBuoy, ChevronUp, Sparkles, Store, Handshake, BrainCircuit, PersonStanding, Brain, Dumbbell } from 'lucide-react';
 import { usePathname } from 'next/navigation';
 
 function ProfileCompletionReminder({ profile, isOpen, onOpenChange, onGoToProfile }: { profile: any, isOpen: boolean, onOpenChange: (open: boolean) => void, onGoToProfile: () => void }) {
@@ -154,6 +154,14 @@ export default function DashboardLayout({
                 <Link href="/dashboard/track-calorie">
                   <BarChart />
                   Track Calorie
+                </Link>
+              </SidebarMenuButton>
+            </SidebarMenuItem>
+             <SidebarMenuItem>
+              <SidebarMenuButton asChild isActive={pathname.startsWith('/dashboard/track-workout')}>
+                <Link href="/dashboard/track-workout">
+                  <Dumbbell />
+                  Track Workout
                 </Link>
               </SidebarMenuButton>
             </SidebarMenuItem>
