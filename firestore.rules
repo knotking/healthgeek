@@ -1,30 +1,38 @@
-
 rules_version = '2';
-
 service cloud.firestore {
   match /databases/{database}/documents {
+    // Users can only read and write their own profile
     match /profiles/{userId} {
       allow read, write: if request.auth.uid == userId;
     }
 
+    // Users can only read and write their own health reports
     match /health-reports/{reportId} {
       allow read, create: if request.auth.uid == request.resource.data.userId;
+      allow update, delete: if request.auth.uid == resource.data.userId;
     }
 
+    // Users can only read and write their own food logs
     match /food-log/{logId} {
-        allow read, create: if request.auth.uid == request.resource.data.userId;
+      allow read, create: if request.auth.uid == request.resource.data.userId;
+      allow update, delete: if request.auth.uid == resource.data.userId;
     }
 
-    match /recommendation-history/{recommendationId} {
-      allow read, create, update, delete: if request.auth.uid == request.resource.data.userId;
-    }
-
+    // Users can only read and write their own saved quizzes
     match /saved-quizzes/{quizId} {
-      allow read, create, update, delete: if request.auth.uid == request.resource.data.userId;
+      allow read, create, update, delete: if request.auth.uid == resource.data.userId || request.auth.uid == request.resource.data.userId;
     }
     
+    // Users can read/write their own recommendations, and read public ones.
+    match /recommendation-history/{recommendationId} {
+      allow read: if request.auth.uid == resource.data.userId || resource.data.isPublic == true;
+      allow create, update, delete: if request.auth.uid == resource.data.userId || (request.auth.uid == request.resource.data.userId) ;
+    }
+
+    // Users can only read and write their own meditation logs
     match /meditation-log/{logId} {
-      allow read, create: if request.auth.uid == request.resource.data.userId;
+        allow read, create: if request.auth.uid == request.resource.data.userId;
+        allow update, delete: if request.auth.uid == resource.data.userId;
     }
   }
 }
