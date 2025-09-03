@@ -4,11 +4,11 @@
 import { useState, useEffect, useCallback } from 'react';
 import { useAuthState } from 'react-firebase-hooks/auth';
 import { auth, db } from '@/lib/firebase';
-import { doc, getDoc, collection, query, where, getDocs, Timestamp, orderBy, limit } from 'firebase/firestore';
-import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
+import { doc, getDoc, collection, query, where, getDocs, Timestamp, orderBy } from 'firebase/firestore';
+import { Card, CardContent, CardHeader, CardTitle, CardDescription, CardFooter } from "@/components/ui/card";
 import { Button } from '@/components/ui/button';
 import { useToast } from '@/hooks/use-toast';
-import { Loader2, FileDown, Calendar as CalendarIcon } from 'lucide-react';
+import { Loader2, FileDown, Calendar as CalendarIcon, ArrowLeft, Utensils, Dumbbell, Brain, Heart, FileScan } from 'lucide-react';
 import { DateRange } from "react-day-picker";
 import { addDays, format } from "date-fns";
 import { Calendar } from "@/components/ui/calendar";
@@ -17,6 +17,9 @@ import { cn } from "@/lib/utils";
 import jsPDF from 'jspdf';
 import 'jspdf-autotable';
 import { Label } from '@/components/ui/label';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
+
 
 interface FoodLog {
   id: string;
@@ -52,8 +55,9 @@ interface HealthReport {
 interface Recommendation {
     id: string;
     timestamp: Timestamp;
-    type: 'workout' | 'meditation' | 'recipe';
+    type: 'workout' | 'meditation' | 'recipe' | 'habit';
     data: any;
+    rating: number;
 }
 
 interface UserProfile {
@@ -62,33 +66,44 @@ interface UserProfile {
   [key: string]: any;
 }
 
+type ReportType = 'calorie' | 'workout' | 'meditation' | 'recommendation' | 'health';
+
+interface ReportData {
+    type: ReportType;
+    title: string;
+    data: any[];
+    dateRange: DateRange;
+}
+
+const reportTypes: { value: ReportType, label: string, icon: React.ElementType }[] = [
+    { value: 'calorie', label: 'Calorie Intake Report', icon: Utensils },
+    { value: 'workout', label: 'Workout Log Report', icon: Dumbbell },
+    { value: 'meditation', label: 'Meditation Log Report', icon: Brain },
+    { value: 'recommendation', label: 'Saved Recommendations Report', icon: Heart },
+    { value: 'health', label: 'Health Numbers Report', icon: FileScan },
+];
+
 export default function ReportsPage() {
   const [user, authLoading] = useAuthState(auth);
   const { toast } = useToast();
   const [loading, setLoading] = useState(false);
-  const [reportLoading, setReportLoading] = useState<'calorie' | 'recommendation' | 'workout' | 'meditation' | 'health' | null>(null);
   const [profile, setProfile] = useState<UserProfile | null>(null);
   const [date, setDate] = useState<DateRange | undefined>({
     from: addDays(new Date(), -29),
     to: new Date(),
   });
+  const [reportType, setReportType] = useState<ReportType | null>(null);
+  const [reportData, setReportData] = useState<ReportData | null>(null);
 
   const fetchUserData = useCallback(async () => {
     if (user) {
-      setLoading(true);
-      try {
-        const profileRef = doc(db, 'profiles', user.uid);
-        const profileSnap = await getDoc(profileRef);
-        if (profileSnap.exists()) {
-          setProfile(profileSnap.data() as UserProfile);
-        }
-      } catch (e: any) {
-        toast({ title: 'Error', description: 'Failed to fetch user data.', variant: 'destructive' });
-      } finally {
-        setLoading(false);
+      const profileRef = doc(db, 'profiles', user.uid);
+      const profileSnap = await getDoc(profileRef);
+      if (profileSnap.exists()) {
+        setProfile(profileSnap.data() as UserProfile);
       }
     }
-  }, [user, toast]);
+  }, [user]);
 
   useEffect(() => {
     if (!authLoading && user) {
@@ -96,515 +111,229 @@ export default function ReportsPage() {
     }
   }, [user, authLoading, fetchUserData]);
 
-  const handleGenerateCalorieReport = async () => {
-    if (!user || !date?.from || !date?.to || !profile) {
-      toast({ title: 'Error', description: 'Please select a valid date range.', variant: 'destructive' });
+  const handleGenerateReport = async () => {
+    if (!user || !date?.from || !date?.to || !profile || !reportType) {
+      toast({ title: 'Error', description: 'Please select a report type and a valid date range.', variant: 'destructive' });
       return;
     }
-    setReportLoading('calorie');
+    setLoading(true);
+    setReportData(null);
 
     try {
+        let collectionName = '';
+        let title = '';
+        switch(reportType) {
+            case 'calorie': collectionName = 'food-log'; title = 'Calorie Intake Report'; break;
+            case 'workout': collectionName = 'workout-log'; title = 'Workout Log Report'; break;
+            case 'meditation': collectionName = 'meditation-log'; title = 'Meditation Log Report'; break;
+            case 'recommendation': collectionName = 'recommendation-history'; title = 'Saved Recommendations Report'; break;
+            case 'health': collectionName = 'health-reports'; title = 'Health Numbers Report'; break;
+        }
+
       const q = query(
-        collection(db, 'food-log'),
+        collection(db, collectionName),
         where('userId', '==', user.uid),
         where('timestamp', '>=', Timestamp.fromDate(date.from)),
         where('timestamp', '<=', Timestamp.fromDate(date.to)),
         orderBy('timestamp', 'asc')
       );
       const querySnapshot = await getDocs(q);
-      const logs = querySnapshot.docs.map(doc => doc.data() as FoodLog);
+      const data = querySnapshot.docs.map(doc => ({id: doc.id, ...doc.data()}));
 
-      if (logs.length === 0) {
-        toast({ title: 'No Data', description: 'No food logs found in the selected date range.' });
-        setReportLoading(null);
+      if (data.length === 0) {
+        toast({ title: 'No Data', description: `No data found for "${title}" in the selected date range.` });
         return;
       }
-
-      const doc = new jsPDF();
       
-      const fromDate = format(date.from, "PPP");
-      const toDate = format(date.to, "PPP");
-
-      doc.setFontSize(18);
-      doc.text("Calorie Intake Report", 14, 22);
-      doc.setFontSize(11);
-      doc.text(`User: ${profile.name}`, 14, 30);
-      doc.text(`Period: ${fromDate} to ${toDate}`, 14, 36);
-
-      const tableColumn = ["Date", "Food Item", "Calories (kcal)"];
-      const tableRows: any[][] = [];
-
-      let totalCalories = 0;
-      logs.forEach(log => {
-        const logDate = log.timestamp instanceof Timestamp ? log.timestamp.toDate() : new Date(log.timestamp);
-        const row = [
-          format(logDate, 'yyyy-MM-dd HH:mm'),
-          log.foodName,
-          log.calories,
-        ];
-        tableRows.push(row);
-        totalCalories += log.calories;
-      });
-
-      (doc as any).autoTable({
-        head: [tableColumn],
-        body: tableRows,
-        startY: 50,
-      });
-
-      const finalY = (doc as any).lastAutoTable.finalY;
-      doc.setFontSize(12);
-      doc.text(`Total Calorie Intake: ${totalCalories} kcal`, 14, finalY + 10);
-      
-      const numberOfDays = (date.to.getTime() - date.from.getTime()) / (1000 * 3600 * 24) + 1;
-      const avgDailyCalories = totalCalories / numberOfDays;
-      doc.text(`Average Daily Intake: ${avgDailyCalories.toFixed(2)} kcal/day`, 14, finalY + 16);
-
-
-      if(profile.dailyCalorieTarget) {
-          const targetTotal = profile.dailyCalorieTarget * numberOfDays;
-          doc.text(`Target for Period: ~${targetTotal.toFixed(0)} kcal (${profile.dailyCalorieTarget} kcal/day)`, 14, finalY + 22);
-          const difference = totalCalories - targetTotal;
-          doc.text(`Difference from Target: ${difference.toFixed(2)} kcal`, 14, finalY + 28);
-
-      }
-      
-      doc.save(`Calorie_Report_${profile.name}_${format(new Date(), 'yyyy-MM-dd')}.pdf`);
+      setReportData({ type: reportType, title, data, dateRange: date });
 
     } catch (e: any) {
       toast({ title: 'Report Generation Failed', description: e.message || 'An error occurred.', variant: 'destructive' });
       console.error(e);
     } finally {
-      setReportLoading(null);
-    }
-  };
-
-  const handleGenerateRecommendationsReport = async () => {
-    if (!user || !date?.from || !date?.to || !profile) {
-        toast({ title: 'Error', description: 'Please select a valid date range.', variant: 'destructive' });
-        return;
-    }
-    setReportLoading('recommendation');
-
-    try {
-        const q = query(
-            collection(db, 'recommendation-history'),
-            where('userId', '==', user.uid),
-            where('timestamp', '>=', Timestamp.fromDate(date.from)),
-            where('timestamp', '<=', Timestamp.fromDate(date.to)),
-            orderBy('timestamp', 'asc')
-        );
-        const querySnapshot = await getDocs(q);
-        const recommendations = querySnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as Recommendation));
-
-        if (recommendations.length === 0) {
-            toast({ title: 'No Data', description: 'No saved recommendations found in the selected date range.' });
-            setReportLoading(null);
-            return;
-        }
-        
-        const doc = new jsPDF();
-        let finalY = 0;
-        const pageHeight = doc.internal.pageSize.height;
-        const addPageIfNeeded = () => { if (finalY > pageHeight - 30) { doc.addPage(); finalY = 20; }};
-
-        const fromDate = format(date.from, "PPP");
-        const toDate = format(date.to, "PPP");
-        
-        doc.setFontSize(18);
-        doc.text("Recommendations Report", 105, 20, { align: 'center' });
-        doc.setFontSize(11);
-        doc.text(`User: ${profile.name}`, 14, 30);
-        doc.text(`Period: ${fromDate} to ${toDate}`, 14, 36);
-        finalY = 40;
-
-        const addSectionTitle = (title: string) => {
-            addPageIfNeeded();
-            doc.setFontSize(16);
-            doc.text(title, 14, finalY + 10);
-            finalY += 15;
-        }
-
-        const addWorkout = (item: any) => {
-            const { data, timestamp } = item;
-            addPageIfNeeded();
-            doc.setFontSize(14);
-            doc.text(`${format(timestamp.toDate(), 'PPP')}: ${data.planTitle}`, 14, finalY);
-            finalY += 8;
-            (doc as any).autoTable({
-                head: [['Important Notes']], body: [[data.notes]], theme: 'grid', startY: finalY
-            });
-            finalY = (doc as any).lastAutoTable.finalY;
-
-            const addExerciseSection = (title: string, exercises: any[]) => {
-                if(exercises.length === 0) return;
-                (doc as any).autoTable({
-                    head: [[title]], startY: finalY + 5, theme: 'grid',
-                    didParseCell: function(data: any) { if (data.section === 'head') { data.cell.styles.fillColor = '#f3f4f6'; data.cell.styles.textColor = '#111827'; } },
-                });
-                finalY = (doc as any).lastAutoTable.finalY;
-                const rows = exercises.map((ex: any) => [ex.name, `${ex.sets}x${ex.reps}`, ex.rest, ex.description]);
-                (doc as any).autoTable({
-                    head: [['Exercise', 'Sets/Reps', 'Rest', 'Description']], body: rows,
-                    startY: finalY, theme: 'striped'
-                });
-                finalY = (doc as any).lastAutoTable.finalY;
-            };
-            addExerciseSection('Warm-Up', data.warmUp);
-            addExerciseSection('Main Workout', data.mainWorkout);
-            addExerciseSection('Cool-Down', data.coolDown);
-            finalY += 5;
-        };
-
-        const addMeditation = (item: any) => {
-            const { data, timestamp } = item;
-            addPageIfNeeded();
-            doc.setFontSize(14);
-            doc.text(`${format(timestamp.toDate(), 'PPP')}: ${data.title}`, 14, finalY);
-            finalY += 8;
-             (doc as any).autoTable({
-                head: [['Benefits']], body: [[data.benefits]], theme: 'grid', startY: finalY
-            });
-            finalY = (doc as any).lastAutoTable.finalY;
-
-            data.steps.forEach((step: any) => {
-                (doc as any).autoTable({
-                    head: [[`Step ${step.step}: ${step.title} (${step.duration})`]], body: [[step.instruction]],
-                    startY: finalY + 5, theme: 'striped', headStyles: { fillColor: '#f3f4f6', textColor: '#111827' }
-                });
-                finalY = (doc as any).lastAutoTable.finalY;
-            });
-            finalY += 5;
-        };
-
-        const addRecipe = (item: any) => {
-            const { data, timestamp } = item;
-            addPageIfNeeded();
-            doc.setFontSize(14);
-            doc.text(`${format(timestamp.toDate(), 'PPP')}: ${data.name}`, 14, finalY);
-            finalY += 8;
-            (doc as any).autoTable({
-                head: [['Details', '']],
-                body: [['Prep Time', data.prepTime], ['Cook Time', data.cookTime], ['Servings', data.servings], ['Health Focus', data.healthFocus]],
-                startY: finalY, theme: 'grid',
-            });
-            finalY = (doc as any).lastAutoTable.finalY;
-            (doc as any).autoTable({
-                head: [['Ingredients']], body: data.ingredients.map((i: string) => [i]),
-                startY: finalY + 5, theme: 'striped',
-            });
-            finalY = (doc as any).lastAutoTable.finalY;
-            (doc as any).autoTable({
-                head: [['Instructions']], body: data.instructions.map((step: string, i: number) => [`${i + 1}. ${step}`]),
-                startY: finalY + 5, theme: 'striped',
-            });
-            finalY = (doc as any).lastAutoTable.finalY + 5;
-        };
-        
-        const workouts = recommendations.filter(r => r.type === 'workout');
-        if (workouts.length > 0) {
-            addSectionTitle("Workouts");
-            workouts.forEach(addWorkout);
-        }
-
-        const meditations = recommendations.filter(r => r.type === 'meditation');
-        if (meditations.length > 0) {
-            addSectionTitle("Meditations");
-            meditations.forEach(addMeditation);
-        }
-
-        const recipes = recommendations.filter(r => r.type === 'recipe');
-        if (recipes.length > 0) {
-            addSectionTitle("Recipes");
-            recipes.forEach(addRecipe);
-        }
-
-        doc.save(`Recommendations_Report_${profile.name}_${format(new Date(), 'yyyy-MM-dd')}.pdf`);
-
-    } catch (e: any) {
-        toast({ title: 'Report Generation Failed', description: e.message || 'An error occurred.', variant: 'destructive' });
-        console.error(e);
-    } finally {
-        setReportLoading(null);
-    }
-  }
-
-  const handleGenerateWorkoutReport = async () => {
-    if (!user || !date?.from || !date?.to || !profile) return;
-    setReportLoading('workout');
-    try {
-        const q = query(
-            collection(db, 'workout-log'),
-            where('userId', '==', user.uid),
-            where('timestamp', '>=', Timestamp.fromDate(date.from)),
-            where('timestamp', '<=', Timestamp.fromDate(date.to)),
-            orderBy('timestamp', 'asc')
-        );
-        const querySnapshot = await getDocs(q);
-        const logs = querySnapshot.docs.map(doc => doc.data() as WorkoutLog);
-
-        if (logs.length === 0) {
-            toast({ title: 'No Data', description: 'No workout logs found in the selected date range.' });
-            return;
-        }
-
-        const doc = new jsPDF();
-        doc.setFontSize(18);
-        doc.text("Workout Log Report", 14, 22);
-        doc.setFontSize(11);
-        doc.text(`User: ${profile.name}`, 14, 30);
-        doc.text(`Period: ${format(date.from, "PPP")} to ${format(date.to, "PPP")}`, 14, 36);
-
-        const tableColumn = ["Date", "Type", "Duration (min)", "Calories Burned", "Notes"];
-        const tableRows = logs.map(log => [
-            format((log.timestamp as Timestamp).toDate(), 'yyyy-MM-dd HH:mm'),
-            log.workoutType,
-            log.duration,
-            log.caloriesBurned || 'N/A',
-            log.notes || 'N/A'
-        ]);
-
-        (doc as any).autoTable({
-            head: [tableColumn],
-            body: tableRows,
-            startY: 50,
-        });
-
-        doc.save(`Workout_Report_${profile.name}_${format(new Date(), 'yyyy-MM-dd')}.pdf`);
-
-    } catch (e: any) {
-        toast({ title: 'Report Generation Failed', description: e.message || 'An error occurred.', variant: 'destructive' });
-    } finally {
-        setReportLoading(null);
-    }
-  };
-
-  const handleGenerateMeditationReport = async () => {
-    if (!user || !date?.from || !date?.to || !profile) return;
-    setReportLoading('meditation');
-    try {
-        const q = query(
-            collection(db, 'meditation-log'),
-            where('userId', '==', user.uid),
-            where('timestamp', '>=', Timestamp.fromDate(date.from)),
-            where('timestamp', '<=', Timestamp.fromDate(date.to)),
-            orderBy('timestamp', 'asc')
-        );
-        const querySnapshot = await getDocs(q);
-        const logs = querySnapshot.docs.map(doc => doc.data() as MeditationLog);
-
-        if (logs.length === 0) {
-            toast({ title: 'No Data', description: 'No meditation logs found in the selected date range.' });
-            return;
-        }
-
-        const doc = new jsPDF();
-        doc.setFontSize(18);
-        doc.text("Meditation Log Report", 14, 22);
-        doc.setFontSize(11);
-        doc.text(`User: ${profile.name}`, 14, 30);
-        doc.text(`Period: ${format(date.from, "PPP")} to ${format(date.to, "PPP")}`, 14, 36);
-
-        const tableColumn = ["Date", "Type", "Duration (min)", "Description"];
-        const tableRows = logs.map(log => [
-            format((log.timestamp as Timestamp).toDate(), 'yyyy-MM-dd HH:mm'),
-            log.meditationType,
-            log.duration,
-            log.description || 'N/A'
-        ]);
-
-        (doc as any).autoTable({
-            head: [tableColumn],
-            body: tableRows,
-            startY: 50,
-        });
-
-        doc.save(`Meditation_Report_${profile.name}_${format(new Date(), 'yyyy-MM-dd')}.pdf`);
-    } catch (e: any) {
-        toast({ title: 'Report Generation Failed', description: e.message, variant: 'destructive' });
-    } finally {
-        setReportLoading(null);
-    }
-  };
-
-  const handleGenerateHealthReport = async () => {
-    if (!user || !date?.from || !date?.to || !profile) return;
-    setReportLoading('health');
-    try {
-        const q = query(
-            collection(db, 'health-reports'),
-            where('userId', '==', user.uid),
-            where('timestamp', '>=', Timestamp.fromDate(date.from)),
-            where('timestamp', '<=', Timestamp.fromDate(date.to)),
-            orderBy('timestamp', 'asc')
-        );
-        const querySnapshot = await getDocs(q);
-        const reports = querySnapshot.docs.map(doc => doc.data() as HealthReport);
-
-        if (reports.length === 0) {
-            toast({ title: 'No Data', description: 'No health reports found in the selected date range.' });
-            return;
-        }
-
-        const doc = new jsPDF();
-        let finalY = 0;
-
-        doc.setFontSize(18);
-        doc.text("Health Numbers Report", 14, 22);
-        doc.setFontSize(11);
-        doc.text(`User: ${profile.name}`, 14, 30);
-        doc.text(`Period: ${format(date.from, "PPP")} to ${format(date.to, "PPP")}`, 14, 36);
-        finalY = 40;
-
-        reports.forEach((report, index) => {
-            if (index > 0) doc.addPage();
-            finalY = 20;
-            doc.setFontSize(14);
-            doc.text(`Report from: ${format((report.timestamp as Timestamp).toDate(), 'PPP')}`, 14, finalY);
-            finalY += 10;
-            
-            doc.setFontSize(11);
-            const summaryLines = doc.splitTextToSize(report.summary, 180);
-            doc.text(summaryLines, 14, finalY);
-            finalY += summaryLines.length * 5 + 5;
-
-
-            const tableColumn = ["Metric", "Value", "Interpretation"];
-            const tableRows = report.extractedMetrics.map(metric => [metric.name, metric.value, metric.interpretation]);
-
-            (doc as any).autoTable({
-                head: [tableColumn],
-                body: tableRows,
-                startY: finalY,
-            });
-            finalY = (doc as any).lastAutoTable.finalY + 10;
-        });
-
-        doc.save(`Health_Numbers_Report_${profile.name}_${format(new Date(), 'yyyy-MM-dd')}.pdf`);
-
-    } catch (e: any) {
-        toast({ title: 'Report Generation Failed', description: e.message || 'An error occurred.', variant: 'destructive' });
-    } finally {
-        setReportLoading(null);
+      setLoading(false);
     }
   };
   
-  if (loading) {
-    return <div className="flex justify-center"><Loader2 className="h-8 w-8 animate-spin" /></div>
+  const handleDownloadPdf = () => {
+    if (!reportData || !profile) return;
+
+    const doc = new jsPDF();
+    const { from, to } = reportData.dateRange;
+    const fromDate = from ? format(from, "PPP") : '';
+    const toDate = to ? format(to, "PPP") : '';
+
+    doc.setFontSize(18);
+    doc.text(reportData.title, 14, 22);
+    doc.setFontSize(11);
+    doc.text(`User: ${profile.name}`, 14, 30);
+    doc.text(`Period: ${fromDate} to ${toDate}`, 14, 36);
+    
+    let finalY = 40;
+
+    switch(reportData.type) {
+        case 'calorie':
+            const logs = reportData.data as FoodLog[];
+            (doc as any).autoTable({
+                head: [["Date", "Food Item", "Calories (kcal)"]],
+                body: logs.map(log => {
+                    const logDate = log.timestamp instanceof Timestamp ? log.timestamp.toDate() : new Date(log.timestamp);
+                    return [format(logDate, 'yyyy-MM-dd HH:mm'), log.foodName, log.calories];
+                }),
+                startY: 50
+            });
+            break;
+        case 'workout':
+             (doc as any).autoTable({
+                head: [["Date", "Type", "Duration (min)", "Calories Burned", "Notes"]],
+                body: (reportData.data as WorkoutLog[]).map(log => [
+                    format((log.timestamp as Timestamp).toDate(), 'yyyy-MM-dd HH:mm'),
+                    log.workoutType, log.duration, log.caloriesBurned || 'N/A', log.notes || 'N/A'
+                ]),
+                startY: 50
+            });
+            break;
+        case 'meditation':
+            (doc as any).autoTable({
+                head: [["Date", "Type", "Duration (min)", "Description"]],
+                body: (reportData.data as MeditationLog[]).map(log => [
+                    format((log.timestamp as Timestamp).toDate(), 'yyyy-MM-dd HH:mm'),
+                    log.meditationType, log.duration, log.description || 'N/A'
+                ]),
+                startY: 50
+            });
+            break;
+        case 'health':
+            (reportData.data as HealthReport[]).forEach((report, index) => {
+                if (index > 0) doc.addPage();
+                doc.setFontSize(14);
+                doc.text(`Report from: ${format((report.timestamp as Timestamp).toDate(), 'PPP')}`, 14, finalY);
+                finalY += 10;
+                doc.setFontSize(11);
+                const summaryLines = doc.splitTextToSize(report.summary, 180);
+                doc.text(summaryLines, 14, finalY);
+                finalY += summaryLines.length * 5 + 5;
+                (doc as any).autoTable({
+                    head: [["Metric", "Value", "Interpretation"]],
+                    body: report.extractedMetrics.map(metric => [metric.name, metric.value, metric.interpretation]),
+                    startY: finalY,
+                });
+                finalY = (doc as any).lastAutoTable.finalY + 10;
+            });
+            break;
+        case 'recommendation':
+             (doc as any).autoTable({
+                head: [["Date", "Type", "Title/Name", "Rating"]],
+                body: (reportData.data as Recommendation[]).map(rec => {
+                    const name = rec.data.planTitle || rec.data.title || rec.data.name || 'N/A';
+                    return [
+                        format((rec.timestamp as Timestamp).toDate(), 'yyyy-MM-dd'),
+                        rec.type, name, rec.rating > 0 ? `${rec.rating}/5` : 'Unrated'
+                    ];
+                }),
+                startY: 50
+            });
+            break;
+    }
+    
+    doc.save(`${reportData.type}_Report_${profile.name}_${format(new Date(), 'yyyy-MM-dd')}.pdf`);
+  }
+
+  const renderReportContent = () => {
+    if (!reportData) return null;
+
+    switch(reportData.type) {
+        case 'calorie':
+            const logs = reportData.data as FoodLog[];
+            return <Table><TableHeader><TableRow><TableHead>Date</TableHead><TableHead>Food</TableHead><TableHead className="text-right">Calories</TableHead></TableRow></TableHeader><TableBody>{logs.map(log => <TableRow key={log.id}><TableCell>{format(log.timestamp instanceof Timestamp ? log.timestamp.toDate() : new Date(log.timestamp), 'Pp')}</TableCell><TableCell>{log.foodName}</TableCell><TableCell className="text-right">{log.calories} kcal</TableCell></TableRow>)}</TableBody></Table>
+        case 'workout':
+            return <Table><TableHeader><TableRow><TableHead>Date</TableHead><TableHead>Type</TableHead><TableHead>Duration</TableHead><TableHead>Calories</TableHead><TableHead>Notes</TableHead></TableRow></TableHeader><TableBody>{(reportData.data as WorkoutLog[]).map(log => <TableRow key={log.id}><TableCell>{format((log.timestamp as Timestamp).toDate(), 'Pp')}</TableCell><TableCell>{log.workoutType}</TableCell><TableCell>{log.duration} min</TableCell><TableCell>{log.caloriesBurned || 'N/A'}</TableCell><TableCell>{log.notes || 'N/A'}</TableCell></TableRow>)}</TableBody></Table>
+        case 'meditation':
+            return <Table><TableHeader><TableRow><TableHead>Date</TableHead><TableHead>Type</TableHead><TableHead>Duration</TableHead><TableHead>Description</TableHead></TableRow></TableHeader><TableBody>{(reportData.data as MeditationLog[]).map(log => <TableRow key={log.id}><TableCell>{format((log.timestamp as Timestamp).toDate(), 'Pp')}</TableCell><TableCell>{log.meditationType}</TableCell><TableCell>{log.duration} min</TableCell><TableCell>{log.description || 'N/A'}</TableCell></TableRow>)}</TableBody></Table>
+        case 'health':
+            return <div className="space-y-4">{ (reportData.data as HealthReport[]).map(report => <Card key={report.id}><CardHeader><CardTitle className="text-base">Report from {format((report.timestamp as Timestamp).toDate(), 'PPP')}</CardTitle><CardDescription>{report.summary}</CardDescription></CardHeader><CardContent><Table><TableHeader><TableRow><TableHead>Metric</TableHead><TableHead>Value</TableHead><TableHead>Interpretation</TableHead></TableRow></TableHeader><TableBody>{report.extractedMetrics.map((metric, i) => <TableRow key={i}><TableCell>{metric.name}</TableCell><TableCell>{metric.value}</TableCell><TableCell>{metric.interpretation}</TableCell></TableRow>)}</TableBody></Table></CardContent></Card>)}</div>
+        case 'recommendation':
+            return <Table><TableHeader><TableRow><TableHead>Date</TableHead><TableHead>Type</TableHead><TableHead>Title</TableHead><TableHead>Rating</TableHead></TableRow></TableHeader><TableBody>{(reportData.data as Recommendation[]).map(rec => <TableRow key={rec.id}><TableCell>{format((rec.timestamp as Timestamp).toDate(), 'PPP')}</TableCell><TableCell className="capitalize">{rec.type}</TableCell><TableCell>{rec.data.planTitle || rec.data.title || rec.data.name}</TableCell><TableCell>{rec.rating > 0 ? `${rec.rating}/5` : 'Unrated'}</TableCell></TableRow>)}</TableBody></Table>
+    }
+    return null;
+  }
+  
+  if (reportData) {
+      return (
+        <Card>
+            <CardHeader>
+                <div className="flex justify-between items-center">
+                    <div>
+                        <CardTitle>{reportData.title}</CardTitle>
+                        <CardDescription>
+                            Showing data from {reportData.dateRange.from ? format(reportData.dateRange.from, 'LLL dd, y') : ''} to {reportData.dateRange.to ? format(reportData.dateRange.to, 'LLL dd, y') : ''}
+                        </CardDescription>
+                    </div>
+                    <div className="flex gap-2">
+                        <Button variant="outline" onClick={() => setReportData(null)}><ArrowLeft className="mr-2 h-4 w-4" /> Back</Button>
+                        <Button onClick={handleDownloadPdf}><FileDown className="mr-2 h-4 w-4" /> Download PDF</Button>
+                    </div>
+                </div>
+            </CardHeader>
+            <CardContent>
+                {renderReportContent()}
+            </CardContent>
+        </Card>
+      )
   }
 
   return (
-    <div className="space-y-6">
-        <Card>
-            <CardHeader>
-                <CardTitle>Generate Report</CardTitle>
-                <CardDescription>Select a date range for your reports.</CardDescription>
-            </CardHeader>
-            <CardContent>
-                <div className="flex flex-col items-start gap-4">
-                    <Label>Select Date Range</Label>
+    <Card>
+        <CardHeader>
+            <CardTitle>Generate a New Report</CardTitle>
+            <CardDescription>Select a report type and a date range to generate and view your data.</CardDescription>
+        </CardHeader>
+        <CardContent className="space-y-6">
+             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                <div className="space-y-2">
+                    <Label htmlFor="report-type">Report Type</Label>
+                    <Select onValueChange={(value: ReportType) => setReportType(value)}>
+                        <SelectTrigger id="report-type">
+                            <SelectValue placeholder="Select a report type..." />
+                        </SelectTrigger>
+                        <SelectContent>
+                            {reportTypes.map(rt => (
+                                <SelectItem key={rt.value} value={rt.value}>
+                                    <div className="flex items-center gap-2">
+                                        <rt.icon className="h-4 w-4" />
+                                        {rt.label}
+                                    </div>
+                                </SelectItem>
+                            ))}
+                        </SelectContent>
+                    </Select>
+                </div>
+                <div className="space-y-2">
+                    <Label>Date Range</Label>
                     <Popover>
                         <PopoverTrigger asChild>
                         <Button
                             id="date"
                             variant={"outline"}
-                            className={cn(
-                            "w-[300px] justify-start text-left font-normal",
-                            !date && "text-muted-foreground"
-                            )}
+                            className={cn( "w-full justify-start text-left font-normal", !date && "text-muted-foreground")}
                         >
                             <CalendarIcon className="mr-2 h-4 w-4" />
-                            {date?.from ? (
-                            date.to ? (
-                                <>
-                                {format(date.from, "LLL dd, y")} -{" "}
-                                {format(date.to, "LLL dd, y")}
-                                </>
-                            ) : (
-                                format(date.from, "LLL dd, y")
-                            )
-                            ) : (
-                            <span>Pick a date</span>
-                            )}
+                            {date?.from ? ( date.to ? (<> {format(date.from, "LLL dd, y")} - {format(date.to, "LLL dd, y")} </>) : (format(date.from, "LLL dd, y"))) : (<span>Pick a date</span>)}
                         </Button>
                         </PopoverTrigger>
                         <PopoverContent className="w-auto p-0" align="start">
-                        <Calendar
-                            initialFocus
-                            mode="range"
-                            defaultMonth={date?.from}
-                            selected={date}
-                            onSelect={setDate}
-                            numberOfMonths={2}
-                        />
+                        <Calendar initialFocus mode="range" defaultMonth={date?.from} selected={date} onSelect={setDate} numberOfMonths={2} />
                         </PopoverContent>
                     </Popover>
                 </div>
-            </CardContent>
-        </Card>
-
-        <div className="grid md:grid-cols-2 gap-6">
-             <Card>
-                <CardHeader>
-                    <CardTitle>Calorie Intake Report</CardTitle>
-                    <CardDescription>Generate a PDF report of your calorie intake for a specific period.</CardDescription>
-                </CardHeader>
-                <CardContent>
-                    <Button onClick={handleGenerateCalorieReport} disabled={!!reportLoading}>
-                    {reportLoading === 'calorie' ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <FileDown className="mr-2 h-4 w-4" />}
-                    Generate PDF
-                    </Button>
-                </CardContent>
-            </Card>
-             <Card>
-                <CardHeader>
-                    <CardTitle>Recommendations Report</CardTitle>
-                    <CardDescription>Generate a PDF of all saved workouts, meditations, and recipes.</CardDescription>
-                </CardHeader>
-                <CardContent>
-                    <Button onClick={handleGenerateRecommendationsReport} disabled={!!reportLoading}>
-                    {reportLoading === 'recommendation' ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <FileDown className="mr-2 h-4 w-4" />}
-                    Generate PDF
-                    </Button>
-                </CardContent>
-            </Card>
-            <Card>
-                <CardHeader>
-                    <CardTitle>Workout Log Report</CardTitle>
-                    <CardDescription>Generate a PDF of your workout logs for the selected period.</CardDescription>
-                </CardHeader>
-                <CardContent>
-                    <Button onClick={handleGenerateWorkoutReport} disabled={!!reportLoading}>
-                    {reportLoading === 'workout' ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <FileDown className="mr-2 h-4 w-4" />}
-                    Generate PDF
-                    </Button>
-                </CardContent>
-            </Card>
-            <Card>
-                <CardHeader>
-                    <CardTitle>Meditation Log Report</CardTitle>
-                    <CardDescription>Generate a PDF of your meditation logs for the selected period.</CardDescription>
-                </CardHeader>
-                <CardContent>
-                    <Button onClick={handleGenerateMeditationReport} disabled={!!reportLoading}>
-                    {reportLoading === 'meditation' ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <FileDown className="mr-2 h-4 w-4" />}
-                    Generate PDF
-                    </Button>
-                </CardContent>
-            </Card>
-            <Card>
-                <CardHeader>
-                    <CardTitle>Health Numbers Report</CardTitle>
-                    <CardDescription>Generate a PDF of your analyzed health reports.</CardDescription>
-                </CardHeader>
-                <CardContent>
-                    <Button onClick={handleGenerateHealthReport} disabled={!!reportLoading}>
-                    {reportLoading === 'health' ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <FileDown className="mr-2 h-4 w-4" />}
-                    Generate PDF
-                    </Button>
-                </CardContent>
-            </Card>
-        </div>
-    </div>
+             </div>
+        </CardContent>
+        <CardFooter>
+            <Button onClick={handleGenerateReport} disabled={loading || !reportType}>
+                {loading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+                Generate Report
+            </Button>
+        </CardFooter>
+    </Card>
   );
 }
