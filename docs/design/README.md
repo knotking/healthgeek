@@ -1,235 +1,236 @@
 # Design System & UX
 
-## Design Philosophy
+A calm, approachable health interface that avoids clinical aesthetics while keeping trust
+and clarity. Built on shadcn/ui — Radix primitives for behaviour, Tailwind for styling.
 
-HealthGeek follows a calm, approachable health-focused design language that avoids clinical aesthetics while maintaining trust and clarity.
+---
 
-## Color System
+## Theme
 
-```mermaid
-graph LR
-    subgraph Palette
-        Primary["Primary: Soft Sky Blue #87CEEB"]
-        Background["Background: Very Light Blue #F0F8FF"]
-        Accent["Accent: Muted Green #98FB98"]
-    end
-```
+> **The app is hardcoded to dark mode.** `src/app/layout.tsx` sets
+> `<html className="dark">`, there is no toggle, and no theme library is installed. The
+> light palette under `:root` in `globals.css` is fully defined but currently unreachable.
+> Removing `className="dark"` switches the whole app to the light palette.
 
-| Role | Color | Usage |
-|------|-------|-------|
-| Primary | `#87CEEB` (Soft Sky Blue) | Trust, well-being, calm |
-| Background | `#F0F8FF` (Very Light Blue) | Clarity, non-clinical feel |
-| Accent | `#98FB98` (Muted Green) | CTAs, health association |
+Colors are HSL triples in CSS custom properties, consumed by Tailwind through
+`tailwind.config.ts`.
 
-**Typography**: PT Sans (humanist sans-serif) — modern with warmth.
+| Token | Dark (active) | Light (defined, unused) | Used for |
+|---|---|---|---|
+| `--background` | `222.2 84% 4.9%` — near-black navy | `208 100% 97%` — very light blue | Page canvas |
+| `--foreground` | `210 40% 98%` — near-white | `224 71.4% 4.1%` | Body text |
+| `--primary` | `197 50% 60%` — sky blue | `197 71% 73%` | Buttons, active nav, links |
+| `--card` | `222.2 84% 4.9%` | `208 100% 99%` | Card surfaces |
+| `--muted-foreground` | `215 20.2% 65.1%` | `215.4 16.3% 46.9%` | Secondary text |
+| `--destructive` | `0 62.8% 30.6%` | `0 84.2% 60.2%` | Delete actions |
 
-## Component Library
+Sky blue as the primary is the one constant across both palettes — chosen to read as calm
+and trustworthy rather than clinical.
 
-Built on **shadcn/ui** (Radix UI + Tailwind CSS + class-variance-authority):
+**Typography:** PT Sans (humanist sans-serif, loaded from Google Fonts), applied via
+`--font-body`.
 
-```mermaid
-graph TD
-    subgraph Primitives ["Radix UI Primitives"]
-        Dialog
-        DropdownMenu
-        Tabs
-        Accordion
-        Select
-        Toast
-        Popover
-        Tooltip
-        Switch
-        Slider
-        Checkbox
-        RadioGroup
-        ScrollArea
-        Progress
-        Separator
-        Avatar
-        AlertDialog
-    end
+To change the accent color, edit `--primary` in **both** blocks of `globals.css`; every
+button, link and active nav item follows.
 
-    subgraph Composed ["Composed Components"]
-        Sidebar
-        Form["Form (RHF + Zod)"]
-        Calendar["Calendar (react-day-picker)"]
-        Carousel["Carousel (embla)"]
-        Chart["Charts (recharts)"]
-    end
+---
 
-    subgraph Custom ["Custom Components"]
-        Logo
-        LandingHeader
-        Hero
-        HowItWorks
-        Footer
-        AuthRedirect
-    end
-```
-
-## Layout Architecture
+## Component layers
 
 ```mermaid
-graph TD
-    subgraph AppShell ["Application Shell"]
-        SidebarNav["Sidebar Navigation"]
-        Header["Header Bar (page title + trigger)"]
-        MainContent["Main Content Area"]
+flowchart TB
+    subgraph primitives ["Radix primitives — behaviour, a11y, focus management"]
+        p1["Dialog · AlertDialog · DropdownMenu"]
+        p2["Tabs · Accordion · Collapsible"]
+        p3["Select · Checkbox · RadioGroup · Switch · Slider"]
+        p4["Toast · Tooltip · Popover · ScrollArea · Progress"]
     end
 
-    subgraph SidebarNav
-        S1[Insights]
-        S2[Analysis]
-        S3[Tracking]
-        S4[Recommendations]
-        S5[Health Quiz]
-        S6[Reports]
-        S7[Provider]
-        S8[Marketplace]
-        S9[User Menu]
+    subgraph composed ["shadcn components — src/components/ui"]
+        c1["Form — React Hook Form + Zod"]
+        c2["Sidebar — collapsible app shell"]
+        c3["Calendar — react-day-picker"]
+        c4["Chart — recharts"]
+        c5["Carousel — embla"]
+        c6["Card · Table · Badge · Button · Input"]
     end
 
-    subgraph UserMenu ["User Dropdown"]
-        Profile
-        Settings
-        Support
-        Logout
+    subgraph app ["Application components"]
+        a1["landing/ — Hero · HowItWorks · Header · Footer"]
+        a2["Logo · AuthRedirect"]
+        a3["Dashboard pages"]
     end
 
-    S9 --> UserMenu
+    primitives --> composed --> app
 ```
 
-## User Journeys
+These are **vendored, not installed** — `src/components/ui/*` is source you own and can
+edit. `components.json` records the shadcn config used to generate them.
 
-### New User Onboarding
+---
+
+## Layout
 
 ```mermaid
-journey
-    title New User Onboarding
-    section Discovery
-        Visit landing page: 5: User
-        Read features: 4: User
-        Click Get Started: 5: User
-    section Registration
-        Fill signup form: 3: User
-        Account created: 5: System
-        Profile reminder shown: 4: System
-    section Profile Setup
-        Enter personal info: 3: User
-        Select health issues: 4: User
-        Choose diet preferences: 4: User
-        AI generates calorie target: 5: System
-        Profile saved: 5: System
-    section First Use
-        Explore dashboard: 4: User
-        Track first meal: 5: User
-        Get first recommendation: 5: User
+flowchart LR
+    subgraph shell ["Dashboard shell — dashboard/layout.tsx"]
+        sidebar["Sidebar<br/>collapsible under md"]
+        main["Header (page title + trigger)<br/>Main content"]
+    end
+
+    subgraph nav ["Sidebar navigation"]
+        n1["Insights — PieChart"]
+        n2["Analysis — FileScan"]
+        n3["Tracking — ClipboardList"]
+        n4["Recommendations — Sparkles"]
+        n5["Health Quiz — BrainCircuit"]
+        n6["Reports — Book"]
+        n7["Provider — Handshake"]
+        n8["Market Place — Store"]
+    end
+
+    subgraph menu ["User menu (bottom)"]
+        m1["Profile"]
+        m2["Settings"]
+        m3["Support"]
+        m4["Logout"]
+    end
+
+    sidebar --> nav
+    sidebar --> menu
 ```
 
-### Daily Health Tracking
+The layout also owns the **auth gate**: it subscribes to auth state, redirects to `/login`
+when signed out, creates a blank profile on first sign-in, and nudges users with an
+incomplete profile toward `/dashboard/profile`.
+
+`/dashboard` itself has no UI — it redirects to `/dashboard/profile`.
+
+**Responsive:** the sidebar collapses below the `md` breakpoint (768px) behind a trigger
+button; content goes full width.
+
+---
+
+## User journeys
+
+### First run
 
 ```mermaid
-journey
-    title Daily Health Tracking Flow
-    section Morning
-        Open tracking page: 5: User
-        Upload breakfast photo: 4: User
-        AI analyzes food: 5: System
-        Review calories: 4: User
-        Log confirmed: 5: System
-    section Midday
-        Log lunch via camera: 4: User
-        Check daily progress: 5: User
-        View progress bar: 4: User
-    section Evening
-        Log dinner: 4: User
-        Log workout: 4: User
-        Log meditation: 3: User
-        Review daily totals: 5: User
+flowchart TD
+    a["Landing page"] --> b["Sign up<br/>email + password"]
+    b --> c["Account created,<br/>session cookie set"]
+    c --> d["/dashboard redirects<br/>to the profile"]
+    d --> e["Fill in age, height,<br/>weight, conditions, diet"]
+    e --> f["BMI computed client-side"]
+    f --> g["AI generates a<br/>daily calorie target"]
+    g --> h["Profile saved"]
+    h --> i["Everything else is<br/>now personalized"]
 ```
 
-### Health Report Analysis
+The profile is the hinge: every AI flow takes `userProfile` as input, so recommendations
+are generic until it is filled in. That is why the layout nags about it.
+
+### Daily tracking
 
 ```mermaid
-journey
-    title Health Report Analysis
-    section Upload
-        Navigate to Analysis: 5: User
-        Upload report image: 4: User
-        Wait for AI processing: 3: User
-    section Review
-        View extracted metrics: 5: System
-        Read interpretations: 5: User
-        Review profile suggestions: 4: System
-    section Action
-        Accept profile updates: 5: User
-        Profile auto-updated: 5: System
-        New recommendations available: 4: System
+flowchart LR
+    subgraph capture ["Capture"]
+        p["Photo of a meal"]
+        w["Workout details"]
+        m["Meditation session"]
+    end
+    subgraph assist ["AI assist"]
+        a["Identify food,<br/>estimate calories,<br/>assess health impact"]
+    end
+    subgraph confirm ["Confirm and store"]
+        r["Review the estimate"]
+        s["Saved to the log"]
+    end
+    subgraph review ["Review"]
+        t["Today's progress<br/>vs calorie target"]
+        h["History and search"]
+    end
+
+    p --> a --> r --> s
+    w --> s
+    m --> s
+    s --> t
+    s --> h
 ```
 
-## Page Layouts
+Nothing is stored until the user confirms — the AI proposes, the user commits.
 
-### Dashboard Home (Insights)
+### Lab report analysis
 
-```
-+----------------------------------+
-| Sidebar  |  Header: Insights     |
-|          |------------------------|
-| Nav      |  [Tracking Card]      |
-| Items    |  Meals | Workouts |   |
-|          |  Meditations          |
-|          |                        |
-|          |  [Analysis Card]      |
-|          |  Health Reports        |
-|          |                        |
-|          |  [Recommendations]    |
-|          |  Recipes | Workouts   |
-|          |  Meditations | Habits |
-|          |                        |
-|          |  [Knowledge Card]     |
-|          |  Quizzes Taken         |
-+----------------------------------+
+```mermaid
+sequenceDiagram
+    participant U as User
+    participant A as Analysis page
+    participant AI as analyzeHealthReport()
+    participant P as Profile
+
+    U->>A: Upload a lab report image
+    A->>AI: Image + existing profile
+    AI-->>A: Summary, extracted metrics,<br/>suggested health issues
+    A-->>U: Metrics table with interpretations
+    U->>A: Accept the suggestions
+    A->>P: Merge new health issues into the profile
+    Note over P: Later recommendations<br/>account for the new conditions
 ```
 
-### Tracking Page (3-Tab Interface)
+The loop that makes the app cohere: a report changes the profile, and the profile changes
+every future recommendation.
 
+---
+
+## Page patterns
+
+| Page | Pattern |
+|---|---|
+| Insights | Read-only stat cards grouped by Tracking / Analysis / Recommendations / Knowledge |
+| Tracking | Three tabs (Calorie · Workout · Meditation), each with Today's Log and History sub-tabs |
+| Analysis | Upload-and-analyze panels, results rendered as tables and cards |
+| Recommendations | Saved-history list → "New Recommendation" → four generator tabs → result with Save / Share |
+| Health Quiz | Configure → generate → answer → score → save |
+| Reports | Report type + date range → generate → preview table → PDF export |
+| Profile | One long form: identity, measurements, diet, and a large grouped health-issue checklist |
+
+Recurring conventions: destructive actions go through an `AlertDialog`; every mutation
+ends in a toast; loading states use a spinner inside the triggering button.
+
+### Reports
+
+Five report types, each reading one collection over a date range:
+
+```mermaid
+flowchart LR
+    t{"Report type"} --> c["Calorie Intake — food-log"]
+    t --> w["Workout Log — workout-log"]
+    t --> m["Meditation Log — meditation-log"]
+    t --> r["Saved Recommendations — recommendation-history"]
+    t --> h["Health Numbers — health-reports"]
+    c & w & m & r & h --> d["Date range filter"] --> v["On-screen table"] --> p["PDF via jsPDF"]
 ```
-+----------------------------------+
-| [Calories] [Workouts] [Meditation]|
-|----------------------------------|
-| [Track New Meal]     [Search]    |
-|----------------------------------|
-| Today's Progress:                |
-| ████████░░░░ 1200/2000 kcal     |
-|----------------------------------|
-| History:                         |
-| - Chicken Salad  | 350 cal | 12pm|
-| - Oatmeal        | 280 cal | 8am |
-+----------------------------------+
-```
 
-## Responsive Design
+---
 
-- **Desktop**: Full sidebar + content area
-- **Mobile**: Collapsible sidebar with trigger button, full-width content
-- **Breakpoint**: `md` (768px) for sidebar visibility toggle
+## Iconography and motion
 
-## Animation & Motion
+**Lucide React**, imported per icon. Navigation mapping: `PieChart` Insights · `FileScan`
+Analysis · `ClipboardList` Tracking · `Sparkles` Recommendations · `BrainCircuit` Health
+Quiz · `Book` Reports · `Handshake` Provider · `Store` Marketplace.
 
-Uses **Framer Motion** for:
-- Page transitions
-- Card hover effects
-- Loading states
-- Modal entries/exits
+**Framer Motion** is installed and used sparingly — card and section transitions. Most
+motion comes from Radix's own data-state animations via Tailwind classes.
 
-## Iconography
+---
 
-**Lucide React** icon set throughout:
-- `PieChart` — Insights
-- `FileScan` — Analysis
-- `ClipboardList` — Tracking
-- `Sparkles` — Recommendations
-- `BrainCircuit` — Health Quiz
-- `Book` — Reports
-- `Handshake` — Provider
-- `Store` — Marketplace
+## Extending the UI
+
+| Task | Where |
+|---|---|
+| Change the accent color | `--primary` in both blocks of `globals.css` |
+| Switch to the light theme | Remove `className="dark"` from `app/layout.tsx` |
+| Add a nav item | A `<Link>` in `dashboard/layout.tsx`, plus the route folder |
+| Add a shadcn component | `npx shadcn@latest add <name>` — lands in `components/ui/` |
+| Change fonts | The Google Fonts link in `app/layout.tsx` and `--font-body` |

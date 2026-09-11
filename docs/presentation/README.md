@@ -2,7 +2,15 @@
 
 ## Elevator Pitch
 
-> **HealthGeek.ai** is an AI-powered personal healthcare platform that combines daily health tracking, intelligent analysis, and personalized recommendations — making proactive health management accessible to everyone.
+> **HealthGeek.ai** is an AI-powered personal health platform that combines daily tracking,
+> lab-report intelligence, and recommendations personalized to your conditions — and it runs
+> entirely on your own machine, so your health data never has to leave it.
+
+Two claims, and the second is the unusual one. Most health apps require an account on
+someone else's infrastructure before you can log a single meal. HealthGeek installs and runs
+with no cloud project, no vendor SDK, and no API key: storage is a file on your disk, and
+the AI layer ships with an offline provider so every screen works before you configure
+anything.
 
 ---
 
@@ -102,6 +110,42 @@ graph LR
 | Posture | Not available | Video analysis with corrections |
 | Education | Articles | Interactive AI quizzes |
 | Data Export | Limited | PDF reports with date ranges |
+| Where your data lives | Vendor's cloud | A JSON file on your machine |
+| Works offline | No | Yes — the default AI provider needs no network |
+| AI vendor | Locked in | Swappable: local models, OpenAI-compatible, Anthropic, Gemini |
+
+---
+
+## Privacy as the product
+
+```mermaid
+flowchart LR
+    subgraph yours ["Your machine"]
+        app["HealthGeek"]
+        data[("Health logs<br/>Lab reports<br/>Photos<br/>Credentials")]
+        local["Local model<br/>(optional)"]
+    end
+    hosted["Hosted model API<br/>(only if you choose one)"]
+
+    app <--> data
+    app <--> local
+    app -.->|"prompts only, if configured"| hosted
+
+    style hosted stroke-dasharray: 5 5
+```
+
+Health data is the most sensitive category most people generate. The design takes a
+position on it:
+
+- **Default is airtight.** `AI_PROVIDER=mock` makes zero network calls. The app is fully
+  navigable with no data leaving the machine at all.
+- **Local models keep it that way.** Point it at Ollama and photo analysis, report
+  extraction and recommendations all run on your hardware.
+- **Hosted is opt-in and explicit.** Choosing a hosted provider sends prompts — including
+  lab report images — to that vendor. That is a deliberate choice made in a config file,
+  not a default buried in a signup flow.
+- **Deleting means deleting.** `rm -rf .data` removes every account and record. There is no
+  copy elsewhere.
 
 ---
 
@@ -298,6 +342,20 @@ gantt
 
 ## Demo Script
 
+### Before you demo
+
+```bash
+# A throwaway store, so the demo starts clean and your own data is untouched
+HEALTHGEEK_DATA_DIR=./.demo-data AI_PROVIDER=ollama npx next dev -p 9200
+```
+
+**Use a real provider for a live demo.** With the default `AI_PROVIDER=mock`, every AI
+result reads "Sample Plan title" / "Sample Description" — correct behaviour, but it
+undercuts the pitch. Ollama with a vision model (`llava`) keeps the demo offline *and*
+real, which is itself the strongest version of the story.
+
+Reset between runs with `rm -rf ./.demo-data`.
+
 ### 5-Minute Product Demo
 
 1. **Landing & Signup** (30s)
@@ -333,6 +391,11 @@ gantt
 6. **Reports** (30s)
    - Show PDF export with date range
    - Quick view of aggregated health data
+
+7. **The reveal** (30s)
+   - `cat .demo-data/healthgeek.json` — every record just created, on this machine
+   - No cloud console to open, no project to bill, no account anywhere
+   - If Ollama was used: the network was never touched
 
 ---
 

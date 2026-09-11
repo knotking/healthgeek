@@ -1,84 +1,165 @@
 # HealthGeek.ai
 
-AI-powered personal healthcare platform combining daily health tracking, intelligent analysis, and personalized recommendations.
+AI-powered personal health tracking: log meals, workouts and meditation, upload lab
+reports for analysis, and get recommendations tailored to your health profile.
 
-Runs entirely on your machine. There is no cloud project to create, no SDK tied to a
-particular vendor, and no API key required to start.
-
-## Quick Start
+**It runs entirely on your machine.** No cloud project, no vendor SDK, no API key
+required to start. Data is a JSON file on disk, auth is a signed cookie, and the AI layer
+is a set of interchangeable adapters — including an offline one that needs no model at all.
 
 ```bash
 npm install
 npm run dev          # http://localhost:9002
 ```
 
-Then open http://localhost:9002, create an account, and use the app. Data is written
-to `./.data/healthgeek.json`.
+Sign up with any email and a 6+ character password. Your data lands in `./.data/healthgeek.json`.
 
-With no configuration, the AI features return clearly-labelled sample data
-(`AI_PROVIDER=mock`), so every screen is usable offline. To get real analysis, point the
-app at a model — see [AI providers](#ai-providers).
+---
 
-## Architecture
+## How it works
 
-| Layer | Technology |
-|-------|-----------|
-| Framework | Next.js 15 (App Router, Turbopack) |
-| AI | Pluggable provider: local models, OpenAI-compatible APIs, Anthropic, or Gemini |
-| Database | JSON document store on local disk (`.data/healthgeek.json`) |
-| Auth | Email/password, scrypt-hashed, HMAC-signed session cookie |
-| UI | shadcn/ui (Radix + Tailwind CSS) |
-| Deployment | Any Node 22 host, or the included Dockerfile |
+Three moving parts, each swappable, none tied to a hosted service.
 
-Nothing in the app talks to a vendor SDK. The two replaceable seams are:
+```mermaid
+flowchart TB
+    subgraph browser ["Browser"]
+        pages["Dashboard pages<br/>(React client components)"]
+        dataClient["lib/data/client.ts<br/>collection · doc · query · getDocs"]
+        authClient["lib/auth/client.ts<br/>useAuthState · signIn · signOut"]
+    end
 
-- **`src/lib/server/store.ts`** — the document store. The browser never reaches it
-  directly; it goes through `POST /api/db`, which authenticates the session cookie and
-  applies the ownership rules in `src/lib/server/access.ts`.
-- **`src/ai/providers/`** — one small adapter per model vendor, each built on `fetch`.
-  `src/ai/core.ts` renders prompts and validates responses against the flow's Zod schema,
-  so the rest of the app is unaware of which provider is configured.
+    subgraph server ["Next.js server (same process)"]
+        dbRoute["/api/db<br/>the only data endpoint"]
+        authRoutes["/api/auth/*"]
+        access["server/access.ts<br/>ownership rules"]
+        store["server/store.ts<br/>query engine"]
+        flows["ai/flows/*<br/>'use server' actions"]
+        core["ai/core.ts<br/>render · call · validate"]
+    end
+
+    subgraph disk ["Local disk"]
+        json[(".data/healthgeek.json")]
+        secret[".data/auth-secret"]
+    end
+
+    model["Model provider<br/>mock · ollama · openai · anthropic · gemini"]
+
+    pages --> dataClient --> dbRoute
+    pages --> authClient --> authRoutes
+    pages -.->|server action| flows
+    dbRoute --> access --> store --> json
+    authRoutes --> store
+    authRoutes -.-> secret
+    flows --> core --> model
+
+    style model stroke-dasharray: 5 5
+```
+
+The dashed provider box is the only thing that can leave your machine — and only if you
+configure it. With the default `AI_PROVIDER=mock`, nothing does.
+
+### What happens when you log a meal
+
+```mermaid
+sequenceDiagram
+    autonumber
+    participant U as You
+    participant P as Tracking page
+    participant F as analyzeFood()<br/>server action
+    participant M as Model provider
+    participant D as /api/db
+    participant S as JSON store
+
+    U->>P: Upload a food photo
+    P->>F: photo data URI + your profile
+    F->>F: Render prompt template<br/>(text + image parts)
+    F->>M: Prompt + output JSON schema
+    M-->>F: Response text
+    F->>F: Extract JSON, validate against Zod<br/>(one repair retry on mismatch)
+    F-->>P: { foodName, calories, healthImpact }
+    U->>P: Confirm "Log it"
+    P->>D: addDoc('food-log', { ... })
+    D->>D: Verify session cookie
+    D->>D: Stamp userId from the session
+    D->>S: Append document, atomic write
+    S-->>P: Document id
+    P-->>U: Toast + updated daily total
+```
+
+Two things worth noticing. The AI call and the database write are **separate steps** — the
+model never touches storage, and nothing is saved until you confirm. And the `userId` on
+the new document comes from the session cookie, not from the browser, so a page cannot
+write a record owned by somebody else.
+
+---
 
 ## AI providers
 
-Set `AI_PROVIDER` in `.env.local`:
+The app ships with a provider that needs nothing installed, so every screen works
+immediately. Swap it when you want real analysis.
 
-| `AI_PROVIDER` | What it calls | Needs a key |
-|---|---|---|
-| `mock` (default) | nothing — returns placeholder data | no |
-| `ollama` | a local Ollama daemon | no |
-| `openai` | OpenAI, or anything speaking the OpenAI chat-completions protocol | yes |
-| `anthropic` | the Anthropic Messages API | yes |
-| `gemini` | the Google Generative Language API | yes |
+```mermaid
+flowchart TD
+    start{"Do you want real<br/>AI output?"}
+    start -->|"Not yet — just exploring"| mock["AI_PROVIDER=mock<br/>(default)<br/><br/>Schema-valid placeholder data.<br/>No network, no key."]
+    start -->|"Yes, and keep it local"| local{"Which runtime?"}
+    start -->|"Yes, hosted is fine"| hosted{"Which vendor?"}
 
-Fully local setup with Ollama:
+    local -->|Ollama| ollama["AI_PROVIDER=ollama<br/>AI_MODEL=llama3.2"]
+    local -->|"LM Studio · vLLM · llama.cpp"| compat["AI_PROVIDER=openai<br/>AI_BASE_URL=http://localhost:PORT/v1"]
 
-```bash
-ollama pull llama3.2          # or a vision model such as llava for photo analysis
-echo "AI_PROVIDER=ollama" >> .env.local
-npm run dev
+    hosted -->|OpenAI| oai["AI_PROVIDER=openai<br/>AI_API_KEY=sk-..."]
+    hosted -->|Anthropic| ant["AI_PROVIDER=anthropic<br/>AI_API_KEY=sk-ant-..."]
+    hosted -->|Google| gem["AI_PROVIDER=gemini<br/>AI_API_KEY=..."]
+
+    style mock fill:#1f2d3d,color:#fff
 ```
 
-Point `AI_BASE_URL` at LM Studio, vLLM, llama.cpp, or a gateway like LiteLLM to use those
-instead — they all speak the same protocol as the `openai` provider.
+Fully local in two commands:
 
-Two notes on local models: photo and report analysis need a **vision-capable** model, and
-the posture analyzer sends video, which only the `gemini` provider accepts. Providers that
-cannot read an attachment say so in the prompt rather than pretending they saw it.
+```bash
+ollama pull llama3.2
+echo "AI_PROVIDER=ollama" >> .env.local
+```
+
+**Media support differs by provider.** Food photos and lab reports need a vision-capable
+model (`llava`, `gpt-4o`, Claude, Gemini). The posture analyzer sends *video*, which only
+`gemini` accepts. A provider that cannot read an attachment says so in the prompt instead
+of silently pretending it saw one.
+
+---
 
 ## Configuration
 
-Copy `.env.example` to `.env.local`. Every value has a working default.
+Copy `.env.example` to `.env.local`. Every value has a working default — an empty file is
+a valid configuration.
 
-| Variable | Purpose |
-|---|---|
-| `AUTH_SECRET` | Signs session cookies. Optional — a random one is generated and stored at `$HEALTHGEEK_DATA_DIR/auth-secret` if unset. Set it if you run more than one instance. |
-| `HEALTHGEEK_DATA_DIR` | Where `healthgeek.json` lives (default `./.data`). |
-| `AI_PROVIDER` | Which model adapter to use (default `mock`). |
-| `AI_MODEL` | Model name; each provider has a sensible default. |
-| `AI_API_KEY` | Credential for the chosen provider. |
-| `AI_BASE_URL` | Override the provider endpoint. |
-| `AI_MAX_TOKENS` | Response cap for the `anthropic` provider. |
+| Variable | Default | Purpose |
+|---|---|---|
+| `AUTH_SECRET` | generated | Signs session cookies. If unset, a random 32-byte secret is written to `<data dir>/auth-secret`. Set it explicitly if you run more than one instance. |
+| `HEALTHGEEK_DATA_DIR` | `./.data` | Where `healthgeek.json` lives. |
+| `AI_PROVIDER` | `mock` | `mock`, `ollama`, `openai`, `anthropic`, or `gemini`. |
+| `AI_MODEL` | per provider | `llama3.2`, `gpt-4o-mini`, `claude-opus-5`, `gemini-2.0-flash`. |
+| `AI_API_KEY` | — | Credential for the chosen provider. Not needed for `mock` or `ollama`. |
+| `AI_BASE_URL` | per provider | Override the endpoint — how you point at LM Studio, vLLM, or a gateway. |
+| `AI_MAX_TOKENS` | `8192` | Response cap for the `anthropic` provider. |
+
+---
+
+## Features
+
+| Feature | Where | Needs a model? |
+|---|---|---|
+| Meal, workout and meditation logs | Tracking | No (photo analysis does) |
+| Photo-based calorie estimation | Tracking, Analysis | Yes — vision |
+| Lab report extraction and interpretation | Analysis | Yes — vision |
+| Posture assessment from video | Analysis | Yes — `gemini` only |
+| Recipe, workout, meditation and habit plans | Recommendations | Yes |
+| Health quizzes | Health Quiz | Yes |
+| Activity counts | Insights | No |
+| PDF exports with date filtering | Reports | No |
+
+---
 
 ## Running in a container
 
@@ -87,42 +168,52 @@ export AUTH_SECRET=$(node -e "console.log(require('crypto').randomBytes(32).toSt
 docker compose up --build       # http://localhost:9002
 ```
 
-The document store is kept in a named volume, so accounts and logs survive restarts.
+`next.config.ts` sets `output: 'standalone'`, so the image carries its own server bundle.
+The document store lives on a named volume and survives restarts.
 
-## Features
-
-- **AI Food Tracking** — Photo-based calorie estimation with health impact analysis
-- **Workout & Meditation Logging** — Manual tracking with history and search
-- **Health Report Analysis** — Upload lab reports, AI extracts metrics and suggests profile updates
-- **Posture Analysis** — Video-based posture assessment with corrective recommendations
-- **Personalized Recommendations** — AI-generated recipes, workouts, meditations, and habits tailored to your health profile
-- **Health Quizzes** — AI-generated educational quizzes on health topics
-- **PDF Reports** — Exportable reports with date range filtering
+---
 
 ## Data and privacy
 
-Everything stays on the machine running the app: accounts, health logs, uploaded reports.
-The only outbound traffic is to the model provider you configure, and with `AI_PROVIDER=mock`
-there is none at all.
+Everything stays on the machine running the app: accounts, health logs, uploaded reports
+and photos. Passwords are stored as scrypt hashes with per-user salts, never in plain text.
 
-`.data/` is gitignored. To reset the app completely, delete it.
+The only outbound traffic is to the model provider you configure. With `AI_PROVIDER=mock`
+there is none.
+
+`.data/` is gitignored. Delete it to reset the app completely — accounts included.
+
+---
+
+## Troubleshooting
+
+| Symptom | Cause | Fix |
+|---|---|---|
+| `EADDRINUSE` on start | Something already holds port 9002 | `npx next dev -p 9200` |
+| Everything says "Sample …" | `AI_PROVIDER` is still `mock` | Configure a provider (above) |
+| "Could not reach …" on an AI action | Model server is down, or `AI_BASE_URL` is wrong | Check the endpoint is up |
+| Photo analysis returns generic text | Model has no vision | Use a vision-capable model |
+| Logged out after restart | `AUTH_SECRET` changed, or `.data/auth-secret` was deleted | Pin `AUTH_SECRET` in `.env.local` |
+| `npm run lint` opens a prompt | ESLint was never configured in this repo | Use `npm run typecheck` |
+
+---
 
 ## Documentation
 
-| Section | Description |
-|---------|-------------|
-| [docs/architecture/](./docs/architecture/) | System diagrams, data models, deployment topology |
-| [docs/design/](./docs/design/) | Design system, user journeys, layout patterns |
-| [docs/code/](./docs/code/) | AI flow reference, data access patterns, conventions |
-| [docs/testing/](./docs/testing/) | Test strategy, test plans, security testing |
-| [docs/presentation/](./docs/presentation/) | Product overview, demo script, roadmap |
+| Section | What it answers |
+|---|---|
+| [docs/architecture/](./docs/architecture/) | How the parts fit, the data model, the trust boundary, deployment |
+| [docs/code/](./docs/code/) | Module map, the data and AI APIs, and how to extend them |
+| [docs/design/](./docs/design/) | Design system, navigation, user journeys |
+| [docs/testing/](./docs/testing/) | What is verified today and how to verify it yourself |
+| [docs/presentation/](./docs/presentation/) | Product overview and demo script |
 
 ## Scripts
 
 | Command | Purpose |
-|---------|---------|
-| `npm run dev` | Dev server (port 9002, Turbopack) |
+|---|---|
+| `npm run dev` | Dev server on port 9002 (Turbopack) |
 | `npm run build` | Production build |
 | `npm start` | Serve the production build |
-| `npm run lint` | ESLint |
-| `npm run typecheck` | TypeScript checking |
+| `npm run typecheck` | TypeScript check — clean from a cold `.next` |
+| `npm run lint` | ESLint (not yet configured; drops into its setup prompt) |
