@@ -5,9 +5,8 @@ import { useEffect, useState } from 'react';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
-import { doc, getDoc, setDoc } from 'firebase/firestore';
-import { auth, db } from '@/lib/firebase';
-import { useAuthState } from 'react-firebase-hooks/auth';
+import { auth, useAuthState } from '@/lib/auth/client';
+import { doc, getDoc, setDoc, db } from '@/lib/data/client';
 import { Button } from '@/components/ui/button';
 import {
   Form,

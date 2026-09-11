@@ -7,8 +7,8 @@
  * - WorkoutPlanOutput - The return type for the generateWorkoutPlan function.
  */
 
-import { ai } from '@/ai/genkit';
-import { z } from 'genkit';
+import { ai } from '@/ai/core';
+import { z } from 'zod';
 
 const WorkoutPreferencesInputSchema = z.object({
   userProfile: z.string().describe("A JSON string of the user's profile data, including health issues, age, and BMI."),

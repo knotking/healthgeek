@@ -8,8 +8,8 @@
  * - MeditationPracticeOutput - The return type for the generateMeditationPractice function.
  */
 
-import { ai } from '@/ai/genkit';
-import { z } from 'genkit';
+import { ai } from '@/ai/core';
+import { z } from 'zod';
 
 const MeditationPreferencesInputSchema = z.object({
   userProfile: z.string().describe("A JSON string of the user's profile data, including health issues."),

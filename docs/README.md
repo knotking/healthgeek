@@ -15,7 +15,6 @@ Comprehensive documentation for **HealthGeek.ai** — an AI-powered personal hea
 ## Quick Links
 
 - **Run locally**: `npm run dev` (port 9002)
-- **AI dev server**: `npm run genkit:dev`
 - **Build**: `npm run build`
 - **Lint**: `npm run lint`
 - **Type check**: `npm run typecheck`
@@ -26,10 +25,10 @@ Comprehensive documentation for **HealthGeek.ai** — an AI-powered personal hea
 |-------|-----------|
 | Framework | Next.js 15 (App Router, Turbopack) |
 | Language | TypeScript, React 18 |
-| AI Engine | Google Genkit + Gemini 2.0 Flash |
-| Database | Cloud Firestore (NoSQL) |
-| Authentication | Firebase Auth (email/password) |
+| AI Engine | Pluggable provider adapters (local models, OpenAI-compatible, Anthropic, Gemini) |
+| Database | Local JSON document store (`.data/healthgeek.json`) |
+| Authentication | Local email/password (scrypt + signed session cookie) |
 | UI Components | shadcn/ui (Radix + Tailwind CSS) |
 | Forms | React Hook Form + Zod validation |
 | PDF Generation | jsPDF + jspdf-autotable |
-| Deployment | Firebase App Hosting |
+| Deployment | Any Node 22 host; Dockerfile included |

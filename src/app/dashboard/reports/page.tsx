@@ -2,9 +2,8 @@
 'use client';
 
 import { useState, useEffect, useCallback } from 'react';
-import { useAuthState } from 'react-firebase-hooks/auth';
-import { auth, db } from '@/lib/firebase';
-import { doc, getDoc, collection, query, where, getDocs, Timestamp, orderBy } from 'firebase/firestore';
+import { useAuthState, auth } from '@/lib/auth/client';
+import { db, doc, getDoc, collection, query, where, getDocs, Timestamp, orderBy } from '@/lib/data/client';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription, CardFooter } from "@/components/ui/card";
 import { Button } from '@/components/ui/button';
 import { useToast } from '@/hooks/use-toast';

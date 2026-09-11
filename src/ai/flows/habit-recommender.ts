@@ -7,8 +7,8 @@
  * - HabitRecommendationOutput - The return type for the generateHabitPlan function.
  */
 
-import { ai } from '@/ai/genkit';
-import { z } from 'genkit';
+import { ai } from '@/ai/core';
+import { z } from 'zod';
 
 const HabitRecommendationInputSchema = z.object({
   userProfile: z.string().describe("A JSON string of the user's profile data, including health issues."),

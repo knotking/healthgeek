@@ -2,7 +2,9 @@
 
 ## System Overview
 
-HealthGeek is a full-stack AI health platform built on Next.js with Firebase infrastructure and Google Genkit AI pipelines.
+HealthGeek is a full-stack AI health platform built on Next.js. It has no cloud-provider
+dependency: the document store is a JSON file on local disk, authentication is a signed
+session cookie, and the AI layer is a set of interchangeable provider adapters.
 
 ```mermaid
 graph TB
@@ -17,26 +19,34 @@ graph TB
         ServerActions[Server Actions / AI Flows]
     end
 
-    subgraph Firebase ["Firebase Platform"]
-        Auth[Firebase Auth]
-        Firestore[(Cloud Firestore)]
-        Hosting[App Hosting]
+    subgraph Routes ["API Routes (same Next.js process)"]
+        AuthAPI["/api/auth/*"]
+        DbAPI["/api/db"]
+        Access["access rules"]
     end
 
-    subgraph AI ["AI Layer (Genkit)"]
-        Genkit[Genkit Runtime]
-        Gemini[Gemini 2.0 Flash]
+    subgraph Storage ["Local Storage"]
+        Store[("JSON store<br/>.data/healthgeek.json")]
+    end
+
+    subgraph AI ["AI Layer"]
+        Core["ai/core.ts<br/>prompt + schema validation"]
+        Providers["provider adapter<br/>(mock / ollama / openai /<br/>anthropic / gemini)"]
+        Model[Configured model]
     end
 
     UI --> Pages
     RHF --> Pages
     Media --> Pages
     Pages --> ServerActions
-    Pages --> Auth
-    Pages --> Firestore
-    ServerActions --> Genkit
-    Genkit --> Gemini
-    Hosting --> NextJS
+    Pages --> AuthAPI
+    Pages --> DbAPI
+    DbAPI --> Access
+    Access --> Store
+    AuthAPI --> Store
+    ServerActions --> Core
+    Core --> Providers
+    Providers --> Model
 ```
 
 ## Request Flow
@@ -46,19 +56,26 @@ sequenceDiagram
     participant U as User
     participant B as Browser
     participant N as Next.js Server
-    participant G as Genkit AI
-    participant F as Firestore
-    participant A as Firebase Auth
+    participant A as /api/auth/session
+    participant AI as AI flow (server action)
+    participant P as Model provider
+    participant D as /api/db
+    participant F as JSON store
 
     U->>B: Interact with UI
-    B->>A: Verify auth token
+    B->>A: Read session cookie
     A-->>B: Auth state
     B->>N: Server action call
-    N->>G: AI flow execution
-    G-->>N: AI response (structured JSON)
+    N->>AI: Run flow
+    AI->>P: Rendered prompt + output schema
+    P-->>AI: Response text
+    AI-->>N: Validated structured output
     N-->>B: Rendered result
-    B->>F: Persist data
-    F-->>B: Confirmation
+    B->>D: Persist data
+    D->>D: Authenticate + authorize
+    D->>F: Write document
+    F-->>D: Written
+    D-->>B: Confirmation
     B-->>U: Updated UI
 ```
 
@@ -157,7 +174,7 @@ graph LR
         Prefs[User Preferences]
     end
 
-    subgraph Genkit ["Genkit AI Flows"]
+    subgraph Flows ["AI Flows (src/ai/flows)"]
         FA[Food Analyzer]
         HRA[Health Report Analyzer]
         PA[Posture Analyzer]
@@ -202,42 +219,43 @@ graph TB
         Repo[Git Repository]
     end
 
-    subgraph FirebaseHosting ["Firebase App Hosting"]
-        Build[Cloud Build]
+    subgraph Host ["Any Node 22 host (or the included Docker image)"]
+        Build["next build<br/>output: standalone"]
         Runtime[Next.js Runtime]
+        AuthRoutes["/api/auth/*"]
+        DbRoute["/api/db"]
+        AccessRules["lib/server/access.ts"]
     end
 
-    subgraph FirebaseServices ["Firebase Services"]
-        AuthService[Authentication]
-        FirestoreDB[(Firestore Database)]
-        Rules[Security Rules]
-        Indexes[Composite Indexes]
+    subgraph Disk ["Mounted volume / local directory"]
+        StoreFile[("HEALTHGEEK_DATA_DIR<br/>healthgeek.json")]
     end
 
-    subgraph GoogleCloud ["Google Cloud"]
-        GenkitAI[Genkit / Gemini API]
+    subgraph External ["Optional, only if configured"]
+        Provider["Model endpoint<br/>(local Ollama, or a hosted API)"]
     end
 
-    Repo -->|deploy| Build
+    Repo -->|build| Build
     Build --> Runtime
-    Runtime --> AuthService
-    Runtime --> FirestoreDB
-    Rules --> FirestoreDB
-    Indexes --> FirestoreDB
-    Runtime --> GenkitAI
+    Runtime --> AuthRoutes
+    Runtime --> DbRoute
+    DbRoute --> AccessRules
+    AccessRules --> StoreFile
+    AuthRoutes --> StoreFile
+    Runtime -->|AI_PROVIDER| Provider
 ```
 
 ## Security Model
 
 ```mermaid
 graph TD
-    User[User Request] --> AuthCheck{Authenticated?}
-    AuthCheck -->|No| Login[Redirect to Login]
-    AuthCheck -->|Yes| OwnerCheck{Owner of resource?}
-    OwnerCheck -->|No| Deny[Access Denied]
+    User[User Request] --> Cookie{Valid signed<br/>session cookie?}
+    Cookie -->|No| Login[401 / redirect to login]
+    Cookie -->|Yes| OwnerCheck{Owner of resource?}
+    OwnerCheck -->|No| Deny[403 permission-denied]
     OwnerCheck -->|Yes| Allow[Allow Read/Write]
 
-    subgraph FirestoreRules ["Firestore Security Rules"]
+    subgraph Rules ["Rules enforced in lib/server/access.ts"]
         R1["profiles/{userId}: owner only"]
         R2["food-log/{docId}: owner only"]
         R3["workout-log/{docId}: owner only"]
@@ -245,23 +263,38 @@ graph TD
         R5["health-reports/{docId}: owner only"]
         R6["recommendation-history/{docId}: owner only"]
         R7["saved-quizzes/{docId}: owner only"]
+        R8["queries are force-filtered to userId == session uid"]
     end
 ```
+
+Because the browser cannot reach the store directly, these checks run on every
+`/api/db` request before any document is read or written. A client that forges a
+`where('userId', '==', someoneElse)` filter has it replaced with its own uid.
 
 ## Module Dependency Graph
 
 ```mermaid
 graph TD
-    Layout["dashboard/layout.tsx"] --> Auth["lib/firebase.ts (Auth)"]
-    Layout --> DB["lib/firebase.ts (Firestore)"]
+    Layout["dashboard/layout.tsx"] --> Auth["lib/auth/client.ts"]
+    Layout --> DB["lib/data/client.ts"]
 
     Pages["Dashboard Pages"] --> Layout
     Pages --> UIComponents["components/ui/*"]
     Pages --> Hooks["hooks/*"]
     Pages --> AIFlows["ai/flows/*"]
 
-    AIFlows --> GenkitConfig["ai/genkit.ts"]
-    GenkitConfig --> GoogleAI["@genkit-ai/googleai"]
+    Auth --> AuthRoutes["app/api/auth/*"]
+    DB --> DbRoute["app/api/db/route.ts"]
+    AuthRoutes --> ServerAuth["lib/server/auth.ts"]
+    DbRoute --> AccessRules["lib/server/access.ts"]
+    DbRoute --> Store["lib/server/store.ts"]
+    AccessRules --> Store
+
+    AIFlows --> AiCore["ai/core.ts"]
+    AiCore --> Template["ai/template.ts"]
+    AiCore --> Schema["ai/json-schema.ts"]
+    AiCore --> ProviderRegistry["ai/providers/index.ts"]
+    ProviderRegistry --> Adapters["ai/providers/{mock,openai-compatible,anthropic,gemini}.ts"]
 
     UIComponents --> Radix["@radix-ui/*"]
     UIComponents --> Tailwind["tailwind-merge + cva"]

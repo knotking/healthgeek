@@ -127,8 +127,8 @@ graph TD
 sequenceDiagram
     participant U as User
     participant C as Camera/Upload
-    participant AI as Gemini AI
-    participant DB as Firestore
+    participant AI as AI provider
+    participant DB as Local store
 
     U->>C: Take photo of meal
     C->>AI: Send image + user profile
@@ -146,7 +146,7 @@ sequenceDiagram
 ```mermaid
 sequenceDiagram
     participant U as User
-    participant AI as Gemini AI
+    participant AI as AI provider
     participant P as Profile
 
     U->>AI: Upload lab report image
@@ -245,19 +245,21 @@ graph TB
     end
 
     subgraph Intelligence ["AI Brain"]
-        Genkit["Google Genkit"]
-        Gemini["Gemini 2.0 Flash"]
+        Core["Prompt + schema runtime"]
+        Providers["Swappable provider adapter"]
+        Model["Local model, or any hosted API"]
     end
 
-    subgraph Platform ["Platform"]
-        Auth["Authentication"]
-        DB["Database"]
-        Host["Hosting"]
+    subgraph Platform ["Platform (runs anywhere)"]
+        Auth["Authentication (signed cookie)"]
+        DB["Local JSON document store"]
+        Host["Any Node host / Docker"]
     end
 
     Web --> Intelligence
     Web --> Platform
-    Intelligence --> Gemini
+    Core --> Providers
+    Providers --> Model
 
     style Intelligence fill:#98FB98
     style UserFacing fill:#87CEEB
@@ -372,6 +374,6 @@ graph TD
 | Resource | Location |
 |----------|----------|
 | Repository | This repo |
-| Deployed App | Firebase App Hosting |
-| AI Flows Dev | `npm run genkit:dev` |
+| Deployed App | Any Node 22 host, or `docker compose up` |
+| Run Locally | `npm run dev` (no cloud account or API key needed) |
 | Documentation | `docs/` directory |

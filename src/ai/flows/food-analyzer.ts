@@ -7,8 +7,8 @@
  * - FoodAnalysisOutput - The return type for the analyzeFood function.
  */
 
-import { ai } from '@/ai/genkit';
-import { z } from 'genkit';
+import { ai } from '@/ai/core';
+import { z } from 'zod';
 
 const FoodAnalysisInputSchema = z.object({
   photoDataUri: z

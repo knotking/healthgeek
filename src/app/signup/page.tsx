@@ -6,9 +6,8 @@ import { useRouter } from 'next/navigation';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
-import { createUserWithEmailAndPassword } from 'firebase/auth';
-import { doc, setDoc } from 'firebase/firestore';
-import { auth, db } from '@/lib/firebase';
+import { createUserWithEmailAndPassword, auth } from '@/lib/auth/client';
+import { doc, setDoc, db } from '@/lib/data/client';
 import { Button } from '@/components/ui/button';
 import {
   Form,

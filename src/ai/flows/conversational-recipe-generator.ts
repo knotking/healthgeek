@@ -7,8 +7,8 @@
  * - SingleRecipeOutput - The return type for the generateSingleRecipe function.
  */
 
-import { ai } from '@/ai/genkit';
-import { z } from 'genkit';
+import { ai } from '@/ai/core';
+import { z } from 'zod';
 
 const RecipePreferencesInputSchema = z.object({
   mealType: z.string().describe('The desired meal type (e.g., Breakfast, Lunch, Dinner, Snack).'),

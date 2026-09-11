@@ -2,9 +2,8 @@
 'use client';
 
 import { useState, useEffect, useCallback } from 'react';
-import { useAuthState } from 'react-firebase-hooks/auth';
-import { auth, db } from '@/lib/firebase';
-import { collection, query, where, getDocs } from 'firebase/firestore';
+import { useAuthState, auth } from '@/lib/auth/client';
+import { db, collection, query, where, getDocs } from '@/lib/data/client';
 import { useToast } from '@/hooks/use-toast';
 import { Loader2, PieChart, Utensils, Dumbbell, BrainCircuit, FileScan, ChefHat, Star, BookOpen } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';

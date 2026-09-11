@@ -3,9 +3,8 @@
 
 // Common Imports
 import { useState, useEffect, useCallback, useMemo } from 'react';
-import { useAuthState } from 'react-firebase-hooks/auth';
-import { auth, db } from '@/lib/firebase';
-import { collection, addDoc, doc, getDoc, query, where, orderBy, getDocs, deleteDoc, Timestamp, serverTimestamp, updateDoc, limit } from 'firebase/firestore';
+import { useAuthState, auth } from '@/lib/auth/client';
+import { db, collection, addDoc, doc, getDoc, query, where, orderBy, getDocs, deleteDoc, Timestamp, serverTimestamp, updateDoc, limit } from '@/lib/data/client';
 import { useToast } from '@/hooks/use-toast';
 import { Loader2 as Loader2Common, MoreHorizontal, Search, ArrowLeft } from 'lucide-react';
 import { Button as ButtonCommon } from '@/components/ui/button';
@@ -1268,7 +1267,7 @@ const DetailedView = ({ item }: { item: any }) => {
                     <div>
                         <h3 className="font-bold text-xl mb-4 flex items-center gap-2"><TargetHabit className="text-primary"/> Your New Habits</h3>
                         <div className="space-y-4">
-                            {data.habits.map((habit, i) => (
+                            {data.habits.map((habit: any, i: number) => (
                                 <Card key={i} className="p-4 bg-muted/50">
                                     <CardTitle className="text-lg flex justify-between items-center">
                                         <span>{habit.name}</span>

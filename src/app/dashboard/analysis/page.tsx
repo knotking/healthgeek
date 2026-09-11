@@ -2,9 +2,8 @@
 'use client';
 
 import { useState, useRef, useEffect, useCallback } from 'react';
-import { useAuthState } from 'react-firebase-hooks/auth';
-import { auth, db } from '@/lib/firebase';
-import { doc, getDoc, setDoc, addDoc, collection, query, orderBy, getDocs, Timestamp, where, limit, deleteDoc } from 'firebase/firestore';
+import { useAuthState, auth } from '@/lib/auth/client';
+import { db, doc, getDoc, setDoc, addDoc, collection, query, orderBy, getDocs, Timestamp, where, limit, deleteDoc } from '@/lib/data/client';
 import { analyzeHealthReport, HealthReportAnalysisOutput } from '@/ai/flows/health-report-analyzer';
 import { analyzeFood, FoodAnalysisOutput } from '@/ai/flows/food-analyzer';
 import { analyzePosture, PostureAnalysisOutput } from '@/ai/flows/posture-analyzer';
@@ -19,6 +18,7 @@ import {
 import { useToast } from '@/hooks/use-toast';
 import { Loader2, Upload, FileScan, Beaker, PlusCircle, History, Lightbulb, Camera, Utensils, Zap, HeartPulse, Video, VideoOff, RefreshCw, Sparkles, Send, Trash2 } from 'lucide-react';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
+import { Badge } from '@/components/ui/badge';
 import Image from 'next/image';
 import { Separator } from '@/components/ui/separator';
 import {

@@ -10,11 +10,15 @@ graph TD
             LoginPage["login/"]
             SignupPage["signup/"]
             Dashboard["dashboard/"]
+            ApiAuth["api/auth/*"]
+            ApiDb["api/db"]
         end
 
         subgraph ai ["ai/ (AI Layer)"]
-            GenkitConfig["genkit.ts"]
-            DevServer["dev.ts"]
+            Core["core.ts (definePrompt / defineFlow)"]
+            Template["template.ts"]
+            SchemaGen["json-schema.ts"]
+            ProviderDir["providers/"]
             Flows["flows/"]
         end
 
@@ -25,7 +29,11 @@ graph TD
         end
 
         subgraph lib ["lib/"]
-            FirebaseLib["firebase.ts"]
+            DataClient["data/client.ts (document API)"]
+            AuthClient["auth/client.ts (session API)"]
+            ServerStore["server/store.ts (JSON store)"]
+            ServerAccess["server/access.ts (ownership rules)"]
+            ServerAuth["server/auth.ts (scrypt + cookies)"]
             Utils["utils.ts"]
         end
 
@@ -38,7 +46,10 @@ graph TD
 
 ## AI Flows Reference
 
-All AI flows live in `src/ai/flows/` and use the shared Genkit instance from `src/ai/genkit.ts`.
+All AI flows live in `src/ai/flows/` and use the shared runtime from `src/ai/core.ts`.
+Each flow declares Zod input/output schemas and a prompt template; `core.ts` renders the
+template, calls whichever provider `AI_PROVIDER` selects, and validates the response
+against the output schema (retrying once with the validation error if it does not match).
 
 ### Flow Catalog
 
@@ -200,42 +211,61 @@ Output: {
 }
 ```
 
-## Firestore Data Access Patterns
+## Data Access Patterns
+
+Pages import `collection`, `doc`, `query`, `where`, `orderBy`, `limit`, `startAt`, `endAt`,
+`getDoc`, `getDocs`, `setDoc`, `addDoc`, `updateDoc`, `deleteDoc`, `Timestamp`, and
+`serverTimestamp` from `@/lib/data/client`. Each call becomes one `POST /api/db`.
 
 ```mermaid
 sequenceDiagram
     participant Page as Dashboard Page
-    participant FB as Firebase SDK
-    participant FS as Firestore
+    participant C as lib/data/client.ts
+    participant R as /api/db
+    participant A as lib/server/access.ts
+    participant S as lib/server/store.ts
 
-    Note over Page,FS: Read Pattern (onSnapshot / getDoc)
-    Page->>FB: query(collection, where("userId", "==", uid))
-    FB->>FS: Execute query
-    FS-->>FB: Documents
-    FB-->>Page: Typed data
+    Note over Page,S: Read Pattern
+    Page->>C: query(collection(db,'food-log'), where('userId','==',uid), orderBy('timestamp','desc'))
+    C->>R: { op: 'getDocs', collection, constraints }
+    R->>A: authenticate session, scope to own uid
+    A->>S: run query
+    S-->>R: documents
+    R-->>C: tagged JSON
+    C-->>Page: snapshots with Timestamp instances
 
-    Note over Page,FS: Write Pattern (addDoc / setDoc)
-    Page->>FB: addDoc(collection, { userId, ...data, timestamp })
-    FB->>FS: Write document
-    FS-->>FB: Document reference
-    FB-->>Page: Success
+    Note over Page,S: Write Pattern
+    Page->>C: addDoc(collection(db,'food-log'), { timestamp: new Date(), ... })
+    C->>R: { op: 'addDoc', collection, data }
+    R->>A: stamp userId, reject foreign owners
+    A->>S: write document
+    S-->>Page: document id
 
-    Note over Page,FS: Delete Pattern
-    Page->>FB: deleteDoc(doc(db, collection, docId))
-    FB->>FS: Delete
-    FS-->>Page: Confirmation
+    Note over Page,S: Delete Pattern
+    Page->>C: deleteDoc(doc(db,'food-log',id))
+    C->>R: { op: 'deleteDoc', collection, id }
+    R->>A: verify the document belongs to the caller
+    A->>S: delete
+    S-->>Page: confirmation
 ```
 
-### Collection Query Index Requirements
+### Supported query constraints
 
-| Collection | Query Pattern | Index |
-|-----------|--------------|-------|
-| `food-log` | userId + timestamp ASC | Composite |
-| `workout-log` | userId + timestamp DESC | Composite |
-| `workout-log` | userId + workoutType ASC | Composite |
-| `meditation-log` | userId + timestamp DESC | Composite |
-| `meditation-log` | userId + meditationType ASC | Composite |
-| `saved-quizzes` | userId + timestamp DESC | Composite |
+| Constraint | Notes |
+|-----------|-------|
+| `where(field, op, value)` | `==`, `!=`, `<`, `<=`, `>`, `>=`, `in`, `not-in`, `array-contains` |
+| `orderBy(field, direction)` | Multiple sort fields applied in order |
+| `limit(count)` | Applied last |
+| `startAt(value)` / `endAt(value)` | Inclusive bounds on the first sort field; `endAt(text + '\uf8ff')` gives prefix search |
+
+No index declarations are needed — the store evaluates queries in process. That also means
+query cost is linear in collection size, which is fine at single-user scale.
+
+### Timestamps
+
+`Timestamp` and `serverTimestamp()` come from `@/lib/data/client`. Values are tagged on the
+wire by `lib/data/wire.ts`, so a `Date` or `Timestamp` written to a document comes back as a
+`Timestamp` with `.toDate()`, and `serverTimestamp()` is resolved by the server's clock.
 
 ## Authentication Flow
 
@@ -261,7 +291,7 @@ stateDiagram-v2
 - **Path alias**: `@/` maps to `src/`
 - **Client components**: Explicitly marked with `'use client'` directive
 - **AI flows**: Each flow is a self-contained file with Zod schema validation
-- **State management**: React hooks + Firebase listeners (no external state library)
+- **State management**: React hooks + the auth client's subscription (no external state library)
 - **Form handling**: React Hook Form with Zod resolvers for validation
 - **Styling**: Tailwind utility classes, `cn()` helper for conditional merging
 - **Icons**: Lucide React exclusively
@@ -272,11 +302,13 @@ stateDiagram-v2
 
 | Variable | Purpose |
 |----------|---------|
-| `NEXT_PUBLIC_FIREBASE_API_KEY` | Firebase client API key |
-| `NEXT_PUBLIC_FIREBASE_AUTH_DOMAIN` | Firebase auth domain |
-| `NEXT_PUBLIC_FIREBASE_PROJECT_ID` | Firebase project ID |
-| `NEXT_PUBLIC_FIREBASE_STORAGE_BUCKET` | Firebase storage bucket |
-| `NEXT_PUBLIC_FIREBASE_MESSAGING_SENDER_ID` | FCM sender ID |
-| `NEXT_PUBLIC_FIREBASE_APP_ID` | Firebase app ID |
-| `NEXT_PUBLIC_FIREBASE_MEASUREMENT_ID` | Google Analytics measurement ID |
-| `GOOGLE_API_KEY` | Google AI (Gemini) API key for Genkit |
+| `AUTH_SECRET` | Signs session cookies; optional, auto-generated into the data directory if unset |
+| `HEALTHGEEK_DATA_DIR` | Directory holding `healthgeek.json` (default `./.data`) |
+| `AI_PROVIDER` | `mock`, `ollama`, `openai`, `anthropic`, or `gemini` (default `mock`) |
+| `AI_MODEL` | Model name; each provider has a default |
+| `AI_API_KEY` | Credential for the chosen provider |
+| `AI_BASE_URL` | Override the provider endpoint |
+| `AI_MAX_TOKENS` | Response cap for the `anthropic` provider |
+
+None are required to run: with an empty `.env.local` the app uses the local store and the
+`mock` AI provider.

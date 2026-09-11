@@ -2,9 +2,8 @@
 'use client';
 
 import { useState, useRef, useEffect, useCallback } from 'react';
-import { useAuthState } from 'react-firebase-hooks/auth';
-import { auth, db } from '@/lib/firebase';
-import { doc, getDoc, collection, addDoc, query, where, getDocs, Timestamp, orderBy, limit, startAt, endAt, deleteDoc } from 'firebase/firestore';
+import { useAuthState, auth } from '@/lib/auth/client';
+import { db, doc, getDoc, collection, addDoc, query, where, getDocs, Timestamp, orderBy, limit, startAt, endAt, deleteDoc } from '@/lib/data/client';
 import { analyzeFood, FoodAnalysisOutput } from '@/ai/flows/food-analyzer';
 import { Button } from '@/components/ui/button';
 import {

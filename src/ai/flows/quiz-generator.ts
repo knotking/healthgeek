@@ -7,8 +7,8 @@
  * - QuizGeneratorOutput - The return type for the generateQuiz function.
  */
 
-import { ai } from '@/ai/genkit';
-import { z } from 'genkit';
+import { ai } from '@/ai/core';
+import { z } from 'zod';
 
 const QuizGeneratorInputSchema = z.object({
   topic: z.string().describe('The health topic for the quiz (e.g., "Cardiovascular Health", "Nutrition Basics").'),

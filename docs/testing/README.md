@@ -8,7 +8,7 @@ Testing strategy for HealthGeek covering all application layers.
 graph TD
     subgraph TestPyramid ["Testing Pyramid"]
         E2E["E2E Tests<br/>(Critical user journeys)"]
-        Integration["Integration Tests<br/>(AI flows, Firestore queries)"]
+        Integration["Integration Tests<br/>(AI flows, store queries)"]
         Unit["Unit Tests<br/>(Utilities, validation, calculations)"]
     end
 
@@ -35,7 +35,7 @@ Target: Pure functions, utilities, validation schemas, calculations.
 
 ### Integration Tests
 
-Target: AI flows, Firestore operations, authentication.
+Target: AI flows, document store operations, authentication.
 
 ```mermaid
 graph LR
@@ -46,12 +46,12 @@ graph LR
         T4["Calorie Target<br/>Profile → number"]
     end
 
-    subgraph FirestoreTests ["Firestore Integration"]
+    subgraph StoreTests ["Document Store Integration"]
         T5["CRUD food-log"]
         T6["CRUD workout-log"]
         T7["CRUD meditation-log"]
         T8["Profile read/write"]
-        T9["Security rules enforcement"]
+        T9["Access rule enforcement (/api/db)"]
     end
 
     subgraph AuthTests ["Auth Integration"]
@@ -83,8 +83,8 @@ graph TD
 
 | Test Case | Type | Expected |
 |-----------|------|----------|
-| Valid signup creates account + profile | Integration | Profile doc exists in Firestore |
-| Duplicate email shows error | Integration | Firebase auth error displayed |
+| Valid signup creates account + profile | Integration | Profile doc exists in the store |
+| Duplicate email shows error | Integration | 409 `email-already-in-use` surfaced in the UI |
 | Valid login redirects to dashboard | Integration | URL = /dashboard |
 | Invalid credentials show error | Integration | Error toast shown |
 | Unauthenticated access redirects | E2E | URL = /login |
@@ -132,12 +132,14 @@ graph TD
 
 ```mermaid
 graph TD
-    subgraph SecurityTests ["Firestore Security Rules"]
+    subgraph SecurityTests ["Access Rules (lib/server/access.ts)"]
         S1["User A cannot read User B's food-log"]
         S2["User A cannot write to User B's profile"]
         S3["Unauthenticated cannot read any collection"]
         S4["User can only delete own documents"]
         S5["Required fields enforced on write"]
+        S6["Forged where('userId', …) filter is replaced with the caller's uid"]
+        S7["Tampered session cookie is rejected (bad HMAC)"]
     end
 ```
 
@@ -153,8 +155,8 @@ graph TD
 | Metric | Target | How to Measure |
 |--------|--------|----------------|
 | First Contentful Paint | < 1.5s | Lighthouse |
-| AI flow response time | < 5s | Genkit metrics |
-| Firestore query latency | < 200ms | Firebase console |
+| AI flow response time | < 5s | Server timing logs |
+| Store query latency | < 50ms | Server timing logs |
 | PDF generation | < 3s | Manual timing |
 | Image upload + analysis | < 8s | E2E timing |
 
@@ -163,12 +165,14 @@ graph TD
 ```mermaid
 graph LR
     subgraph Local ["Local Development"]
-        Emulator["Firebase Emulator Suite"]
-        MockAI["Genkit Dev Server"]
+        DevServer["npm run dev"]
+        TempStore["HEALTHGEEK_DATA_DIR=./.test-data"]
+        MockAI["AI_PROVIDER=mock"]
     end
 
     subgraph CI ["CI/CD"]
-        EmulatorCI["Firebase Emulators"]
+        CiStore["Throwaway data directory"]
+        CiAI["AI_PROVIDER=mock (no network, no keys)"]
         TestRunner["Test Runner"]
         Coverage["Coverage Report"]
     end
@@ -182,16 +186,15 @@ graph LR
 # Unit tests
 npm test
 
-# Integration tests (requires Firebase emulators)
-firebase emulators:start
-npm run test:integration
+# Integration tests — no emulator or cloud project needed.
+# Point the store at a throwaway directory and keep the AI layer offline.
+HEALTHGEEK_DATA_DIR=./.test-data AI_PROVIDER=mock npm run test:integration
 
 # E2E tests
-npm run test:e2e
+HEALTHGEEK_DATA_DIR=./.test-data AI_PROVIDER=mock npm run test:e2e
 
-# Security rules tests
-firebase emulators:start
-npm run test:rules
+# Access rule tests
+HEALTHGEEK_DATA_DIR=./.test-data npm run test:rules
 ```
 
 ## Coverage Goals
@@ -200,6 +203,6 @@ npm run test:rules
 |-------|--------|
 | Unit (utilities, schemas) | 90% |
 | Integration (AI flows) | 80% |
-| Integration (Firestore) | 85% |
+| Integration (document store) | 85% |
 | E2E (critical paths) | 100% of journeys |
-| Security rules | 100% of rules |
+| Access rules | 100% of rules |

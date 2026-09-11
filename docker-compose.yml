@@ -1,0 +1,20 @@
+# Runs the whole app locally: `docker compose up --build`, then open
+# http://localhost:9002. Data persists in the named volume.
+services:
+  app:
+    build: .
+    ports:
+      - '9002:9002'
+    environment:
+      # Generate with: node -e "console.log(require('crypto').randomBytes(32).toString('hex'))"
+      AUTH_SECRET: ${AUTH_SECRET:?set AUTH_SECRET before starting}
+      HEALTHGEEK_DATA_DIR: /data
+      AI_PROVIDER: ${AI_PROVIDER:-mock}
+      AI_MODEL: ${AI_MODEL:-}
+      AI_API_KEY: ${AI_API_KEY:-}
+      AI_BASE_URL: ${AI_BASE_URL:-}
+    volumes:
+      - healthgeek-data:/data
+
+volumes:
+  healthgeek-data:

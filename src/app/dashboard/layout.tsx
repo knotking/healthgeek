@@ -3,9 +3,8 @@
 import React, { useState, useEffect } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
-import { onAuthStateChanged, signOut } from 'firebase/auth';
-import { auth, db } from '@/lib/firebase';
-import { doc, getDoc, setDoc } from 'firebase/firestore';
+import { onAuthStateChanged, signOut, auth } from '@/lib/auth/client';
+import { db, doc, getDoc, setDoc } from '@/lib/data/client';
 import { Button } from '@/components/ui/button';
 import {
   SidebarProvider,

@@ -7,8 +7,8 @@
  * - CalorieTargetOutput - The return type for the generateCalorieTarget function.
  */
 
-import { ai } from '@/ai/genkit';
-import { z } from 'genkit';
+import { ai } from '@/ai/core';
+import { z } from 'zod';
 
 const CalorieTargetInputSchema = z.object({
   age: z.number().describe('The age of the user.'),
